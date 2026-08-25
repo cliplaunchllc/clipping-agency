@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Bind to Railway's dynamic PORT
+  // Next.js reads process.env.PORT automatically in production
+  output: "standalone",
 };
 
 export default nextConfig;
