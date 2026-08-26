@@ -127,6 +127,7 @@ const navItems = [
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function AgencyDashboard({ clients, clippers, submissions, totalViews: _totalViews, userName }: AgencyDashboardProps) {
+  const [activeSection, setActiveSection] = useState<"overview" | "clients" | "clippers">("overview");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [timeframe, setTimeframe] = useState("7d");
   const [activeTab, setActiveTab] = useState<"averages" | "byday" | "totals">("totals");
@@ -196,9 +197,32 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
       <Sidebar role="agency" userName={userName} navItems={navItems} />
 
       <main className="flex-1 overflow-y-auto ml-60">
+        {/* Top navigation tabs */}
+        <div className="sticky top-0 z-30 px-8 pt-6 pb-0" style={{ background: "#05070D" }}>
+          <div className="flex items-center gap-1 mb-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            {([
+              { id: "overview", label: "Overview" },
+              { id: "clients", label: "Clients" },
+              { id: "clippers", label: "Clippers" },
+            ] as const).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSection(tab.id)}
+                className="px-5 py-3 text-sm font-medium transition-all relative"
+                style={{ color: activeSection === tab.id ? "#F5F6FA" : "#8A93A6" }}
+              >
+                {tab.label}
+                {activeSection === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF3B3B" }} />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="max-w-7xl mx-auto px-8 py-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          {/* Header — only shown on overview */}
+          {activeSection === "overview" && <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                 Overview
@@ -268,9 +292,98 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                 {isRefreshing ? "Syncing..." : "Refresh"}
               </button>
             </div>
-          </div>
+          </div>}
 
-          {/* KPI Cards */}
+          {/* Clients section */}
+          {activeSection === "clients" && (
+            <div>
+              <h1 className="text-2xl font-semibold mb-6" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clients</h1>
+              <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      {["Client", "Status", "Package", "Clippers", "Sub-accounts"].map((h) => (
+                        <th key={h} className="text-left pb-3 pr-6 text-xs font-medium" style={{ color: "#8A93A6" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clients.map((c, i) => (
+                      <tr key={c.id} style={{ borderBottom: i < clients.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                        <td className="py-3 pr-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                              style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B" }}>{c.name[0]}</div>
+                            <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-6">
+                          <span className="text-xs px-2 py-1 rounded-full"
+                            style={{ background: c.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,255,255,0.05)", color: c.status === "active" ? "#3DFFA2" : "#8A93A6" }}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-6 text-xs" style={{ color: "#8A93A6" }}>{c.packageInfo || "—"}</td>
+                        <td className="py-3 pr-6 text-xs" style={{ color: "#F5F6FA" }}>{c.assignments?.length ?? 0}</td>
+                        <td className="py-3 text-xs" style={{ color: "#F5F6FA" }}>{c.subAccounts?.length ?? 0}</td>
+                      </tr>
+                    ))}
+                    {clients.length === 0 && (
+                      <tr><td colSpan={5} className="py-8 text-center text-sm" style={{ color: "#8A93A6" }}>No clients yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Clippers section */}
+          {activeSection === "clippers" && (
+            <div>
+              <h1 className="text-2xl font-semibold mb-6" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clippers</h1>
+              <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      {["Clipper", "Email", "Clients", "Clips Submitted", "Total Views"].map((h) => (
+                        <th key={h} className="text-left pb-3 pr-6 text-xs font-medium" style={{ color: "#8A93A6" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clippers.map((c, i) => {
+                      const totalViews = submissions
+                        .filter((s) => s.clipper?.user?.name === c.user?.name)
+                        .reduce((acc: number, s: AnyRecord) => acc + (s.snapshots[0]?.views ?? 0), 0);
+                      return (
+                        <tr key={c.id} style={{ borderBottom: i < clippers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                          <td className="py-3 pr-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>
+                                {(c.displayName || c.user?.name || "C")[0]}
+                              </div>
+                              <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.displayName || c.user?.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 pr-6 text-xs" style={{ color: "#8A93A6" }}>{c.user?.email}</td>
+                          <td className="py-3 pr-6 text-xs" style={{ color: "#F5F6FA" }}>{c.assignments?.length ?? 0}</td>
+                          <td className="py-3 pr-6 text-xs" style={{ color: "#F5F6FA" }}>{c.submissions?.length ?? 0}</td>
+                          <td className="py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(totalViews)}</td>
+                        </tr>
+                      );
+                    })}
+                    {clippers.length === 0 && (
+                      <tr><td colSpan={5} className="py-8 text-center text-sm" style={{ color: "#8A93A6" }}>No clippers yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Overview content */}
+          {activeSection === "overview" && <>
           <div className="grid grid-cols-5 gap-4 mb-8">
             <KpiCard label="Views" value={metrics.views} icon={Eye} wow={wow} dod={dod} />
             <KpiCard label="Likes" value={metrics.likes} icon={Heart}
@@ -482,6 +595,7 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
               </div>
             )}
           </div>
+          </>}
         </div>
       </main>
     </div>
