@@ -209,7 +209,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
               <button type="submit" disabled={assignLoading || !assignClientId}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: "rgba(90,200,250,0.15)", border: "1px solid rgba(90,200,250,0.3)", color: "#5AC8FA",
+                  background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "#FF3B3B",
                   opacity: assignLoading || !assignClientId ? 0.6 : 1,
                 }}>
                 {assignLoading ? "Assigning..." : "Assign Client"}
@@ -262,7 +262,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                   <div className="flex flex-wrap gap-1">
                     {clipper.assignments.map((a) => (
                       <span key={a.client.id} className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: "rgba(90,200,250,0.12)", color: "#5AC8FA" }}>
+                        style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
                         {a.client.name}
                       </span>
                     ))}
@@ -278,7 +278,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                   <div className="flex items-center gap-2">
                     <button onClick={() => setShowAssignModal(clipper)} title="Assign to client"
                       className="px-3 py-1.5 rounded-lg text-xs transition-colors"
-                      style={{ background: "rgba(90,200,250,0.08)", color: "#5AC8FA", border: "1px solid rgba(90,200,250,0.15)" }}>
+                      style={{ background: "rgba(255,59,59,0.08)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.15)" }}>
                       Assign
                     </button>
                     <button onClick={() => handleDelete(clipper.id)} title="Remove clipper"

@@ -21,7 +21,7 @@ export default function Sidebar({ role, userName, navItems }: SidebarProps) {
   const pathname = usePathname();
 
   const roleColors: Record<string, string> = {
-    agency: "#5AC8FA",
+    agency: "#FF3B3B",
     clipper: "#3DFFA2",
     client: "#a78bfa",
   };
@@ -44,23 +44,19 @@ export default function Sidebar({ role, userName, navItems }: SidebarProps) {
       <div className="px-6 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(90,200,250,0.15)", border: "1px solid rgba(90,200,250,0.3)" }}
+          style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)" }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-              stroke="#5AC8FA"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M12 2C12 2 7 6 7 13H17C17 6 12 2 12 2Z" fill="#FF3B3B" stroke="#FF3B3B" strokeWidth="1" strokeLinejoin="round"/>
+            <path d="M9 13H15V17L12 20L9 17V13Z" fill="#FF3B3B"/>
+            <path d="M9 13L6 16M15 13L18 16" stroke="#FF3B3B" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
         <span
           className="font-semibold text-sm"
           style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}
         >
-          ClipFlow
+          ClipLaunch
         </span>
       </div>
 

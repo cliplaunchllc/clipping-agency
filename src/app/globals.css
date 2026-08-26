@@ -51,7 +51,7 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --shadow-glow: 0 0 20px rgba(80, 180, 255, 0.35);
+  --shadow-glow: 0 0 20px rgba(255, 59, 59, 0.35);
   --shadow-glow-green: 0 0 20px rgba(61, 255, 162, 0.35);
 }
 
@@ -60,13 +60,13 @@
   --foreground: #F5F6FA;
   --surface: #0B0E17;
   --accent-green: #3DFFA2;
-  --accent-blue: #5AC8FA;
+  --accent-blue: #FF3B3B;
   --accent-red: #FF4757;
   --card: #0B0E17;
   --card-foreground: #F5F6FA;
   --popover: #0B0E17;
   --popover-foreground: #F5F6FA;
-  --primary: #5AC8FA;
+  --primary: #FF3B3B;
   --primary-foreground: #05070D;
   --secondary: #1a1f2e;
   --secondary-foreground: #F5F6FA;
@@ -77,8 +77,8 @@
   --destructive: #FF4757;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: #5AC8FA;
-  --chart-1: #5AC8FA;
+  --ring: #FF3B3B;
+  --chart-1: #FF3B3B;
   --chart-2: #3DFFA2;
   --chart-3: #FF4757;
   --chart-4: #a78bfa;
@@ -86,12 +86,12 @@
   --radius: 0.75rem;
   --sidebar: #0B0E17;
   --sidebar-foreground: #F5F6FA;
-  --sidebar-primary: #5AC8FA;
+  --sidebar-primary: #FF3B3B;
   --sidebar-primary-foreground: #05070D;
   --sidebar-accent: #1a1f2e;
   --sidebar-accent-foreground: #F5F6FA;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #5AC8FA;
+  --sidebar-ring: #FF3B3B;
 }
 
 @layer base {
@@ -119,7 +119,7 @@
   }
 
   .glow-button:hover {
-    box-shadow: 0 0 20px rgba(80, 180, 255, 0.35);
+    box-shadow: 0 0 20px rgba(255, 59, 59, 0.35);
   }
 
   .glow-green {

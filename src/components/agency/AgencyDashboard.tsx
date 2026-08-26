@@ -87,8 +87,8 @@ function KpiCard({ label, value, icon: Icon, wow, dod }: {
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{label}</span>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-          style={{ background: "rgba(90,200,250,0.1)" }}>
-          <Icon size={14} color="#5AC8FA" />
+          style={{ background: "rgba(255,59,59,0.1)" }}>
+          <Icon size={14} color="#FF3B3B" />
         </div>
       </div>
       <div className="text-3xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
@@ -224,14 +224,14 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                     <button
                       onClick={() => { setSelectedClientId("all"); setShowClientPicker(false); }}
                       className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition-colors"
-                      style={{ color: selectedClientId === "all" ? "#5AC8FA" : "#F5F6FA" }}>
+                      style={{ color: selectedClientId === "all" ? "#FF3B3B" : "#F5F6FA" }}>
                       All Clients
                     </button>
                     {clients.map((c) => (
                       <button key={c.id}
                         onClick={() => { setSelectedClientId(c.id); setShowClientPicker(false); }}
                         className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 transition-colors"
-                        style={{ color: selectedClientId === c.id ? "#5AC8FA" : "#F5F6FA" }}>
+                        style={{ color: selectedClientId === c.id ? "#FF3B3B" : "#F5F6FA" }}>
                         {c.name}
                       </button>
                     ))}
@@ -245,9 +245,9 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                   onClick={() => setTimeframe(t)}
                   className="px-3 py-2 rounded-lg text-xs font-medium transition-all"
                   style={{
-                    background: timeframe === t ? "rgba(90,200,250,0.15)" : "transparent",
-                    color: timeframe === t ? "#5AC8FA" : "#8A93A6",
-                    border: timeframe === t ? "1px solid rgba(90,200,250,0.3)" : "1px solid transparent",
+                    background: timeframe === t ? "rgba(255,59,59,0.15)" : "transparent",
+                    color: timeframe === t ? "#FF3B3B" : "#8A93A6",
+                    border: timeframe === t ? "1px solid rgba(255,59,59,0.3)" : "1px solid transparent",
                   }}>
                   {t.toUpperCase()}
                 </button>
@@ -259,9 +259,9 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                 disabled={isRefreshing}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
                 style={{
-                  background: "rgba(90,200,250,0.1)",
-                  border: "1px solid rgba(90,200,250,0.2)",
-                  color: "#5AC8FA",
+                  background: "rgba(255,59,59,0.1)",
+                  border: "1px solid rgba(255,59,59,0.2)",
+                  color: "#FF3B3B",
                   opacity: isRefreshing ? 0.6 : 1,
                 }}>
                 <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
@@ -302,8 +302,8 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
               <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <defs>
                   <linearGradient id="agencyViewsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5AC8FA" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#5AC8FA" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -329,7 +329,7 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                   <div key={c.id} className="flex items-center gap-3">
                     <span className="text-xs w-4 text-right" style={{ color: "#8A93A6" }}>{i + 1}</span>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                      style={{ background: "rgba(90,200,250,0.1)", color: "#5AC8FA" }}>
+                      style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B" }}>
                       {c.name[0]}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -395,7 +395,7 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                     <td className="py-3 pr-4 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.shares ?? 0)}</td>
                     <td className="py-3">
                       <a href={s.clipUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink size={12} color="#5AC8FA" />
+                        <ExternalLink size={12} color="#FF3B3B" />
                       </a>
                     </td>
                   </tr>
@@ -415,8 +415,8 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
                   onClick={() => setActiveTab(t)}
                   className="text-sm font-medium pb-1 capitalize transition-colors"
                   style={{
-                    color: activeTab === t ? "#5AC8FA" : "#8A93A6",
-                    borderBottom: activeTab === t ? "2px solid #5AC8FA" : "2px solid transparent",
+                    color: activeTab === t ? "#FF3B3B" : "#8A93A6",
+                    borderBottom: activeTab === t ? "2px solid #FF3B3B" : "2px solid transparent",
                   }}>
                   {t === "byday" ? "By Day" : t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>

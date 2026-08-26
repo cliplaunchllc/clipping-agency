@@ -265,7 +265,7 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
               <button type="submit" disabled={setupLoading || !displayNameInput.trim()}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(90,200,250,0.15))",
+                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(255,59,59,0.15))",
                   border: "1px solid rgba(61,255,162,0.3)",
                   color: "#3DFFA2",
                   opacity: setupLoading || !displayNameInput.trim() ? 0.6 : 1,
@@ -361,7 +361,7 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
                 disabled={submitLoading || !submitSubAccountId || !submitClipUrl}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(90,200,250,0.15))",
+                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(255,59,59,0.15))",
                   border: "1px solid rgba(61,255,162,0.3)",
                   color: "#3DFFA2",
                   opacity: submitLoading || !submitSubAccountId || !submitClipUrl ? 0.6 : 1,
@@ -440,9 +440,9 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
                 disabled={saLoading || !saClientId || !saHandle || !saProfileUrl}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: "rgba(90,200,250,0.15)",
-                  border: "1px solid rgba(90,200,250,0.3)",
-                  color: "#5AC8FA",
+                  background: "rgba(255,59,59,0.15)",
+                  border: "1px solid rgba(255,59,59,0.3)",
+                  color: "#FF3B3B",
                   opacity: saLoading || !saClientId || !saHandle || !saProfileUrl ? 0.6 : 1,
                 }}>
                 {saLoading ? "Adding..." : "Add Sub-Account"}
@@ -479,14 +479,14 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
               ))}
               <button onClick={() => setShowSubAccountModal(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-                style={{ background: "rgba(90,200,250,0.1)", border: "1px solid rgba(90,200,250,0.2)", color: "#5AC8FA" }}>
+                style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
                 <Plus size={14} />
                 Add Account
               </button>
               <button onClick={() => setShowSubmitModal(true)}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
-                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(90,200,250,0.1))",
+                  background: "linear-gradient(135deg, rgba(61,255,162,0.2), rgba(255,59,59,0.1))",
                   border: "1px solid rgba(61,255,162,0.3)",
                   color: "#3DFFA2",
                 }}>
@@ -565,8 +565,8 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
               <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <defs>
                   <linearGradient id="clipperViewsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5AC8FA" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#5AC8FA" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -616,7 +616,7 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
                     </td>
                     <td className="py-3">
                       <a href={s.clipUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink size={12} color="#5AC8FA" />
+                        <ExternalLink size={12} color="#FF3B3B" />
                       </a>
                     </td>
                   </tr>

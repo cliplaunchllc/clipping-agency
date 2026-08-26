@@ -184,7 +184,7 @@ export default function ClientManagement({ initialClients, allClippers }: Props)
               <button type="submit" disabled={addLoading || !name || !email || !password}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: "rgba(90,200,250,0.15)", border: "1px solid rgba(90,200,250,0.3)", color: "#5AC8FA",
+                  background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "#FF3B3B",
                   opacity: addLoading || !name || !email || !password ? 0.6 : 1,
                 }}>
                 {addLoading ? "Creating..." : "Create Client"}
@@ -226,7 +226,7 @@ export default function ClientManagement({ initialClients, allClippers }: Props)
               </div>
               <button type="submit" disabled={editLoading}
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: "rgba(90,200,250,0.15)", border: "1px solid rgba(90,200,250,0.3)", color: "#5AC8FA" }}>
+                style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "#FF3B3B" }}>
                 {editLoading ? "Saving..." : "Save Changes"}
               </button>
             </form>
@@ -303,7 +303,7 @@ export default function ClientManagement({ initialClients, allClippers }: Props)
         </div>
         <button onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-          style={{ background: "rgba(90,200,250,0.1)", border: "1px solid rgba(90,200,250,0.2)", color: "#5AC8FA" }}>
+          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
           <Plus size={14} />
           Add Client
         </button>
@@ -325,7 +325,7 @@ export default function ClientManagement({ initialClients, allClippers }: Props)
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                      style={{ background: "rgba(90,200,250,0.1)", color: "#5AC8FA" }}>
+                      style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B" }}>
                       {client.name[0]}
                     </div>
                     <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{client.name}</span>
@@ -348,7 +348,7 @@ export default function ClientManagement({ initialClients, allClippers }: Props)
                   <div className="flex items-center gap-2">
                     <button onClick={() => setShowAssignModal(client)} title="Assign clipper"
                       className="p-1.5 rounded-lg transition-colors hover:bg-white/5">
-                      <Users size={14} color="#5AC8FA" />
+                      <Users size={14} color="#FF3B3B" />
                     </button>
                     <button onClick={() => openEdit(client)} title="Edit client"
                       className="p-1.5 rounded-lg transition-colors hover:bg-white/5">

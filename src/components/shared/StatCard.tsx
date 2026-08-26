@@ -13,7 +13,7 @@ export default function StatCard({
   change,
   changeType = "neutral",
   icon,
-  accentColor = "#5AC8FA",
+  accentColor = "#FF3B3B",
 }: StatCardProps) {
   const changeColors = {
     positive: "#3DFFA2",

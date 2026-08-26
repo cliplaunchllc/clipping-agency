@@ -223,8 +223,8 @@ export default function ClientDashboard({ client, userName }: Props) {
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="clientViewsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#5AC8FA" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#5AC8FA" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -335,7 +335,7 @@ export default function ClientDashboard({ client, userName }: Props) {
                         <td className="py-3 pr-4 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.shares ?? 0)}</td>
                         <td className="py-3">
                           <a href={s.clipUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink size={12} color="#5AC8FA" />
+                            <ExternalLink size={12} color="#FF3B3B" />
                           </a>
                         </td>
                       </tr>
@@ -464,7 +464,7 @@ export default function ClientDashboard({ client, userName }: Props) {
                     <YAxis tick={{ fontSize: 11, fill: "#8A93A6" }} axisLine={false} tickLine={false} tickFormatter={fmt} />
                     <Tooltip contentStyle={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#F5F6FA", fontSize: "12px" }} />
                     <Bar dataKey="views" fill="#a78bfa" radius={4} maxBarSize={40} />
-                    <Bar dataKey="likes" fill="#5AC8FA" radius={4} maxBarSize={40} />
+                    <Bar dataKey="likes" fill="#FF3B3B" radius={4} maxBarSize={40} />
                   </ReBarChart>
                 </ResponsiveContainer>
               </div>
@@ -476,7 +476,7 @@ export default function ClientDashboard({ client, userName }: Props) {
             <div className="max-w-2xl">
               <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <h2 className="text-lg font-semibold mb-2" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-                  Welcome to ClipFlow
+                  Welcome to ClipLaunch
                 </h2>
                 <p className="text-sm mb-6" style={{ color: "#8A93A6" }}>
                   Complete these steps to get the most out of your account.
@@ -489,7 +489,7 @@ export default function ClientDashboard({ client, userName }: Props) {
                 </div>
                 <div className="h-2 rounded-full mb-6" style={{ background: "rgba(255,255,255,0.08)" }}>
                   <div className="h-2 rounded-full transition-all"
-                    style={{ width: `${onboardingPct}%`, background: "linear-gradient(90deg, #a78bfa, #5AC8FA)" }} />
+                    style={{ width: `${onboardingPct}%`, background: "linear-gradient(90deg, #a78bfa, #FF3B3B)" }} />
                 </div>
 
                 {/* Steps */}
