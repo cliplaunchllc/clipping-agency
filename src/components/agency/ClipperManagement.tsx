@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, UserCheck } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, UserCheck, Eye } from "lucide-react";
 
 interface ClipperUser {
   id: string;
@@ -153,12 +154,20 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                   </td>
                   <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clipperProfile?._count?.clips ?? 0}</td>
                   <td className="px-6 py-4">
-                    <button onClick={() => { setAssigning(c.id); setSelectedClientId(c.clientId ?? ""); }}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                      style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
-                      <UserCheck size={12} />
-                      {c.status === "pending" ? "Assign" : "Reassign"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {c.status === "active" && (
+                        <Link href={`/agency/preview/clipper/${c.id}`} title="View as clipper"
+                          className="p-1.5 rounded-lg hover:bg-white/5 inline-flex">
+                          <Eye size={13} color="#8A93A6" />
+                        </Link>
+                      )}
+                      <button onClick={() => { setAssigning(c.id); setSelectedClientId(c.clientId ?? ""); }}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                        <UserCheck size={12} />
+                        {c.status === "pending" ? "Assign" : "Reassign"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

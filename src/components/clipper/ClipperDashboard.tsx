@@ -64,9 +64,10 @@ interface Props {
   subAccounts: AnyRecord[];
   clips: AnyRecord[];
   leaderboard: AnyRecord[]; // all clippers on this client
+  previewMode?: boolean;
 }
 
-export default function ClipperDashboard({ userName, clientName, subAccounts: initialSubs, clips: initialClips, leaderboard }: Props) {
+export default function ClipperDashboard({ userName, clientName, subAccounts: initialSubs, clips: initialClips, leaderboard, previewMode }: Props) {
   const [subAccounts, setSubAccounts] = useState<AnyRecord[]>(initialSubs);
   const [clips, setClips] = useState<AnyRecord[]>(initialClips);
 
@@ -158,9 +159,25 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="clipper" userName={userName} />
-      <main className="flex-1 overflow-y-auto ml-60">
-        <div className="max-w-5xl mx-auto px-8 py-8">
+      {previewMode ? (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2"
+          style={{ background: "rgba(11,14,23,0.95)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(8px)" }}>
+          <a href="/agency" className="flex items-center gap-1.5 text-xs" style={{ color: "#8A93A6" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Back to Agency
+          </a>
+          <span className="text-xs" style={{ color: "#8A93A6" }}>
+            Viewing as <span style={{ color: "#F5F6FA" }}>{userName}</span>
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.2)" }}>
+            Preview
+          </span>
+        </div>
+      ) : (
+        <Sidebar role="clipper" userName={userName} />
+      )}
+      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-60"}`}>
+        <div className={`max-w-5xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
@@ -188,11 +205,13 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
             <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>My Accounts</h2>
-                <button onClick={() => setShowAddSub(true)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg"
-                  style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
-                  <Plus size={11} /> Add
-                </button>
+                {!previewMode && (
+                  <button onClick={() => setShowAddSub(true)}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
+                    <Plus size={11} /> Add
+                  </button>
+                )}
               </div>
 
               {showAddSub && (
@@ -251,7 +270,9 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
             {/* 2. Submit a Clip */}
             <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Submit a Clip</h2>
-              {subAccounts.length === 0 ? (
+              {previewMode ? (
+                <p className="text-xs" style={{ color: "#8A93A6" }}>Clip submission is only available when logged in as the clipper.</p>
+              ) : subAccounts.length === 0 ? (
                 <p className="text-xs" style={{ color: "#8A93A6" }}>Add a social account first, then submit clips.</p>
               ) : (
                 <form onSubmit={handleSubmitClip} className="space-y-4">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, Archive, ArchiveRestore, Edit2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, X, Archive, ArchiveRestore, Edit2, Eye } from "lucide-react";
 
 interface Client {
   id: string;
@@ -186,8 +187,14 @@ export default function ClientManagement({ initialClients }: Props) {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     {c.status === "active" && (
-                      <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} title="Rename"
-                        className="p-1.5 rounded-lg hover:bg-white/5"><Edit2 size={13} color="#8A93A6" /></button>
+                      <>
+                        <Link href={`/agency/preview/client/${c.id}`} title="View as client"
+                          className="p-1.5 rounded-lg hover:bg-white/5 inline-flex">
+                          <Eye size={13} color="#8A93A6" />
+                        </Link>
+                        <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} title="Rename"
+                          className="p-1.5 rounded-lg hover:bg-white/5"><Edit2 size={13} color="#8A93A6" /></button>
+                      </>
                     )}
                     {c.status === "active" ? (
                       <button onClick={() => handleArchive(c.id, "archive")} title="Archive client"

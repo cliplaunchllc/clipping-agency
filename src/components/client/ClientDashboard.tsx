@@ -46,6 +46,7 @@ interface ClientData {
 interface Props {
   client: ClientData;
   userName: string;
+  previewMode?: boolean;
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -56,7 +57,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   other: "#8A93A6",
 };
 
-export default function ClientDashboard({ client, userName }: Props) {
+export default function ClientDashboard({ client, userName, previewMode }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "clips">("overview");
 
   const totalViews = client.clips.reduce((a, c) => a + c.views, 0);
@@ -87,10 +88,26 @@ export default function ClientDashboard({ client, userName }: Props) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="client" userName={userName} />
+      {previewMode ? (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2"
+          style={{ background: "rgba(11,14,23,0.95)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(8px)" }}>
+          <a href="/agency" className="flex items-center gap-1.5 text-xs" style={{ color: "#8A93A6" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Back to Agency
+          </a>
+          <span className="text-xs" style={{ color: "#8A93A6" }}>
+            Viewing as <span style={{ color: "#F5F6FA" }}>{client.name}</span>
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.2)" }}>
+            Preview
+          </span>
+        </div>
+      ) : (
+        <Sidebar role="client" userName={userName} />
+      )}
 
-      <main className="flex-1 overflow-y-auto ml-60">
-        <div className="max-w-6xl mx-auto px-8 py-8">
+      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-60"}`}>
+        <div className={`max-w-6xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
