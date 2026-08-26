@@ -194,7 +194,7 @@ export default function AgencyDashboard({ clients, clippers, submissions, totalV
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="agency" userName={userName} navItems={navItems} />
+      <Sidebar role="agency" userName={userName} />
 
       <main className="flex-1 overflow-y-auto ml-60">
         {/* Top navigation tabs */}

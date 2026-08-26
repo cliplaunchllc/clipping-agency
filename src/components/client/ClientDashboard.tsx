@@ -149,7 +149,7 @@ export default function ClientDashboard({ client, userName }: Props) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="client" userName={userName} navItems={navItems} />
+      <Sidebar role="client" userName={userName} />
 
       <main className="flex-1 overflow-y-auto ml-60">
         <div className="max-w-6xl mx-auto px-8 py-8">

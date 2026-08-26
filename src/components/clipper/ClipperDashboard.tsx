@@ -238,7 +238,7 @@ export default function ClipperDashboard({ clipper: initialClipper, userName }: 
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="clipper" userName={userName} navItems={navItems} />
+      <Sidebar role="clipper" userName={userName} />
 
       {/* Setup Modal */}
       {showSetupModal && (

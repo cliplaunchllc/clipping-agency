@@ -3,22 +3,39 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard, Users, Scissors, BarChart2, Settings,
+  TrendingUp, FileText,
+} from "lucide-react";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}
+const NAV_ITEMS = {
+  agency: [
+    { label: "Overview", href: "/agency", icon: LayoutDashboard },
+    { label: "Clients", href: "/agency/clients", icon: Users },
+    { label: "Clippers", href: "/agency/clippers", icon: Scissors },
+    { label: "Analytics", href: "/agency/analytics", icon: BarChart2 },
+    { label: "Settings", href: "/agency/settings", icon: Settings },
+  ],
+  clipper: [
+    { label: "Dashboard", href: "/clipper", icon: LayoutDashboard },
+    { label: "Submissions", href: "/clipper/submissions", icon: FileText },
+    { label: "Analytics", href: "/clipper/analytics", icon: TrendingUp },
+  ],
+  client: [
+    { label: "Dashboard", href: "/client", icon: LayoutDashboard },
+    { label: "Analytics", href: "/client/analytics", icon: TrendingUp },
+    { label: "Reports", href: "/client/reports", icon: FileText },
+  ],
+};
 
 interface SidebarProps {
   role: "agency" | "clipper" | "client";
   userName: string;
-  navItems: NavItem[];
 }
 
-export default function Sidebar({ role, userName, navItems }: SidebarProps) {
+export default function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
+  const navItems = NAV_ITEMS[role];
 
   const roleColors: Record<string, string> = {
     agency: "#FF3B3B",

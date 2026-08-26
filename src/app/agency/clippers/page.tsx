@@ -43,7 +43,7 @@ export default async function AgencyClippersPage() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} navItems={navItems} />
+      <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
       <main className="flex-1 overflow-y-auto ml-60">
         <div className="max-w-7xl mx-auto px-8 py-8">
           <ClipperManagement
