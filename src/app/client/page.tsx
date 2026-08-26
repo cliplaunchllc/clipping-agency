@@ -7,47 +7,53 @@ export default async function ClientPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "client") redirect("/login");
 
-  const clientAccount = await prisma.clientAccount.findUnique({
-    where: { userId: session.user.id },
+  const clientId = (session.user as { clientId?: string | null }).clientId;
+  if (!clientId) redirect("/login");
+
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
     include: {
-      subAccounts: {
+      clips: {
         include: {
-          submissions: {
-            include: {
-              snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
-              clipper: { include: { user: true } },
-            },
-            orderBy: { submittedAt: "desc" },
-          },
           clipper: { include: { user: true } },
+          subAccount: true,
         },
+        orderBy: { submittedAt: "desc" },
       },
-      onboarding: { orderBy: { order: "asc" } },
-      assignments: {
-        include: { clipper: { include: { user: true } } },
+      users: {
+        where: { role: "clipper" },
+        include: { clipperProfile: true },
       },
     },
   });
 
-  if (!clientAccount) redirect("/login");
-
-  const allSubmissions = clientAccount.subAccounts.flatMap((sa) => sa.submissions);
+  if (!client) redirect("/login");
 
   const serialized = {
-    ...clientAccount,
-    subAccounts: clientAccount.subAccounts.map((sa) => ({
-      ...sa,
-      submissions: sa.submissions.map((s) => ({
-        ...s,
-        snapshots: s.snapshots.map((snap) => ({
-          ...snap,
-          views: Number(snap.views),
-          likes: Number(snap.likes),
-          comments: Number(snap.comments),
-          shares: Number(snap.shares),
-          saves: Number(snap.saves),
-        })),
-      })),
+    id: client.id,
+    name: client.name,
+    status: client.status,
+    clips: client.clips.map((c) => ({
+      id: c.id,
+      url: c.url,
+      platform: c.subAccount.platform,
+      handle: c.subAccount.handle,
+      views: Number(c.views),
+      likes: Number(c.likes),
+      comments: Number(c.comments),
+      shares: Number(c.shares),
+      saves: Number(c.saves),
+      earnings: c.earnings,
+      submittedAt: c.submittedAt.toISOString(),
+      clipperName: c.clipper.user.name ?? c.clipper.user.email,
+    })),
+    clippers: client.users.map((u) => ({
+      id: u.id,
+      name: u.name ?? u.email,
+      clipCount: client.clips.filter((c) => c.clipper.userId === u.id).length,
+      totalViews: client.clips
+        .filter((c) => c.clipper.userId === u.id)
+        .reduce((sum, c) => sum + Number(c.views), 0),
     })),
   };
 

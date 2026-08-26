@@ -8,34 +8,32 @@ export default async function ClipperAnalyticsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "clipper") redirect("/login");
 
-  const clipper = await prisma.clipper.findUnique({
+  const profile = await prisma.clipperProfile.findUnique({
     where: { userId: session.user.id },
     include: {
-      submissions: {
-        include: {
-          subAccount: { include: { client: true } },
-          snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
-        },
+      clips: {
+        include: { subAccount: true, client: true },
         orderBy: { submittedAt: "desc" },
       },
     },
   });
 
-  if (!clipper) redirect("/login");
+  if (!profile) redirect("/login");
 
-  const serialized = clipper.submissions.map((s) => ({
-    id: s.id,
-    platform: s.platform,
-    clipUrl: s.clipUrl,
-    submittedAt: s.submittedAt.toISOString(),
-    subAccount: { client: { name: s.subAccount.client.name } },
-    snapshots: s.snapshots.map((snap) => ({
-      views: Number(snap.views),
-      likes: Number(snap.likes),
-      comments: Number(snap.comments),
-      shares: Number(snap.shares),
-      saves: Number(snap.saves),
-    })),
+  // Reshape clips to the format ClipperAnalytics expects
+  const serialized = profile.clips.map((c) => ({
+    id: c.id,
+    platform: c.subAccount.platform,
+    clipUrl: c.url,
+    submittedAt: c.submittedAt.toISOString(),
+    subAccount: { client: { name: c.client.name } },
+    snapshots: [{
+      views: Number(c.views),
+      likes: Number(c.likes),
+      comments: Number(c.comments),
+      shares: Number(c.shares),
+      saves: Number(c.saves),
+    }],
   }));
 
   return (

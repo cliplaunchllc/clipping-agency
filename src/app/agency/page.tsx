@@ -7,60 +7,73 @@ export default async function AgencyPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [clients, clippers, submissions] = await Promise.all([
-    prisma.clientAccount.findMany({
+  const [clients, clippers, clips] = await Promise.all([
+    prisma.client.findMany({
       include: {
-        assignments: { include: { clipper: { include: { user: true } } } },
-        subAccounts: true,
-        onboarding: { orderBy: { order: "asc" } },
+        users: { where: { role: "clipper" }, select: { id: true } },
+        _count: { select: { clips: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.clipper.findMany({
+    prisma.user.findMany({
+      where: { role: "clipper" },
       include: {
-        user: true,
-        assignments: { include: { client: true } },
-        submissions: {
-          include: { snapshots: { orderBy: { timestamp: "desc" }, take: 1 } },
-        },
+        client: true,
+        clipperProfile: { include: { _count: { select: { clips: true } } } },
       },
     }),
-    prisma.submission.findMany({
+    prisma.clip.findMany({
       include: {
-        subAccount: { include: { client: true } },
         clipper: { include: { user: true } },
-        snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
+        client: true,
+        subAccount: true,
       },
       orderBy: { submittedAt: "desc" },
-      take: 20,
+      take: 50,
     }),
   ]);
 
-  // Serialize BigInt fields
-  const serializedSubmissions = submissions.map((s) => ({
-    ...s,
-    snapshots: s.snapshots.map((snap) => ({
-      ...snap,
-      views: Number(snap.views),
-      likes: Number(snap.likes),
-      comments: Number(snap.comments),
-      shares: Number(snap.shares),
-      saves: Number(snap.saves),
-    })),
+  const totalViews = clips.reduce((acc, c) => acc + Number(c.views), 0);
+
+  const serializedClips = clips.map((c) => ({
+    id: c.id,
+    url: c.url,
+    platform: c.subAccount.platform,
+    views: Number(c.views),
+    likes: Number(c.likes),
+    comments: Number(c.comments),
+    shares: Number(c.shares),
+    saves: Number(c.saves),
+    submittedAt: c.submittedAt.toISOString(),
+    client: { name: c.client.name },
+    clipper: { name: c.clipper.user.name ?? c.clipper.user.email },
+    subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
   }));
 
-  const totalViews = serializedSubmissions.reduce(
-    (acc, s) => acc + (s.snapshots[0]?.views ?? 0),
-    0
-  );
+  const serializedClients = clients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    status: c.status,
+    clipperCount: c.users.length,
+    clipCount: c._count.clips,
+  }));
+
+  const serializedClippers = clippers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    status: c.status,
+    clientName: c.client?.name ?? null,
+    clipCount: c.clipperProfile?._count?.clips ?? 0,
+  }));
 
   return (
     <AgencyDashboard
-      clients={clients}
-      clippers={clippers}
-      submissions={serializedSubmissions}
+      userName={session.user.name ?? "Agency"}
+      clients={serializedClients}
+      clippers={serializedClippers}
+      clips={serializedClips}
       totalViews={totalViews}
-      userName={session.user.name ?? "Agency Admin"}
     />
   );
 }

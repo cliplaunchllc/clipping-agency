@@ -4,20 +4,29 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const body = await req.json();
-  const client = await prisma.clientAccount.update({
+
+  if (body.action === "archive") {
+    const client = await prisma.client.update({
+      where: { id },
+      data: { status: "archived", archivedAt: new Date() },
+    });
+    return NextResponse.json(client);
+  }
+  if (body.action === "unarchive") {
+    const client = await prisma.client.update({
+      where: { id },
+      data: { status: "active", archivedAt: null },
+    });
+    return NextResponse.json(client);
+  }
+
+  const client = await prisma.client.update({
     where: { id },
-    data: { name: body.name, status: body.status, packageInfo: body.packageInfo },
+    data: { name: body.name },
   });
   return NextResponse.json(client);
-}
-
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id } = await params;
-  await prisma.clientAccount.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
 }

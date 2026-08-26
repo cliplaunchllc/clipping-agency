@@ -8,48 +8,43 @@ export default async function ClipperSubmissionsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "clipper") redirect("/login");
 
-  const clipper = await prisma.clipper.findUnique({
+  const profile = await prisma.clipperProfile.findUnique({
     where: { userId: session.user.id },
     include: {
-      assignments: { include: { client: { include: { subAccounts: true } } } },
-      submissions: {
-        include: {
-          subAccount: { include: { client: true } },
-          snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
-        },
+      clips: {
+        include: { subAccount: true, client: true },
         orderBy: { submittedAt: "desc" },
       },
+      subAccounts: true,
     },
   });
 
-  if (!clipper) redirect("/login");
+  if (!profile) redirect("/login");
 
-  const serialized = clipper.submissions.map((s) => ({
-    id: s.id,
-    platform: s.platform,
-    clipUrl: s.clipUrl,
-    submittedAt: s.submittedAt.toISOString(),
-    subAccount: { client: { name: s.subAccount.client.name } },
-    snapshots: s.snapshots.map((snap) => ({
-      views: Number(snap.views),
-      likes: Number(snap.likes),
-      comments: Number(snap.comments),
-      shares: Number(snap.shares),
-      saves: Number(snap.saves),
-    })),
+  const serialized = profile.clips.map((c) => ({
+    id: c.id,
+    platform: c.subAccount.platform,
+    url: c.url,
+    submittedAt: c.submittedAt.toISOString(),
+    clientName: c.client.name,
+    handle: c.subAccount.handle,
+    views: Number(c.views),
+    likes: Number(c.likes),
+    comments: Number(c.comments),
+    shares: Number(c.shares),
   }));
 
-  const clients = clipper.assignments.map((a) => ({
-    id: a.client.id,
-    name: a.client.name,
-    subAccounts: a.client.subAccounts.map((sa) => ({ id: sa.id, platform: sa.platform, handle: sa.handle })),
+  const subAccounts = profile.subAccounts.map((sa) => ({
+    id: sa.id,
+    platform: sa.platform,
+    handle: sa.handle,
   }));
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
       <Sidebar role="clipper" userName={session.user.name ?? "Clipper"} />
       <main className="flex-1 overflow-y-auto ml-60">
-        <ClipperSubmissions submissions={serialized} clients={clients} clipperId={clipper.id} />
+        <ClipperSubmissions clips={serialized} subAccounts={subAccounts} />
       </main>
     </div>
   );

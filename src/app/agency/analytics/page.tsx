@@ -8,29 +8,33 @@ export default async function AgencyAnalyticsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const submissions = await prisma.submission.findMany({
+  const clips = await prisma.clip.findMany({
     include: {
-      subAccount: { include: { client: true } },
       clipper: { include: { user: true } },
-      snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
+      client: true,
+      subAccount: true,
     },
     orderBy: { submittedAt: "desc" },
   });
 
-  const serialized = submissions.map((s) => ({
-    id: s.id,
-    platform: s.platform,
-    clipUrl: s.clipUrl,
-    submittedAt: s.submittedAt.toISOString(),
-    subAccount: { client: { name: s.subAccount.client.name } },
-    clipper: { displayName: s.clipper?.displayName ?? null, user: { name: s.clipper?.user?.name ?? null } },
-    snapshots: s.snapshots.map((snap) => ({
-      views: Number(snap.views),
-      likes: Number(snap.likes),
-      comments: Number(snap.comments),
-      shares: Number(snap.shares),
-      saves: Number(snap.saves),
-    })),
+  // Reshape into the format AgencyAnalytics expects
+  const serialized = clips.map((c) => ({
+    id: c.id,
+    platform: c.subAccount.platform,
+    clipUrl: c.url,
+    submittedAt: c.submittedAt.toISOString(),
+    subAccount: { client: { name: c.client.name } },
+    clipper: {
+      displayName: c.clipper.displayName ?? null,
+      user: { name: c.clipper.user.name ?? null },
+    },
+    snapshots: [{
+      views: Number(c.views),
+      likes: Number(c.likes),
+      comments: Number(c.comments),
+      shares: Number(c.shares),
+      saves: Number(c.saves),
+    }],
   }));
 
   return (

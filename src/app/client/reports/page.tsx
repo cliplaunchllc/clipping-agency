@@ -8,49 +8,46 @@ export default async function ClientReportsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "client") redirect("/login");
 
-  const clientAccount = await prisma.clientAccount.findUnique({
-    where: { userId: session.user.id },
+  const clientId = (session.user as { clientId?: string | null }).clientId;
+  if (!clientId) redirect("/login");
+
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
     include: {
-      subAccounts: {
-        include: {
-          submissions: {
-            include: {
-              snapshots: { orderBy: { timestamp: "desc" }, take: 1 },
-              clipper: { include: { user: true } },
-            },
-            orderBy: { submittedAt: "desc" },
-          },
-        },
+      clips: {
+        include: { subAccount: true, clipper: { include: { user: true } } },
+        orderBy: { submittedAt: "desc" },
       },
-      assignments: { include: { clipper: { include: { user: true } } } },
     },
   });
 
-  if (!clientAccount) redirect("/login");
+  if (!client) redirect("/login");
 
-  const submissions = clientAccount.subAccounts.flatMap((sa) =>
-    sa.submissions.map((s) => ({
-      id: s.id,
-      platform: s.platform,
-      clipUrl: s.clipUrl,
-      submittedAt: s.submittedAt.toISOString(),
-      subAccount: { platform: sa.platform, handle: sa.handle },
-      clipper: { displayName: s.clipper?.displayName ?? null, user: { name: s.clipper?.user?.name ?? null } },
-      snapshots: s.snapshots.map((snap) => ({
-        views: Number(snap.views),
-        likes: Number(snap.likes),
-        comments: Number(snap.comments),
-        shares: Number(snap.shares),
-        saves: Number(snap.saves),
-      })),
-    }))
-  );
+  // Reshape to match ClientReports component format
+  const submissions = client.clips.map((c) => ({
+    id: c.id,
+    platform: c.subAccount.platform,
+    clipUrl: c.url,
+    submittedAt: c.submittedAt.toISOString(),
+    subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
+    clipper: {
+      displayName: c.clipper.displayName ?? null,
+      user: { name: c.clipper.user.name ?? null },
+    },
+    snapshots: [{
+      views: Number(c.views),
+      likes: Number(c.likes),
+      comments: Number(c.comments),
+      shares: Number(c.shares),
+      saves: Number(c.saves),
+    }],
+  }));
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
       <Sidebar role="client" userName={session.user.name ?? "Client"} />
       <main className="flex-1 overflow-y-auto ml-60">
-        <ClientReports submissions={submissions} clientName={clientAccount.name} />
+        <ClientReports submissions={submissions} clientName={client.name} />
       </main>
     </div>
   );

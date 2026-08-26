@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Role = "agency" | "clipper" | "client";
 
@@ -45,7 +46,12 @@ function RocketLogo({ size = 24 }: { size?: number }) {
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<"role" | "login">("role");
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("lastRole") as Role | null) ?? null;
+    }
+    return null;
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -55,6 +61,7 @@ export default function LoginPage() {
     setSelectedRole(role);
     setStep("login");
     setError("");
+    if (typeof window !== "undefined") localStorage.setItem("lastRole", role);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -245,6 +252,13 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign in"}
               </button>
             </form>
+
+            {selectedRole === "clipper" && (
+              <p className="text-center text-xs mt-5" style={{ color: "#8A93A6" }}>
+                New clipper?{" "}
+                <Link href="/signup" style={{ color: "#3DFFA2" }}>Create an account</Link>
+              </p>
+            )}
           </div>
         )}
       </div>

@@ -22,15 +22,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
         if (!valid) return null;
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return { id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId ?? null, status: user.status } as any;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role;
-        token.id = user.id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const u = user as any;
+        token.role = u.role;
+        token.id = u.id;
+        token.clientId = u.clientId ?? null;
+        token.status = u.status ?? "active";
       }
       return token;
     },
@@ -38,6 +43,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.clientId = (token.clientId as string | null) ?? null;
+        session.user.status = (token.status as string) ?? "active";
       }
       return session;
     },

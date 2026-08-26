@@ -16,21 +16,34 @@ enum Platform {
   tiktok
   instagram
   youtube
+  twitter
+  other
+}
+
+enum UserStatus {
+  pending
+  active
+}
+
+enum ClientStatus {
+  active
+  archived
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  passwordHash  String
-  role          Role
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  passwordHash String
+  role         Role
+  clientId     String?
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now())
 
-  clipper       Clipper?
-  clientAccount ClientAccount?
-  sessions      Session[]
-  accounts      Account[]
+  client         Client?        @relation(fields: [clientId], references: [id])
+  clipperProfile ClipperProfile?
+  sessions       Session[]
+  accounts       Account[]
 }
 
 model Account {
@@ -68,97 +81,56 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Clipper {
+model Client {
+  id         String       @id @default(cuid())
+  name       String
+  status     ClientStatus @default(active)
+  archivedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  users User[]
+  clips Clip[]
+}
+
+model ClipperProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
   displayName String?
   createdAt   DateTime @default(now())
 
-  user        User                     @relation(fields: [userId], references: [id])
-  assignments ClipperClientAssignment[]
-  subAccounts SubAccount[]
-  submissions Submission[]
+  user        User                @relation(fields: [userId], references: [id])
+  subAccounts ClipperSubAccount[]
+  clips       Clip[]
 }
 
-model ClientAccount {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  name        String
-  logo        String?
-  status      String   @default("active")
-  packageInfo String?
-  notes       String?
-  createdAt   DateTime @default(now())
+model ClipperSubAccount {
+  id         String   @id @default(cuid())
+  clipperId  String
+  platform   Platform
+  handle     String
+  profileUrl String?
+  createdAt  DateTime @default(now())
 
-  user        User                     @relation(fields: [userId], references: [id])
-  assignments ClipperClientAssignment[]
-  subAccounts SubAccount[]
-  onboarding  OnboardingStep[]
+  clipper ClipperProfile @relation(fields: [clipperId], references: [id])
+  clips   Clip[]
 }
 
-model ClipperClientAssignment {
-  id        String   @id @default(cuid())
-  clipperId String
-  clientId  String
-  createdAt DateTime @default(now())
-
-  clipper Clipper       @relation(fields: [clipperId], references: [id])
-  client  ClientAccount @relation(fields: [clientId], references: [id])
-
-  @@unique([clipperId, clientId])
-}
-
-model SubAccount {
-  id          String   @id @default(cuid())
-  clientId    String
-  clipperId   String
-  platform    Platform
-  handle      String
-  profileUrl  String
-  createdAt   DateTime @default(now())
-
-  client      ClientAccount @relation(fields: [clientId], references: [id])
-  clipper     Clipper       @relation(fields: [clipperId], references: [id])
-  submissions Submission[]
-}
-
-model Submission {
-  id           String   @id @default(cuid())
-  subAccountId String
+model Clip {
+  id           String    @id @default(cuid())
   clipperId    String
-  clipUrl      String
-  platform     Platform
-  submittedAt  DateTime @default(now())
+  clientId     String
+  subAccountId String
+  url          String
+  views        BigInt    @default(0)
+  likes        BigInt    @default(0)
+  comments     BigInt    @default(0)
+  shares       BigInt    @default(0)
+  saves        BigInt    @default(0)
+  earnings     Float     @default(0)
+  submittedAt  DateTime  @default(now())
   lastScraped  DateTime?
-  scrapeStatus String   @default("pending")
 
-  subAccount SubAccount       @relation(fields: [subAccountId], references: [id])
-  clipper    Clipper          @relation(fields: [clipperId], references: [id])
-  snapshots  MetricSnapshot[]
-}
-
-model MetricSnapshot {
-  id           String   @id @default(cuid())
-  submissionId String
-  timestamp    DateTime @default(now())
-  views        BigInt   @default(0)
-  likes        BigInt   @default(0)
-  comments     BigInt   @default(0)
-  shares       BigInt   @default(0)
-  saves        BigInt   @default(0)
-
-  submission Submission @relation(fields: [submissionId], references: [id])
-
-  @@index([submissionId, timestamp])
-}
-
-model OnboardingStep {
-  id        String   @id @default(cuid())
-  clientId  String
-  title     String
-  completed Boolean  @default(false)
-  order     Int
-  createdAt DateTime @default(now())
-
-  client ClientAccount @relation(fields: [clientId], references: [id])
+  clipper    ClipperProfile    @relation(fields: [clipperId], references: [id])
+  client     Client            @relation(fields: [clientId], references: [id])
+  subAccount ClipperSubAccount @relation(fields: [subAccountId], references: [id])
 }

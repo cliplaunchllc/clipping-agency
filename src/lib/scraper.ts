@@ -63,63 +63,39 @@ function generateMockMetrics(baseViews: number): MetricResult {
   };
 }
 
-export async function scrapeSubmission(submissionId: string): Promise<void> {
-  const submission = await prisma.submission.findUnique({
-    where: { id: submissionId },
-    include: { snapshots: { orderBy: { timestamp: "desc" }, take: 1 } },
-  });
-  if (!submission) return;
-
-  await prisma.submission.update({
-    where: { id: submissionId },
-    data: { scrapeStatus: "scraping" },
-  });
+export async function scrapeClip(clipId: string): Promise<void> {
+  const clip = await prisma.clip.findUnique({ where: { id: clipId }, include: { subAccount: true } });
+  if (!clip) return;
 
   try {
     let metrics: MetricResult;
-    switch (submission.platform) {
+    switch (clip.subAccount.platform) {
       case "youtube":
-        metrics = await scrapeYouTube(submission.clipUrl);
+        metrics = await scrapeYouTube(clip.url);
         break;
       case "tiktok":
-        metrics = await scrapeTikTok(submission.clipUrl);
+        metrics = await scrapeTikTok(clip.url);
         break;
       case "instagram":
-        metrics = await scrapeInstagram(submission.clipUrl);
+        metrics = await scrapeInstagram(clip.url);
         break;
       default:
         metrics = generateMockMetrics(10000);
     }
 
-    const lastSnap = submission.snapshots[0];
-    if (lastSnap) {
-      metrics.views = Math.max(metrics.views, Number(lastSnap.views));
-      metrics.likes = Math.max(metrics.likes, Number(lastSnap.likes));
-      metrics.comments = Math.max(metrics.comments, Number(lastSnap.comments));
-      metrics.shares = Math.max(metrics.shares, Number(lastSnap.shares));
-      metrics.saves = Math.max(metrics.saves, Number(lastSnap.saves));
-    }
-
-    await prisma.metricSnapshot.create({
+    // Only update if metrics increased (never decrease)
+    await prisma.clip.update({
+      where: { id: clipId },
       data: {
-        submissionId,
-        views: BigInt(metrics.views),
-        likes: BigInt(metrics.likes),
-        comments: BigInt(metrics.comments),
-        shares: BigInt(metrics.shares),
-        saves: BigInt(metrics.saves),
+        views: BigInt(Math.max(metrics.views, Number(clip.views))),
+        likes: BigInt(Math.max(metrics.likes, Number(clip.likes))),
+        comments: BigInt(Math.max(metrics.comments, Number(clip.comments))),
+        shares: BigInt(Math.max(metrics.shares, Number(clip.shares))),
+        saves: BigInt(Math.max(metrics.saves, Number(clip.saves))),
+        lastScraped: new Date(),
       },
     });
-
-    await prisma.submission.update({
-      where: { id: submissionId },
-      data: { scrapeStatus: "success", lastScraped: new Date() },
-    });
   } catch (err) {
-    console.error(`Scrape failed for ${submissionId}:`, err);
-    await prisma.submission.update({
-      where: { id: submissionId },
-      data: { scrapeStatus: "error" },
-    });
+    console.error(`Scrape failed for clip ${clipId}:`, err);
   }
 }
