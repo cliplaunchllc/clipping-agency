@@ -7,8 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
+  // During Next.js build, DATABASE_URL may not be set — return a dummy client
+  // that throws only when queries are actually executed at runtime.
   if (!connectionString) {
-    throw new Error("DATABASE_URL environment variable is not set");
+    return new PrismaClient();
   }
   const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({ adapter } as any);
