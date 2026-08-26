@@ -50,21 +50,37 @@ export default async function AgencyPage() {
     subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
   }));
 
+  // Full shape for ClientManagement
   const serializedClients = clients.map((c) => ({
     id: c.id,
     name: c.name,
     status: c.status,
-    clipperCount: c.users.length,
-    clipCount: c._count.clips,
+    archivedAt: c.archivedAt?.toISOString() ?? null,
+    createdAt: c.createdAt.toISOString(),
+    _count: { clips: c._count.clips },
+    users: c.users,
   }));
 
+  // Full shape for ClipperManagement
   const serializedClippers = clippers.map((c) => ({
     id: c.id,
     name: c.name,
     email: c.email,
     status: c.status,
-    clientName: c.client?.name ?? null,
-    clipCount: c.clipperProfile?._count?.clips ?? 0,
+    clientId: c.clientId ?? null,
+    client: c.client
+      ? { id: c.client.id, name: c.client.name, status: c.client.status }
+      : null,
+    clipperProfile: c.clipperProfile
+      ? { _count: { clips: c.clipperProfile._count.clips } }
+      : null,
+  }));
+
+  // Simplified client list for ClipperManagement's allClients prop
+  const allClientsList = clients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    status: c.status,
   }));
 
   return (
@@ -72,6 +88,7 @@ export default async function AgencyPage() {
       userName={session.user.name ?? "Agency"}
       clients={serializedClients}
       clippers={serializedClippers}
+      allClients={allClientsList}
       clips={serializedClips}
       totalViews={totalViews}
     />

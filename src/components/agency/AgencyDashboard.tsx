@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
+import ClientManagement from "@/components/agency/ClientManagement";
+import ClipperManagement from "@/components/agency/ClipperManagement";
 import { Eye, Heart, Share2, Users, Scissors, BarChart2, TrendingUp } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -16,13 +18,14 @@ function fmt(n: number) {
 
 interface Props {
   userName: string;
-  clients: AnyRecord[];
-  clippers: AnyRecord[];
+  clients: AnyRecord[];       // Full ClientManagement shape
+  clippers: AnyRecord[];      // Full ClipperManagement shape
+  allClients: AnyRecord[];    // Simplified list for clipper assign dropdown
   clips: AnyRecord[];
   totalViews: number;
 }
 
-export default function AgencyDashboard({ userName, clients, clippers, clips, totalViews }: Props) {
+export default function AgencyDashboard({ userName, clients, clippers, allClients, clips, totalViews }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clippers">("overview");
 
   const totalLikes = clips.reduce((acc, c) => acc + (c.likes ?? 0), 0);
@@ -79,6 +82,7 @@ export default function AgencyDashboard({ userName, clients, clippers, clips, to
         </div>
 
         <div className="max-w-7xl mx-auto px-8 py-8">
+
           {/* Overview */}
           {activeTab === "overview" && <>
             <div className="flex items-center justify-between mb-8">
@@ -166,9 +170,16 @@ export default function AgencyDashboard({ userName, clients, clippers, clips, to
 
               {/* Client Breakdown */}
               <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Users size={14} color="#FF3B3B" />
-                  <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clients</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Users size={14} color="#FF3B3B" />
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clients</h2>
+                  </div>
+                  <button onClick={() => setActiveTab("clients")}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                    Manage
+                  </button>
                 </div>
                 <div className="space-y-3">
                   {clients.filter((c) => c.status === "active").slice(0, 5).map((c) => (
@@ -177,104 +188,30 @@ export default function AgencyDashboard({ userName, clients, clippers, clips, to
                         style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B" }}>{c.name[0]}</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>{c.name}</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{c.clipperCount} clippers · {c.clipCount} clips</p>
+                        <p className="text-xs" style={{ color: "#8A93A6" }}>{c.users.length} clippers · {c._count.clips} clips</p>
                       </div>
                     </div>
                   ))}
-                  {clients.filter((c) => c.status === "active").length === 0 && <p className="text-sm" style={{ color: "#8A93A6" }}>No active clients</p>}
+                  {clients.filter((c) => c.status === "active").length === 0 && (
+                    <p className="text-sm" style={{ color: "#8A93A6" }}>No active clients</p>
+                  )}
                 </div>
               </div>
             </div>
           </>}
 
-          {/* Clients tab */}
+          {/* Clients tab — full management */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {activeTab === "clients" && (
-            <div>
-              <h1 className="text-2xl font-semibold mb-6" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clients</h1>
-              <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Client", "Status", "Clippers", "Clips"].map((h) => (
-                        <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clients.map((c, i) => (
-                      <tr key={c.id} style={{ borderBottom: i < clients.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                              style={{ background: c.status === "archived" ? "rgba(255,255,255,0.04)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "#FF3B3B" }}>
-                              {c.name[0]}
-                            </div>
-                            <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "#8A93A6" : "#F5F6FA" }}>{c.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-xs px-2 py-1 rounded-full"
-                            style={{ background: c.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,255,255,0.05)", color: c.status === "active" ? "#3DFFA2" : "#8A93A6" }}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clipperCount}</td>
-                        <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clipCount}</td>
-                      </tr>
-                    ))}
-                    {clients.length === 0 && (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No clients yet</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <ClientManagement initialClients={clients as any} />
           )}
 
-          {/* Clippers tab */}
+          {/* Clippers tab — full management */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {activeTab === "clippers" && (
-            <div>
-              <h1 className="text-2xl font-semibold mb-6" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clippers</h1>
-              <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Clipper", "Email", "Status", "Client", "Clips"].map((h) => (
-                        <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clippers.map((c, i) => (
-                      <tr key={c.id} style={{ borderBottom: i < clippers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                              style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>
-                              {(c.name || c.email)[0].toUpperCase()}
-                            </div>
-                            <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name || "—"}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-xs" style={{ color: "#8A93A6" }}>{c.email}</td>
-                        <td className="px-6 py-4">
-                          <span className="text-xs px-2 py-1 rounded-full"
-                            style={{ background: c.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,165,0,0.1)", color: c.status === "active" ? "#3DFFA2" : "#FFA500" }}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clientName ?? <span style={{ color: "#8A93A6" }}>—</span>}</td>
-                        <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clipCount}</td>
-                      </tr>
-                    ))}
-                    {clippers.length === 0 && (
-                      <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No clippers yet</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <ClipperManagement initialClippers={clippers as any} allClients={allClients as any} />
           )}
+
         </div>
       </main>
     </div>
