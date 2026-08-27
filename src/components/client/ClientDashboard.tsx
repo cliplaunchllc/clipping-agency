@@ -92,7 +92,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips">("overview");
   const [clips, setClips] = useState<Clip[]>(client.clips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("7d");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
   const [steps, setSteps] = useState<OnboardingStep[]>(client.onboardingSteps);

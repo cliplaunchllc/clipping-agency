@@ -125,7 +125,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Time period state
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("7d");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
 
