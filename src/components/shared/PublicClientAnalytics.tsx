@@ -3,14 +3,14 @@
 import { useState } from "react";
 import {
   Eye, Heart, MessageCircle, Share2, Bookmark, BarChart2,
-  TrendingUp, TrendingDown, ExternalLink,
+  TrendingUp, TrendingDown, ExternalLink, ChevronUp, ChevronDown,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
 
-type TimePeriod = "all" | "7d" | "mtd" | "custom";
+type TimePeriod = "all" | "1d" | "7d" | "mtd" | "custom";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -28,6 +28,7 @@ function getRange(period: TimePeriod, cs: string, ce: string): [Date, Date] {
   const now = new Date();
   const eod = new Date(); eod.setHours(23, 59, 59, 999);
   if (period === "all") return [new Date(0), new Date("2099-12-31T23:59:59")];
+  if (period === "1d") { const s = new Date(); s.setHours(0, 0, 0, 0); return [s, eod]; }
   if (period === "7d") { const s = new Date(); s.setDate(s.getDate() - 6); s.setHours(0, 0, 0, 0); return [s, eod]; }
   if (period === "mtd") return [new Date(now.getFullYear(), now.getMonth(), 1), eod];
   return [
@@ -55,6 +56,7 @@ function pct(curr: number, prev: number) {
 
 function prevLabel(period: TimePeriod, cs: string, ce: string) {
   if (period === "all") return "all time";
+  if (period === "1d") return "vs. yesterday";
   if (period === "7d") return "vs. prev. 7 days";
   if (period === "mtd") return "vs. prev. month (same period)";
   if (cs && ce) {
@@ -78,6 +80,11 @@ export default function PublicClientAnalytics({ client }: Props) {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
+
+  type SortKey = "views" | "likes" | "comments" | "shares" | "saves" | "date";
+  const [sortKey, setSortKey] = useState<SortKey>("views");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [platformFilter, setPlatformFilter] = useState("all");
 
   const [rangeStart, rangeEnd] = getRange(timePeriod, customStart, customEnd);
   const filtered = inRange(client.clips, rangeStart, rangeEnd);
@@ -114,7 +121,29 @@ export default function PublicClientAnalytics({ client }: Props) {
   });
   const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({ date, views }));
 
-  const topClips = [...filtered].sort((a, b) => b.views - a.views).slice(0, 8);
+  // Unique platforms for filter dropdown
+  const platforms = Array.from(new Set(filtered.map((c) => c.platform))).sort();
+
+  // Filtered + sorted clips table
+  const tableClips = filtered
+    .filter((c) => platformFilter === "all" || c.platform === platformFilter)
+    .sort((a, b) => {
+      const dir = sortDir === "desc" ? -1 : 1;
+      if (sortKey === "date") return dir * (new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+      return dir * ((a[sortKey] as number) - (b[sortKey] as number));
+    });
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => d === "desc" ? "asc" : "desc");
+    else { setSortKey(key); setSortDir("desc"); }
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronDown size={10} color="#8A93A6" style={{ opacity: 0.3 }} />;
+    return sortDir === "desc"
+      ? <ChevronDown size={10} color="#FF3B3B" />
+      : <ChevronUp size={10} color="#FF3B3B" />;
+  }
 
   const tooltipStyle = {
     contentStyle: { background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
@@ -153,14 +182,14 @@ export default function PublicClientAnalytics({ client }: Props) {
         <div className="flex items-center gap-3 flex-wrap mb-5">
           <div className="flex items-center gap-0.5 rounded-xl p-0.5"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            {(["all", "7d", "mtd", "custom"] as const).map((p) => (
+            {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
               <button key={p} onClick={() => setTimePeriod(p)}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
                 style={{
                   background: timePeriod === p ? "rgba(255,59,59,0.2)" : "transparent",
                   color: timePeriod === p ? "#FF3B3B" : "#8A93A6",
                 }}>
-                {p === "all" ? "All Time" : p === "7d" ? "7 Days" : p === "mtd" ? "This Month" : "Custom"}
+                {p === "all" ? "All Time" : p === "1d" ? "Today" : p === "7d" ? "7 Days" : p === "mtd" ? "This Month" : "Custom"}
               </button>
             ))}
           </div>
@@ -244,46 +273,122 @@ export default function PublicClientAnalytics({ client }: Props) {
           )}
         </div>
 
-        {/* Top clips */}
-        {topClips.length > 0 && (
-          <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={14} color="#FF3B3B" />
-              <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Top Clips</h2>
+        {/* All clips table */}
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {/* Table header + filters */}
+          <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2">
+              <BarChart2 size={14} color="#FF3B3B" />
+              <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                All Clips
+              </h2>
+              <span className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>
+                {tableClips.length}
+              </span>
             </div>
-            <div className="space-y-3">
-              {topClips.map((clip, i) => (
-                <div key={clip.id} className="flex items-center gap-3 py-1">
-                  <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "#8A93A6" }}>{i + 1}</span>
-                  {clip.thumbnailUrl ? (
-                    <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                      <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover" style={{ width: 40, height: 40 }} />
-                    </a>
-                  ) : null}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <PlatformIcon platform={clip.platform} size={11} />
-                      <span className="text-xs font-medium truncate"
-                        style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
-                        @{clip.handle}
-                      </span>
-                    </div>
-                    {clip.title && (
-                      <p className="text-xs truncate mt-0.5" style={{ color: "#8A93A6" }}>{clip.title}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-                    <span style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif", fontWeight: 700 }}>{fmt(clip.views)}</span>
-                    <span style={{ color: "#8A93A6" }}>{fmt(clip.likes)} likes</span>
-                  </div>
-                  <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                    <ExternalLink size={11} color="#FF3B3B" />
-                  </a>
-                </div>
-              ))}
-            </div>
+
+            {/* Platform filter */}
+            {platforms.length > 1 && (
+              <div className="flex items-center gap-0.5 rounded-xl p-0.5"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <button onClick={() => setPlatformFilter("all")}
+                  className="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+                  style={{
+                    background: platformFilter === "all" ? "rgba(255,59,59,0.2)" : "transparent",
+                    color: platformFilter === "all" ? "#FF3B3B" : "#8A93A6",
+                  }}>All</button>
+                {platforms.map((p) => (
+                  <button key={p} onClick={() => setPlatformFilter(p)}
+                    className="px-3 py-1 text-xs font-medium rounded-lg capitalize transition-colors"
+                    style={{
+                      background: platformFilter === p ? "rgba(255,59,59,0.2)" : "transparent",
+                      color: platformFilter === p ? "#FF3B3B" : (PLATFORM_COLORS[p] ?? "#8A93A6"),
+                    }}>{p === "twitter" ? "X" : p}</button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider w-8" style={{ color: "#8A93A6" }}>#</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clip</th>
+                  {(["views", "likes", "comments", "shares", "saves", "date"] as const).map((col) => (
+                    <th key={col}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none"
+                      style={{ color: sortKey === col ? "#FF3B3B" : "#8A93A6" }}
+                      onClick={() => handleSort(col)}>
+                      <span className="flex items-center gap-1">
+                        {col === "date" ? "Date" : col.charAt(0).toUpperCase() + col.slice(1)}
+                        <SortIcon col={col} />
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                {tableClips.map((clip, i) => (
+                  <tr key={clip.id} className="table-row-hover"
+                    style={{ borderBottom: i < tableClips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>{i + 1}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {clip.thumbnailUrl ? (
+                          <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                            <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover"
+                              style={{ width: 48, height: 28 }} />
+                          </a>
+                        ) : (
+                          <div className="flex-shrink-0 rounded flex items-center justify-center"
+                            style={{ width: 48, height: 28, background: "rgba(255,255,255,0.04)" }}>
+                            <BarChart2 size={12} color="#8A93A6" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <PlatformIcon platform={clip.platform} size={10} />
+                            <span className="text-xs font-medium truncate"
+                              style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                              @{clip.handle}
+                            </span>
+                          </div>
+                          {clip.title && (
+                            <p className="text-xs truncate" style={{ color: "#8A93A6", maxWidth: 160 }}>{clip.title}</p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.saves)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                      {new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <a href={clip.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink size={11} color="#FF3B3B" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+                {tableClips.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                      No clips in this period
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <p className="text-center text-xs mt-8" style={{ color: "rgba(255,255,255,0.15)" }}>
           Powered by ClipLaunch
