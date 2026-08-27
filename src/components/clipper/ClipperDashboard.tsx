@@ -98,16 +98,25 @@ function detectPlatform(url: string): string {
 
 interface Props {
   userName: string;
-  clientName: string;
+  clientName?: string; // legacy / preview mode
+  clients?: { id: string; name: string; status: string }[];
+  defaultClientId?: string;
   subAccounts: AnyRecord[];
   clips: AnyRecord[];
-  leaderboard: AnyRecord[]; // all clippers on this client
+  leaderboard?: AnyRecord[];
+  leaderboardByClient?: Record<string, AnyRecord[]>;
   previewMode?: boolean;
 }
 
-export default function ClipperDashboard({ userName, clientName, subAccounts: initialSubs, clips: initialClips, leaderboard, previewMode }: Props) {
+export default function ClipperDashboard({ userName, clientName, clients, defaultClientId, subAccounts: initialSubs, clips: initialClips, leaderboard, leaderboardByClient, previewMode }: Props) {
   const [subAccounts, setSubAccounts] = useState<AnyRecord[]>(initialSubs);
-  const [clips, setClips] = useState<AnyRecord[]>(initialClips);
+  const [allClips, setAllClips] = useState<AnyRecord[]>(initialClips);
+  const [selectedClientId, setSelectedClientId] = useState<string>(defaultClientId ?? clients?.[0]?.id ?? "");
+
+  const clips = selectedClientId ? allClips.filter((c) => c.clientId === selectedClientId) : allClips;
+  const activeLeaderboard = leaderboardByClient?.[selectedClientId] ?? leaderboard ?? [];
+  const selectedClient = clients?.find((c) => c.id === selectedClientId);
+  const displayClientName = selectedClient?.name ?? clientName ?? "Campaign";
 
   // Add subaccount state
   const [showAddSub, setShowAddSub] = useState(false);
@@ -207,7 +216,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
     const res = await fetch(`/api/clips/${clipId}`, { method: "PATCH" });
     if (res.ok) {
       const updated = await res.json();
-      setClips((prev) => prev.map((c) => c.id === clipId ? { ...c, ...updated } : c));
+      setAllClips((prev) => prev.map((c) => c.id === clipId ? { ...c, ...updated } : c));
     }
     setRefreshing(null);
   }
@@ -216,7 +225,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
     if (!confirm("Delete this clip? This cannot be undone.")) return;
     setDeletingClip(clipId);
     const res = await fetch(`/api/clips/${clipId}`, { method: "DELETE" });
-    if (res.ok) setClips((prev) => prev.filter((c) => c.id !== clipId));
+    if (res.ok) setAllClips((prev) => prev.filter((c) => c.id !== clipId));
     setDeletingClip(null);
   }
 
@@ -227,7 +236,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
       const res = await fetch(`/api/clips/${clip.id}`, { method: "PATCH" });
       if (res.ok) {
         const updated = await res.json();
-        setClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, ...updated } : c));
+        setAllClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, ...updated } : c));
       }
     }
     setRefreshingAll(false);
@@ -241,7 +250,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
     const res = await fetch("/api/clips", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: clipUrl, subAccountId, title: clipTitle }),
+      body: JSON.stringify({ url: clipUrl, subAccountId, title: clipTitle, clientId: selectedClientId }),
     });
     if (!res.ok) {
       const d = await res.json();
@@ -250,7 +259,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
       return;
     }
     const clip = await res.json();
-    setClips((prev) => [clip, ...prev]);
+    setAllClips((prev) => [{ ...clip, clientId: selectedClientId }, ...prev]);
     setClipUrl("");
     setClipTitle("");
     setSubmitSuccess(true);
@@ -282,11 +291,24 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
       <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-60"}`}>
         <div className={`max-w-5xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-              Welcome, {userName.split(" ")[0]}
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>Campaign: {clientName}</p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                Welcome, {userName.split(" ")[0]}
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>Campaign: {displayClientName}</p>
+            </div>
+            {clients && clients.length > 1 && (
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="text-xs px-3 py-2 rounded-xl outline-none cursor-pointer"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", minWidth: 160 }}>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Time period controls */}
@@ -474,7 +496,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                     <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Campaign</label>
                     <div className="px-3 py-2.5 rounded-xl text-sm font-medium"
                       style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
-                      {clientName}
+                      {displayClientName}
                     </div>
                   </div>
                   <div>
@@ -571,7 +593,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                 <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
               </div>
               <div className="space-y-2">
-                {leaderboard.map((entry, i) => {
+                {activeLeaderboard.map((entry, i) => {
                   const isMe = entry.name === userName;
                   return (
                     <div key={entry.id} className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
@@ -591,7 +613,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                     </div>
                   );
                 })}
-                {leaderboard.length === 0 && <p className="text-xs" style={{ color: "#8A93A6" }}>No data yet</p>}
+                {activeLeaderboard.length === 0 && <p className="text-xs" style={{ color: "#8A93A6" }}>No data yet</p>}
               </div>
             </div>
           </div>

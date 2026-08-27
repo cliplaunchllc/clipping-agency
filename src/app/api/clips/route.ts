@@ -45,15 +45,23 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (session?.user?.role !== "clipper") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { url, subAccountId, title } = await req.json();
+  const { url, subAccountId, title, clientId: bodyClientId } = await req.json();
   if (!url || !subAccountId) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
   const userId = session.user.id;
-  const clientId = session.user.clientId;
-  if (!clientId) return NextResponse.json({ error: "Not assigned to a client" }, { status: 403 });
+  const sessionClientId = session.user.clientId;
 
   const profile = await prisma.clipperProfile.findUnique({ where: { userId } });
   if (!profile) return NextResponse.json({ error: "No clipper profile" }, { status: 404 });
+
+  // Determine clientId: use body value if provided and valid, else fall back to session
+  let clientId = sessionClientId;
+  if (bodyClientId && bodyClientId !== sessionClientId) {
+    // Validate the clipper has actually worked for this client
+    const hasClips = await prisma.clip.findFirst({ where: { clipperId: profile.id, clientId: bodyClientId } });
+    if (hasClips) clientId = bodyClientId;
+  }
+  if (!clientId) return NextResponse.json({ error: "Not assigned to a client" }, { status: 403 });
 
   // Verify subAccount belongs to this clipper
   const sub = await prisma.clipperSubAccount.findFirst({ where: { id: subAccountId, clipperId: profile.id } });
