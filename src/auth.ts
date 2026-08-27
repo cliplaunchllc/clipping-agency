@@ -22,6 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers: [
     Credentials({
+      id: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
@@ -37,6 +38,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.passwordHash
         );
         if (!valid) return null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          clientId: user.clientId ?? null,
+          status: user.status,
+        } as any;
+      },
+    }),
+    Credentials({
+      id: "device-token",
+      credentials: { token: {} },
+      async authorize(credentials) {
+        if (!credentials?.token) return null;
+        const deviceSession = await prisma.session.findUnique({
+          where: { sessionToken: credentials.token as string },
+          include: { user: true },
+        });
+        if (!deviceSession || deviceSession.expires < new Date()) return null;
+        const user = deviceSession.user;
+        // Extend device token expiry on use
+        await prisma.session.update({
+          where: { sessionToken: credentials.token as string },
+          data: { expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return {
           id: user.id,
