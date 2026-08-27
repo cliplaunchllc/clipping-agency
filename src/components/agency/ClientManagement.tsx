@@ -61,10 +61,12 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   const [pendingUsers, setPendingUsers] = useState<PendingClientUser[]>(initialPending);
   const [tab, setTab] = useState<"active" | "archived" | "pending">("active");
   const [showAdd, setShowAdd] = useState(false);
+  const [addMode, setAddMode] = useState<"connect" | "create">("connect");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -118,13 +120,23 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
   const visible = clients.filter((c) => tab === "active" ? c.status === "active" : tab === "archived" ? c.status === "archived" : false);
 
+  function resetAddForm() {
+    setName(""); setEmail(""); setPassword(""); setSelectedUserId(""); setError("");
+    setAddMode("connect");
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError("");
+
+    const body = addMode === "connect"
+      ? { name, existingUserId: selectedUserId }
+      : { name, email, password };
+
     const res = await fetch("/api/agency/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const d = await res.json();
@@ -134,8 +146,12 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     }
     const client = await res.json();
     setClients((prev) => [{ ...client, _count: { clips: 0 }, users: [], archivedAt: null, createdAt: new Date().toISOString() }, ...prev]);
+    // Remove the connected user from pending list
+    if (addMode === "connect" && selectedUserId) {
+      setPendingUsers((prev) => prev.filter((u) => u.id !== selectedUserId));
+    }
     setShowAdd(false);
-    setName(""); setEmail(""); setPassword("");
+    resetAddForm();
     setLoading(false);
   }
 
@@ -185,26 +201,84 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
           <div className="rounded-2xl p-8 w-full max-w-md" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Add Client</h2>
-              <button onClick={() => setShowAdd(false)}><X size={18} color="#8A93A6" /></button>
+              <button onClick={() => { setShowAdd(false); resetAddForm(); }}><X size={18} color="#8A93A6" /></button>
             </div>
+
+            {/* Mode toggle */}
+            <div className="flex rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+              {([
+                { id: "connect", label: "Connect existing account" },
+                { id: "create", label: "Create new credentials" },
+              ] as const).map((m) => (
+                <button key={m.id} type="button" onClick={() => { setAddMode(m.id); setError(""); }}
+                  className="flex-1 py-2.5 text-xs font-medium transition-colors"
+                  style={{
+                    background: addMode === m.id ? "rgba(255,59,59,0.12)" : "transparent",
+                    color: addMode === m.id ? "#FF3B3B" : "#8A93A6",
+                    borderRight: m.id === "connect" ? "1px solid rgba(255,255,255,0.08)" : "none",
+                  }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Company / Brand Name</label>
+                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Campaign / Brand Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Acme Corp" style={inputStyle} />
               </div>
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Login Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="client@acme.com" style={inputStyle} />
-              </div>
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" style={inputStyle} />
-              </div>
+
+              {addMode === "connect" ? (
+                <div>
+                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>
+                    Client Account
+                    {pendingUsers.length === 0 && <span style={{ color: "#FFA500" }}> — no pending signups yet</span>}
+                  </label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    required
+                    style={{ ...inputStyle, appearance: "none" as const }}
+                  >
+                    <option value="" style={{ background: "#0B0E17" }}>Select a client account...</option>
+                    {pendingUsers.map((u) => (
+                      <option key={u.id} value={u.id} style={{ background: "#0B0E17" }}>
+                        {u.name ? `${u.name} — ` : ""}{u.email}
+                      </option>
+                    ))}
+                  </select>
+                  {pendingUsers.length === 0 && (
+                    <p className="text-xs mt-2" style={{ color: "#8A93A6" }}>
+                      Ask your client to sign up at <span style={{ color: "#FF3B3B" }}>/signup?role=client</span>, then come back here to connect their account.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Login Email</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="client@acme.com" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Password</label>
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" style={inputStyle} />
+                  </div>
+                </>
+              )}
+
               {error && <p className="text-xs" style={{ color: "#FF4757" }}>{error}</p>}
-              <button type="submit" disabled={loading || !name || !email || !password}
+
+              <button
+                type="submit"
+                disabled={loading || !name || (addMode === "connect" ? !selectedUserId : (!email || !password))}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "#FF3B3B", opacity: loading ? 0.6 : 1 }}>
-                {loading ? "Creating..." : "Create Client"}
+                style={{
+                  background: "rgba(255,59,59,0.15)",
+                  border: "1px solid rgba(255,59,59,0.3)",
+                  color: "#FF3B3B",
+                  opacity: loading || !name || (addMode === "connect" ? !selectedUserId : (!email || !password)) ? 0.5 : 1,
+                }}>
+                {loading ? "Creating..." : addMode === "connect" ? "Create & Connect Account" : "Create Client"}
               </button>
             </form>
           </div>
