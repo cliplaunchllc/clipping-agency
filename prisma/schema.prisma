@@ -90,6 +90,7 @@ model Client {
   pageCount      Int?
   clipsPerDay    Int?
   archivedAt     DateTime?
+  shareToken     String?      @unique
   createdAt      DateTime     @default(now())
 
   users           User[]

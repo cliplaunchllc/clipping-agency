@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, X, Archive, ArchiveRestore, Edit2, Eye, Camera, UserCheck } from "lucide-react";
+import { Plus, X, Archive, ArchiveRestore, Edit2, Eye, Camera, UserCheck, Link2, Check } from "lucide-react";
 
 interface Client {
   id: string;
@@ -77,6 +77,17 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   // Assignment state for pending users
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [assignClientId, setAssignClientId] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function handleCopyLink(clientId: string) {
+    const res = await fetch(`/api/agency/clients/${clientId}/share-token`, { method: "POST" });
+    if (!res.ok) return;
+    const { token } = await res.json();
+    const url = `${window.location.origin}/share/${token}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedId(clientId);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   function handleLogoClick(clientId: string) {
     logoTargetId.current = clientId;
@@ -463,6 +474,12 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                             className="p-1.5 rounded-lg hover:bg-white/5 inline-flex">
                             <Eye size={13} color="#8A93A6" />
                           </Link>
+                          <button onClick={() => handleCopyLink(c.id)} title="Copy shareable analytics link"
+                            className="p-1.5 rounded-lg hover:bg-white/5">
+                            {copiedId === c.id
+                              ? <Check size={13} color="#3DFFA2" />
+                              : <Link2 size={13} color="#8A93A6" />}
+                          </button>
                           <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} title="Rename"
                             className="p-1.5 rounded-lg hover:bg-white/5"><Edit2 size={13} color="#8A93A6" /></button>
                         </>

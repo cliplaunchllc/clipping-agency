@@ -8,6 +8,10 @@ export const proxy = auth((req) => {
   const role = session?.user?.role;
 
   // Public routes
+  if (nextUrl.pathname.startsWith("/share/")) {
+    return NextResponse.next();
+  }
+
   if (nextUrl.pathname === "/login") {
     if (isLoggedIn) {
       const redirectMap: Record<string, string> = {
