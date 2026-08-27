@@ -49,7 +49,7 @@ export default function ClientReports({ submissions, clientName }: { submissions
         <table className="w-full">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {["Platform", "Handle", "Clipper", "Views", "Likes", "Comments", "Shares", "Date", "Link"].map((h) => (
+              {["Platform", "Handle", "Views", "Likes", "Comments", "Shares", "Date", "Link"].map((h) => (
                 <th key={h} className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
               ))}
             </tr>
@@ -61,7 +61,6 @@ export default function ClientReports({ submissions, clientName }: { submissions
                   <span className="text-xs font-semibold capitalize" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>{s.platform}</span>
                 </td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>@{s.subAccount?.handle ?? "—"}</td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{s.clipper?.displayName || s.clipper?.user?.name || "—"}</td>
                 <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#a78bfa" }}>{fmt(s.snapshots[0]?.views ?? 0)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.likes ?? 0)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.comments ?? 0)}</td>
@@ -77,7 +76,7 @@ export default function ClientReports({ submissions, clientName }: { submissions
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No clips yet</td></tr>
+              <tr><td colSpan={8} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No clips yet</td></tr>
             )}
           </tbody>
         </table>
