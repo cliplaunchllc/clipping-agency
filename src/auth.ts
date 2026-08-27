@@ -4,17 +4,24 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 }, // 30 days
+  session: { strategy: "jwt", maxAge: THIRTY_DAYS },
+  jwt: { maxAge: THIRTY_DAYS },
   cookies: {
     sessionToken: {
+      // NextAuth v5 JWT cookie name — must match exactly or maxAge is ignored
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "lax" as const,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60, // 30 days — makes it a persistent cookie, not session cookie
+        maxAge: THIRTY_DAYS,
       },
     },
   },
@@ -49,7 +56,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.clientId = u.clientId ?? null;
         token.status = u.status ?? "active";
       }
-      // Re-fetch fresh profile whenever the session is explicitly updated
       if (trigger === "update" && token.id) {
         const fresh = await prisma.user.findUnique({
           where: { id: token.id as string },
