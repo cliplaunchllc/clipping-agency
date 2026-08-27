@@ -36,14 +36,24 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  // Pending clippers can only access the pending page
   const status = (session as any)?.user?.status;
+
+  // Pending clippers can only access the pending page
   if (role === "clipper" && status === "pending" && nextUrl.pathname !== "/clipper/pending") {
     return NextResponse.redirect(new URL("/clipper/pending", nextUrl));
   }
   // Active clippers can't access the pending page
   if (role === "clipper" && status !== "pending" && nextUrl.pathname === "/clipper/pending") {
     return NextResponse.redirect(new URL("/clipper", nextUrl));
+  }
+
+  // Pending clients can only access the pending page and settings
+  if (role === "client" && status === "pending" && nextUrl.pathname !== "/client/pending") {
+    return NextResponse.redirect(new URL("/client/pending", nextUrl));
+  }
+  // Active clients can't access the pending page
+  if (role === "client" && status !== "pending" && nextUrl.pathname === "/client/pending") {
+    return NextResponse.redirect(new URL("/client", nextUrl));
   }
 
   return NextResponse.next();

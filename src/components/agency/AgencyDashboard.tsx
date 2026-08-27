@@ -482,7 +482,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           {/* ── CLIENTS TAB ───────────────────────────────────────────── */}
           {activeTab === "clients" && (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <ClientManagement initialClients={clients as any} pendingClientUsers={pendingClientUsers} allClients={allClients as any} />
+            <ClientManagement initialClients={clients as any} pendingClientUsers={pendingClientUsers as any} allClients={allClients as any} />
           )}
 
           {/* ── CLIPPERS TAB ──────────────────────────────────────────── */}
