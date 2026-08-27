@@ -1,21 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt", maxAge: THIRTY_DAYS },
   jwt: { maxAge: THIRTY_DAYS },
   cookies: {
     sessionToken: {
-      // NextAuth v5 JWT cookie name — must match exactly or maxAge is ignored
-      name: process.env.NODE_ENV === "production"
-        ? "__Secure-authjs.session-token"
-        : "authjs.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax" as const,
@@ -38,10 +32,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
         if (!user) return null;
-        const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        const valid = await bcrypt.compare(
+          credentials.password as string,
+          user.passwordHash
+        );
         if (!valid) return null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return { id: user.id, email: user.email, name: user.name, role: user.role, clientId: user.clientId ?? null, status: user.status } as any;
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          clientId: user.clientId ?? null,
+          status: user.status,
+        } as any;
       },
     }),
   ],
@@ -75,7 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
-        session.user.name = token.name as string ?? session.user.name;
+        session.user.name = (token.name as string) ?? session.user.name;
         session.user.clientId = (token.clientId as string | null) ?? null;
         session.user.status = (token.status as string) ?? "active";
       }
