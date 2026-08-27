@@ -61,9 +61,10 @@ function inRange(clips: AnyRecord[], s: Date, e: Date): AnyRecord[] {
 
 function pct(curr: number, prev: number) {
   if (curr === 0 && prev === 0) return { str: "—", pos: true, ok: false };
-  if (prev === 0) return { str: "+∞", pos: true, ok: true };
+  if (prev === 0) return { str: `+${Math.min(curr, 999)}%`, pos: true, ok: true };
   const p = ((curr - prev) / prev) * 100;
-  return { str: `${p >= 0 ? "+" : ""}${Math.round(p)}%`, pos: p >= 0, ok: true };
+  const clamped = Math.max(-999, Math.min(999, Math.round(p)));
+  return { str: `${clamped >= 0 ? "+" : ""}${clamped}%`, pos: p >= 0, ok: true };
 }
 
 function prevLabel(period: TimePeriod, cs: string, ce: string) {

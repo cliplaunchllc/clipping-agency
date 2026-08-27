@@ -4,7 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
 import {
-  Eye, Heart, Share2, Bookmark, MessageCircle, ExternalLink, Check,
+  Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink, Check,
   TrendingUp, TrendingDown, RotateCw,
 } from "lucide-react";
 import {
@@ -49,9 +49,10 @@ function inRange<T extends { submittedAt: string }>(clips: T[], s: Date, e: Date
 
 function pct(curr: number, prev: number) {
   if (curr === 0 && prev === 0) return { str: "—", pos: true, ok: false };
-  if (prev === 0) return { str: "+∞", pos: true, ok: true };
+  if (prev === 0) return { str: `+${Math.min(curr, 999)}%`, pos: true, ok: true };
   const p = ((curr - prev) / prev) * 100;
-  return { str: `${p >= 0 ? "+" : ""}${Math.round(p)}%`, pos: p >= 0, ok: true };
+  const clamped = Math.max(-999, Math.min(999, Math.round(p)));
+  return { str: `${clamped >= 0 ? "+" : ""}${clamped}%`, pos: p >= 0, ok: true };
 }
 
 function prevLabel(period: TimePeriod, cs: string, ce: string) {
@@ -92,11 +93,27 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips">("overview");
   const [clips, setClips] = useState<Clip[]>(client.clips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
   const [steps, setSteps] = useState<OnboardingStep[]>(client.onboardingSteps);
   const [togglingStep, setTogglingStep] = useState<string | null>(null);
+
+  async function handleRefreshAll() {
+    if (refreshingAll || clips.length === 0) return;
+    setRefreshingAll(true);
+    for (const clip of clips.slice(0, 50)) {
+      const res = await fetch(`/api/clips/${clip.id}`, { method: "PATCH" });
+      if (res.ok) {
+        const updated = await res.json();
+        setClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, views: updated.views, likes: updated.likes, comments: updated.comments, shares: updated.shares, saves: updated.saves } : c));
+      }
+    }
+    setRefreshingAll(false);
+    setLastSynced(new Date());
+  }
 
   async function handleRefreshClip(clipId: string) {
     setRefreshingClip(clipId);
@@ -119,13 +136,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   // Stats
   const currViews = filteredClips.reduce((a, c) => a + c.views, 0);
   const currLikes = filteredClips.reduce((a, c) => a + c.likes, 0);
+  const currComments = filteredClips.reduce((a, c) => a + c.comments, 0);
   const currShares = filteredClips.reduce((a, c) => a + c.shares, 0);
   const currSaves = filteredClips.reduce((a, c) => a + c.saves, 0);
 
   const prevViews = prevClips.reduce((a, c) => a + c.views, 0);
   const prevLikes = prevClips.reduce((a, c) => a + c.likes, 0);
+  const prevComments = prevClips.reduce((a, c) => a + c.comments, 0);
   const prevShares = prevClips.reduce((a, c) => a + c.shares, 0);
   const prevSaves = prevClips.reduce((a, c) => a + c.saves, 0);
+  const prevClipCount = prevClips.length;
 
   // Chart from filtered clips
   const byDate: Record<string, number> = {};
@@ -160,8 +180,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const statItems = [
     { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
     { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
+    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pct(currComments, prevComments) },
     { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pct(currShares, prevShares) },
     { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pct(currSaves, prevSaves) },
+    { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pct(filteredClips.length, prevClipCount) },
   ];
 
   const tabs = [
@@ -223,8 +245,11 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
           {/* ── OVERVIEW ────────────────────────────────────────────────── */}
           {activeTab === "overview" && (
             <>
+              {/* Controls row */}
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
               {/* Time period controls */}
-              <div className="flex items-center gap-3 flex-wrap mb-4">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-0.5 rounded-xl p-0.5"
                   style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                   {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
@@ -250,14 +275,31 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   </div>
                 )}
               </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {lastSynced && (
+                    <span className="text-xs" style={{ color: "#8A93A6" }}>
+                      Updated {Math.round((Date.now() - lastSynced.getTime()) / 60000)}m ago
+                    </span>
+                  )}
+                  {!previewMode && (
+                    <button onClick={handleRefreshAll} disabled={refreshingAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
+                      style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B", opacity: refreshingAll ? 0.5 : 1 }}>
+                      <RotateCw size={11} className={refreshingAll ? "animate-spin" : ""} />
+                      {refreshingAll ? "Syncing…" : "Sync Stats"}
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* Stats bar */}
               <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="grid grid-cols-2">
+                <div className="grid grid-cols-3">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
-                    const borderRight = (i % 2 !== 1) ? "1px solid rgba(255,255,255,0.06)" : "none";
-                    const borderBottom = i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none";
+                    const borderRight = (i % 3 !== 2) ? "1px solid rgba(255,255,255,0.06)" : "none";
+                    const borderBottom = i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none";
                     return (
                       <div key={item.label} className="flex items-center gap-4 px-6 py-6"
                         style={{ borderRight, borderBottom }}>
