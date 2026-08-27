@@ -114,6 +114,8 @@ export default function PublicClientAnalytics({ client }: Props) {
     { label: "Clips",    value: filtered.length.toString(), icon: BarChart2, change: pct(filtered.length, prevCount) },
   ];
 
+  const topClips = [...filtered].sort((a, b) => b.views - a.views).slice(0, 5);
+
   const byDate: Record<string, number> = {};
   filtered.forEach((c) => {
     const date = c.submittedAt.slice(0, 10);
@@ -272,6 +274,128 @@ export default function PublicClientAnalytics({ client }: Props) {
             <p className="text-sm py-10 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
           )}
         </div>
+
+        {/* Top Clips */}
+        {topClips.length > 0 && (
+          <div className="rounded-2xl mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="flex items-center justify-between px-6 py-4"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-2">
+                <TrendingUp size={14} color="#3DFFA2" />
+                <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Top Clips</h2>
+              </div>
+              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
+            </div>
+
+            {/* #1 hero card */}
+            {topClips[0] && (() => {
+              const clip = topClips[0];
+              return (
+                <div className="px-6 pt-5 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="flex items-center gap-4">
+                    {/* Rank badge */}
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                      style={{ background: "rgba(61,255,162,0.15)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.25)" }}>1</div>
+
+                    {/* Thumbnail */}
+                    {clip.thumbnailUrl ? (
+                      <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                        <img src={clip.thumbnailUrl} alt="thumb"
+                          className="rounded-xl object-cover"
+                          style={{ width: 96, height: 56, border: "1px solid rgba(255,255,255,0.08)" }} />
+                      </a>
+                    ) : (
+                      <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
+                        style={{ width: 96, height: 56, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <BarChart2 size={18} color="#8A93A6" />
+                      </div>
+                    )}
+
+                    {/* Meta */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <PlatformIcon platform={clip.platform} size={12} />
+                        <span className="text-sm font-semibold"
+                          style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                          @{clip.handle}
+                        </span>
+                      </div>
+                      {clip.title && (
+                        <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{clip.title}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        <span className="text-xs" style={{ color: "#8A93A6" }}>
+                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</span> likes
+                        </span>
+                        <span className="text-xs" style={{ color: "#8A93A6" }}>
+                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</span> comments
+                        </span>
+                        <span className="text-xs" style={{ color: "#8A93A6" }}>
+                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</span> shares
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Views + link */}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-2xl font-bold" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>
+                        {fmt(clip.views)}
+                      </p>
+                      <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>views</p>
+                      <a href={clip.url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg"
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                        <ExternalLink size={10} /> Open
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Ranks 2–5 */}
+            <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+              {topClips.slice(1).map((clip, i) => (
+                <div key={clip.id} className="flex items-center gap-3 px-6 py-3">
+                  <span className="w-5 text-xs text-center font-semibold flex-shrink-0"
+                    style={{ color: "#8A93A6" }}>{i + 2}</span>
+                  {clip.thumbnailUrl ? (
+                    <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                      <img src={clip.thumbnailUrl} alt="thumb" className="rounded-lg object-cover"
+                        style={{ width: 52, height: 32 }} />
+                    </a>
+                  ) : (
+                    <div className="flex-shrink-0 rounded-lg flex items-center justify-center"
+                      style={{ width: 52, height: 32, background: "rgba(255,255,255,0.04)" }}>
+                      <BarChart2 size={11} color="#8A93A6" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <PlatformIcon platform={clip.platform} size={10} />
+                      <span className="text-xs font-medium"
+                        style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                        @{clip.handle}
+                      </span>
+                    </div>
+                    {clip.title && (
+                      <p className="text-xs truncate" style={{ color: "#8A93A6", maxWidth: 240 }}>{clip.title}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0 text-xs">
+                    <span style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif", fontWeight: 700 }}>
+                      {fmt(clip.views)}
+                    </span>
+                    <span style={{ color: "#8A93A6" }}>{fmt(clip.likes)} likes</span>
+                  </div>
+                  <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                    <ExternalLink size={11} color="#FF3B3B" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* All clips table */}
         <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
