@@ -20,6 +20,7 @@ export default async function AgencyClientsPage() {
     id: c.id,
     name: c.name,
     status: c.status,
+    logoUrl: c.logoUrl ?? null,
     archivedAt: c.archivedAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
     _count: c._count,

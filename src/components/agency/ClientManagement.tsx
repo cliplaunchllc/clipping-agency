@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, X, Archive, ArchiveRestore, Edit2, Eye } from "lucide-react";
+import { Plus, X, Archive, ArchiveRestore, Edit2, Eye, Camera } from "lucide-react";
 
 interface Client {
   id: string;
   name: string;
   status: string;
+  logoUrl: string | null;
   archivedAt: string | null;
   createdAt: string;
   _count: { clips: number };
@@ -40,6 +41,51 @@ export default function ClientManagement({ initialClients }: Props) {
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [uploadingLogoId, setUploadingLogoId] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const logoTargetId = useRef<string | null>(null);
+
+  function handleLogoClick(clientId: string) {
+    logoTargetId.current = clientId;
+    logoInputRef.current?.click();
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const id = logoTargetId.current;
+    if (!file || !id) return;
+    e.target.value = "";
+
+    // Resize + convert to base64
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      // Resize to max 200px via canvas
+      const img = new Image();
+      img.onload = async () => {
+        const MAX = 200;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const resized = canvas.toDataURL("image/webp", 0.85);
+
+        setUploadingLogoId(id);
+        const res = await fetch(`/api/agency/clients/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logoUrl: resized }),
+        });
+        if (res.ok) {
+          setClients((prev) => prev.map((c) => c.id === id ? { ...c, logoUrl: resized } : c));
+        }
+        setUploadingLogoId(null);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
 
   const visible = clients.filter((c) => tab === "active" ? c.status === "active" : c.status === "archived");
 
@@ -122,6 +168,9 @@ export default function ClientManagement({ initialClients }: Props) {
         </div>
       )}
 
+      {/* Hidden logo file input */}
+      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -171,10 +220,28 @@ export default function ClientManagement({ initialClients }: Props) {
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                        style={{ background: c.status === "archived" ? "rgba(255,255,255,0.05)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "#FF3B3B" }}>
-                        {c.name[0]}
-                      </div>
+                      <button
+                        onClick={() => c.status === "active" && handleLogoClick(c.id)}
+                        title={c.status === "active" ? "Upload logo" : undefined}
+                        className="relative group flex-shrink-0"
+                        style={{ cursor: c.status === "active" ? "pointer" : "default" }}>
+                        {c.logoUrl ? (
+                          <img src={c.logoUrl} alt={c.name}
+                            className="w-8 h-8 rounded-lg object-cover"
+                            style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                            style={{ background: c.status === "archived" ? "rgba(255,255,255,0.05)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "#FF3B3B" }}>
+                            {uploadingLogoId === c.id ? "..." : c.name[0]}
+                          </div>
+                        )}
+                        {c.status === "active" && (
+                          <div className="absolute inset-0 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: "rgba(0,0,0,0.55)" }}>
+                            <Camera size={11} color="#F5F6FA" />
+                          </div>
+                        )}
+                      </button>
                       <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "#8A93A6" : "#F5F6FA" }}>{c.name}</span>
                     </div>
                   )}
@@ -188,6 +255,11 @@ export default function ClientManagement({ initialClients }: Props) {
                   <div className="flex items-center gap-2">
                     {c.status === "active" && (
                       <>
+                        <Link href={`/agency/clients/${c.id}`} title="Manage client"
+                          className="text-xs px-2.5 py-1 rounded-lg inline-flex items-center"
+                          style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                          Manage
+                        </Link>
                         <Link href={`/agency/preview/client/${c.id}`} title="View as client"
                           className="p-1.5 rounded-lg hover:bg-white/5 inline-flex">
                           <Eye size={13} color="#8A93A6" />

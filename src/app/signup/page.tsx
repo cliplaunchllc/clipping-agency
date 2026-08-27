@@ -1,15 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const ROLE_REDIRECT: Record<string, string> = { agency: "/agency", clipper: "/clipper", client: "/client" };
+
 export default function SignupPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [agencyLogo, setAgencyLogo] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("agency_logo") : null
+  );
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      router.replace(ROLE_REDIRECT[session.user.role as string] ?? "/");
+    }
+  }, [status, session, router]);
+
+  useEffect(() => {
+    fetch("/api/settings/logo").then((r) => r.json()).then((d) => {
+      const logo = d.logoUrl ?? null;
+      setAgencyLogo(logo);
+      if (logo) localStorage.setItem("agency_logo", logo);
+      else localStorage.removeItem("agency_logo");
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +75,10 @@ export default function SignupPage() {
     width: "100%",
   };
 
+  if (status === "loading" || status === "authenticated") {
+    return <div className="min-h-screen" style={{ background: "#05070D" }} />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -60,19 +88,23 @@ export default function SignupPage() {
 
       <div className="relative w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
-              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
-              <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
-              <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
-              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
-              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
-              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
-              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9"/>
-              <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8"/>
-            </svg>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden"
+            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+            {agencyLogo ? (
+              <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
+                <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
+                <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
+                <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
+                <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
+                <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
+                <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
+                <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9"/>
+                <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8"/>
+              </svg>
+            )}
           </div>
           <h1 className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
             Join as a Clipper

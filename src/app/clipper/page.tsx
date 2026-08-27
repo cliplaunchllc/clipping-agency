@@ -67,6 +67,9 @@ export default async function ClipperPage() {
     shares: Number(c.shares),
     saves: Number(c.saves),
     submittedAt: c.submittedAt.toISOString(),
+    lastScraped: c.lastScraped?.toISOString() ?? null,
+    title: c.title ?? null,
+    thumbnailUrl: c.thumbnailUrl ?? null,
     subAccount: c.subAccount ? { platform: c.subAccount.platform, handle: c.subAccount.handle } : null,
   }));
 

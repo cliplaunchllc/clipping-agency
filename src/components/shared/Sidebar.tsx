@@ -1,11 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Scissors, BarChart2, Settings,
-  TrendingUp, FileText,
+  LayoutDashboard, Users, Scissors, Settings, FileText,
 } from "lucide-react";
 
 const NAV_ITEMS = {
@@ -13,17 +13,14 @@ const NAV_ITEMS = {
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
     { label: "Clippers", href: "/agency/clippers", icon: Scissors },
-    { label: "Analytics", href: "/agency/analytics", icon: BarChart2 },
     { label: "Settings", href: "/agency/settings", icon: Settings },
   ],
   clipper: [
     { label: "Dashboard", href: "/clipper", icon: LayoutDashboard },
     { label: "Submissions", href: "/clipper/submissions", icon: FileText },
-    { label: "Analytics", href: "/clipper/analytics", icon: TrendingUp },
   ],
   client: [
     { label: "Dashboard", href: "/client", icon: LayoutDashboard },
-    { label: "Analytics", href: "/client/analytics", icon: TrendingUp },
     { label: "Reports", href: "/client/reports", icon: FileText },
   ],
 };
@@ -36,6 +33,18 @@ interface SidebarProps {
 export default function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
   const navItems = NAV_ITEMS[role];
+  const [agencyLogo, setAgencyLogo] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("agency_logo") : null
+  );
+
+  useEffect(() => {
+    fetch("/api/settings/logo").then((r) => r.json()).then((d) => {
+      const logo = d.logoUrl ?? null;
+      setAgencyLogo(logo);
+      if (logo) localStorage.setItem("agency_logo", logo);
+      else localStorage.removeItem("agency_logo");
+    });
+  }, []);
 
   const roleColors: Record<string, string> = {
     agency: "#FF3B3B",
@@ -59,26 +68,25 @@ export default function Sidebar({ role, userName }: SidebarProps) {
     >
       {/* Logo */}
       <div className="px-6 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
-            <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
-            <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
-            <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
-            <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
-            <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
-            <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
-            <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9"/>
-            <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8"/>
-          </svg>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+          style={agencyLogo ? {} : { background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)" }}>
+          {agencyLogo ? (
+            <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
+              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
+              <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
+              <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
+              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
+              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
+              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
+              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9"/>
+              <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8"/>
+            </svg>
+          )}
         </div>
-        <span
-          className="font-semibold text-sm"
-          style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}
-        >
+        <span className="font-semibold text-sm" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
           ClipLaunch
         </span>
       </div>

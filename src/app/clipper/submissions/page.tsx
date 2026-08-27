@@ -32,6 +32,9 @@ export default async function ClipperSubmissionsPage() {
     likes: Number(c.likes),
     comments: Number(c.comments),
     shares: Number(c.shares),
+    saves: Number(c.saves),
+    title: c.title ?? null,
+    thumbnailUrl: c.thumbnailUrl ?? null,
   }));
 
   const subAccounts = profile.subAccounts.map((sa) => ({

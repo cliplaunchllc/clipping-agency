@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { fetchStatsForClip, fetchThumbnailUrl } from "@/lib/statsService";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (session?.user?.role !== "clipper") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { url, subAccountId } = await req.json();
+  const { url, subAccountId, title } = await req.json();
   if (!url || !subAccountId) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
   const userId = session.user.id;
@@ -64,9 +65,14 @@ export async function POST(req: NextRequest) {
       clientId,
       subAccountId,
       url,
+      title: title ?? null,
     },
     include: { subAccount: true, client: true },
   });
+
+  // fire-and-forget — don't await, don't block the response
+  fetchStatsForClip(clip.id, url, sub.platform).catch(() => {});
+
   return NextResponse.json(serialize(clip), { status: 201 });
 }
 
@@ -80,5 +86,8 @@ function serialize(clip: any) {
     shares: Number(clip.shares),
     saves: Number(clip.saves),
     submittedAt: clip.submittedAt?.toISOString?.() ?? clip.submittedAt,
+    title: clip.title ?? null,
+    thumbnailUrl: clip.thumbnailUrl ?? null,
+    lastScraped: clip.lastScraped?.toISOString?.() ?? null,
   };
 }

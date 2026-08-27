@@ -19,7 +19,12 @@ export default async function AgencyPage() {
       where: { role: "clipper" },
       include: {
         client: true,
-        clipperProfile: { include: { _count: { select: { clips: true } } } },
+        clipperProfile: {
+          include: {
+            _count: { select: { clips: true } },
+            subAccounts: { orderBy: { createdAt: "asc" } },
+          },
+        },
       },
     }),
     prisma.clip.findMany({
@@ -29,7 +34,6 @@ export default async function AgencyPage() {
         subAccount: true,
       },
       orderBy: { submittedAt: "desc" },
-      take: 50,
     }),
   ]);
 
@@ -45,6 +49,7 @@ export default async function AgencyPage() {
     shares: Number(c.shares),
     saves: Number(c.saves),
     submittedAt: c.submittedAt.toISOString(),
+    clientId: c.clientId,
     client: { name: c.client.name },
     clipper: { name: c.clipper.user.name ?? c.clipper.user.email },
     subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
@@ -55,6 +60,7 @@ export default async function AgencyPage() {
     id: c.id,
     name: c.name,
     status: c.status,
+    logoUrl: c.logoUrl ?? null,
     archivedAt: c.archivedAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
     _count: { clips: c._count.clips },
@@ -72,7 +78,12 @@ export default async function AgencyPage() {
       ? { id: c.client.id, name: c.client.name, status: c.client.status }
       : null,
     clipperProfile: c.clipperProfile
-      ? { _count: { clips: c.clipperProfile._count.clips } }
+      ? {
+          _count: { clips: c.clipperProfile._count.clips },
+          subAccounts: c.clipperProfile.subAccounts.map((s) => ({
+            id: s.id, platform: s.platform, handle: s.handle, profileUrl: s.profileUrl ?? null,
+          })),
+        }
       : null,
   }));
 
@@ -81,6 +92,7 @@ export default async function AgencyPage() {
     id: c.id,
     name: c.name,
     status: c.status,
+    logoUrl: c.logoUrl ?? null,
   }));
 
   return (

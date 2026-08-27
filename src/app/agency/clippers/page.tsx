@@ -13,7 +13,12 @@ export default async function AgencyClippersPage() {
       where: { role: "clipper" },
       include: {
         client: true,
-        clipperProfile: { include: { _count: { select: { clips: true } } } },
+        clipperProfile: {
+          include: {
+            _count: { select: { clips: true } },
+            subAccounts: { orderBy: { createdAt: "asc" } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -27,7 +32,14 @@ export default async function AgencyClippersPage() {
     status: c.status,
     clientId: c.clientId,
     client: c.client ? { id: c.client.id, name: c.client.name, status: c.client.status } : null,
-    clipperProfile: c.clipperProfile ? { _count: c.clipperProfile._count } : null,
+    clipperProfile: c.clipperProfile
+      ? {
+          _count: c.clipperProfile._count,
+          subAccounts: c.clipperProfile.subAccounts.map((s) => ({
+            id: s.id, platform: s.platform, handle: s.handle, profileUrl: s.profileUrl ?? null,
+          })),
+        }
+      : null,
   }));
 
   const serializedClients = clients.map((c) => ({ id: c.id, name: c.name, status: c.status }));

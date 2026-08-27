@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -43,9 +43,24 @@ function RocketLogo({ size = 24 }: { size?: number }) {
   );
 }
 
+const ROLE_REDIRECT: Record<string, string> = { agency: "/agency", clipper: "/clipper", client: "/client" };
+
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [step, setStep] = useState<"role" | "login">("role");
+  const [agencyLogo, setAgencyLogo] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("agency_logo") : null
+  );
+
+  useEffect(() => {
+    fetch("/api/settings/logo").then((r) => r.json()).then((d) => {
+      const logo = d.logoUrl ?? null;
+      setAgencyLogo(logo);
+      if (logo) localStorage.setItem("agency_logo", logo);
+      else localStorage.removeItem("agency_logo");
+    });
+  }, []);
   const [selectedRole, setSelectedRole] = useState<Role | null>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("lastRole") as Role | null) ?? null;
@@ -94,7 +109,17 @@ export default function LoginPage() {
     router.push(redirectMap[role] || "/");
   }
 
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      router.replace(ROLE_REDIRECT[session.user.role as string] ?? "/");
+    }
+  }, [status, session, router]);
+
   const roleInfo = roles.find((r) => r.id === selectedRole);
+
+  if (status === "loading" || status === "authenticated") {
+    return <div className="min-h-screen" style={{ background: "#05070D" }} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
@@ -121,9 +146,13 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-            style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)" }}>
-            <RocketLogo size={28} />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden"
+            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)" }}>
+            {agencyLogo ? (
+              <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <RocketLogo size={28} />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
             ClipLaunch

@@ -22,8 +22,10 @@ export default async function ClientPage() {
       },
       users: {
         where: { role: "clipper" },
-        include: { clipperProfile: true },
+        include: { clipperProfile: { include: { subAccounts: { orderBy: { createdAt: "asc" } } } } },
       },
+      links: { orderBy: { createdAt: "asc" } },
+      onboardingSteps: { orderBy: { order: "asc" } },
     },
   });
 
@@ -33,6 +35,15 @@ export default async function ClientPage() {
     id: client.id,
     name: client.name,
     status: client.status,
+    logoUrl: client.logoUrl ?? null,
+    dealLengthDays: client.dealLengthDays ?? null,
+    pageCount: client.pageCount ?? null,
+    clipsPerDay: client.clipsPerDay ?? null,
+    createdAt: client.createdAt.toISOString(),
+    links: client.links.map((l) => ({ id: l.id, label: l.label, url: l.url })),
+    onboardingSteps: client.onboardingSteps.map((s) => ({
+      id: s.id, title: s.title, description: s.description, linkUrl: s.linkUrl ?? null, order: s.order, completed: s.completed,
+    })),
     clips: client.clips.map((c) => ({
       id: c.id,
       url: c.url,
@@ -46,6 +57,8 @@ export default async function ClientPage() {
       earnings: c.earnings,
       submittedAt: c.submittedAt.toISOString(),
       clipperName: c.clipper.user.name ?? c.clipper.user.email,
+      title: c.title ?? null,
+      thumbnailUrl: c.thumbnailUrl ?? null,
     })),
     clippers: client.users.map((u) => ({
       id: u.id,
@@ -54,6 +67,12 @@ export default async function ClientPage() {
       totalViews: client.clips
         .filter((c) => c.clipper.userId === u.id)
         .reduce((sum, c) => sum + Number(c.views), 0),
+      subAccounts: (u.clipperProfile?.subAccounts ?? []).map((s) => ({
+        id: s.id,
+        platform: s.platform,
+        handle: s.handle,
+        profileUrl: s.profileUrl ?? null,
+      })),
     })),
   };
 

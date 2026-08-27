@@ -28,14 +28,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const u = user as any;
         token.role = u.role;
         token.id = u.id;
+        token.name = u.name;
         token.clientId = u.clientId ?? null;
         token.status = u.status ?? "active";
+      }
+      // Re-fetch fresh profile whenever the session is explicitly updated
+      if (trigger === "update" && token.id) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, email: true, role: true, clientId: true, status: true },
+        });
+        if (fresh) {
+          token.name = fresh.name;
+          token.email = fresh.email;
+          token.role = fresh.role;
+          token.clientId = fresh.clientId ?? null;
+          token.status = fresh.status ?? "active";
+        }
       }
       return token;
     },
@@ -43,6 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.name = token.name as string ?? session.user.name;
         session.user.clientId = (token.clientId as string | null) ?? null;
         session.user.status = (token.status as string) ?? "active";
       }

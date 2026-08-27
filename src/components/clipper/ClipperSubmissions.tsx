@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, ExternalLink, X } from "lucide-react";
+import { Plus, ExternalLink, X, RotateCw } from "lucide-react";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -28,6 +28,10 @@ interface Clip {
   likes: number;
   comments: number;
   shares: number;
+  saves: number;
+  lastScraped?: string | null;
+  title?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 interface SubAccount {
@@ -45,9 +49,21 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
   const [clips, setClips] = useState<Clip[]>(initial);
   const [showModal, setShowModal] = useState(false);
   const [clipUrl, setClipUrl] = useState("");
+  const [clipTitle, setClipTitle] = useState("");
   const [subAccountId, setSubAccountId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState<string | null>(null);
+
+  async function handleRefresh(clipId: string) {
+    setRefreshing(clipId);
+    const res = await fetch(`/api/clips/${clipId}`, { method: "PATCH" });
+    if (res.ok) {
+      const updated = await res.json();
+      setClips((prev) => prev.map((c) => c.id === clipId ? { ...c, views: updated.views, likes: updated.likes, comments: updated.comments, shares: updated.shares, saves: updated.saves, lastScraped: updated.lastScraped } : c));
+    }
+    setRefreshing(null);
+  }
 
   const inputStyle: React.CSSProperties = {
     background: "rgba(255,255,255,0.05)",
@@ -67,7 +83,7 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
     const res = await fetch("/api/clips", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: clipUrl, subAccountId }),
+      body: JSON.stringify({ url: clipUrl, subAccountId, title: clipTitle }),
     });
     if (!res.ok) {
       const data = await res.json();
@@ -84,13 +100,17 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
       submittedAt: newClip.submittedAt,
       clientName: "",
       handle: sa?.handle ?? "",
+      title: clipTitle || null,
+      thumbnailUrl: null,
       views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
+      saves: 0,
     }, ...prev]);
     setShowModal(false);
     setClipUrl("");
+    setClipTitle("");
     setSubAccountId("");
     setLoading(false);
   }
@@ -110,6 +130,11 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
+                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip Title</label>
+                <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)}
+                  placeholder="Enter a title for this clip" required style={inputStyle} />
+              </div>
+              <div>
                 <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip URL</label>
                 <input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)}
                   placeholder="https://..." required style={inputStyle} />
@@ -127,7 +152,7 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
                 </select>
               </div>
               {error && <p className="text-xs" style={{ color: "#FF4757" }}>{error}</p>}
-              <button type="submit" disabled={loading || !clipUrl || !subAccountId}
+              <button type="submit" disabled={loading || !clipUrl || !clipTitle || !subAccountId}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
                   background: "rgba(61,255,162,0.15)",
@@ -160,7 +185,7 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
         <table className="w-full">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {["Platform", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link"].map((h) => (
+              {["Platform", "Preview", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link", "Refresh"].map((h) => (
                 <th key={h} className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider"
                   style={{ color: "#8A93A6" }}>{h}</th>
               ))}
@@ -176,7 +201,20 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
                     {clip.platform}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>@{clip.handle}</td>
+                <td className="px-5 py-3">
+                  {clip.thumbnailUrl ? (
+                    <a href={clip.url} target="_blank" rel="noopener noreferrer">
+                      <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover"
+                        style={{ width: 48, height: 27 }} />
+                    </a>
+                  ) : (
+                    <span style={{ color: "#8A93A6", fontSize: 11 }}>—</span>
+                  )}
+                </td>
+                <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                  @{clip.handle}
+                  {clip.title && <p className="text-xs truncate mt-0.5" style={{ color: "#F5F6FA", maxWidth: 120 }}>{clip.title}</p>}
+                </td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{clip.clientName || "—"}</td>
                 <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
@@ -190,11 +228,16 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
                     <ExternalLink size={12} color="#3DFFA2" />
                   </a>
                 </td>
+                <td className="px-5 py-3">
+                  <button onClick={() => handleRefresh(clip.id)} disabled={refreshing === clip.id} title="Refresh stats from platform">
+                    <RotateCw size={12} color="#8A93A6" className={refreshing === clip.id ? "animate-spin" : ""} />
+                  </button>
+                </td>
               </tr>
             ))}
             {clips.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                <td colSpan={11} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
                   No submissions yet. Submit your first clip above.
                 </td>
               </tr>
