@@ -568,9 +568,12 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
 
             {/* Leaderboard */}
             <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2 mb-4">
-                <Trophy size={14} color="#FFA500" />
-                <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Leaderboard</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Trophy size={14} color="#FFA500" />
+                  <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Leaderboard</h2>
+                </div>
+                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
               </div>
               <div className="space-y-2">
                 {leaderboard.map((entry, i) => {
