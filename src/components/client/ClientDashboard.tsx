@@ -159,9 +159,9 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
   const statItems = [
     { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
-    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#3DFFA2", change: pct(currLikes, prevLikes) },
-    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#a78bfa", change: pct(currShares, prevShares) },
-    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FFA500", change: pct(currSaves, prevSaves) },
+    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
+    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pct(currShares, prevShares) },
+    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pct(currSaves, prevSaves) },
   ];
 
   const tabs = [
@@ -264,10 +264,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           <Icon size={18} color={item.color} />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Icon size={10} color={item.color} />
-                            <span className="text-xs truncate" style={{ color: "#8A93A6" }}>{item.label}</span>
-                          </div>
+                          <p className="text-xs mb-1 truncate" style={{ color: "#8A93A6" }}>{item.label}</p>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                               {item.value}
@@ -381,18 +378,12 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           </a>
                         ) : null}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 mb-1">
+                          <div className="flex items-center gap-1">
                             <PlatformIcon platform={clip.platform} size={11} />
                             <span className="text-xs truncate font-medium" style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>@{clip.handle}</span>
                           </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="flex items-center gap-0.5" style={{ color: "#3DFFA2", fontSize: 10 }}><Eye size={9} color="#FF3B3B" />{fmt(clip.views)}</span>
-                            <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Heart size={9} color="#3DFFA2" />{fmt(clip.likes)}</span>
-                            <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><MessageCircle size={9} color="#a78bfa" />{fmt(clip.comments)}</span>
-                            <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Share2 size={9} color="#60a5fa" />{fmt(clip.shares)}</span>
-                            <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Bookmark size={9} color="#FFA500" />{fmt(clip.saves)}</span>
-                          </div>
                         </div>
+                        <span className="text-sm font-bold flex-shrink-0" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(clip.views)}</span>
                         <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0"><ExternalLink size={11} color="#FF3B3B" /></a>
                       </div>
                     ))}

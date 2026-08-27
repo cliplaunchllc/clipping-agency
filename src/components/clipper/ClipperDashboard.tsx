@@ -317,10 +317,10 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
           {(() => {
             const statItems = [
               { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pctChange(currViews, prevViews) },
-              { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#3DFFA2", change: pctChange(currLikes, prevLikes) },
-              { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#a78bfa", change: pctChange(currComments, prevComments) },
-              { label: "Shares", value: fmt(currShares), icon: Share2, color: "#60a5fa", change: pctChange(currShares, prevShares) },
-              { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FFA500", change: pctChange(currSaves, prevSaves) },
+              { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pctChange(currLikes, prevLikes) },
+              { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pctChange(currComments, prevComments) },
+              { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pctChange(currShares, prevShares) },
+              { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pctChange(currSaves, prevSaves) },
               { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pctChange(filteredClips.length, prevClipCount) },
             ];
             return (
@@ -336,10 +336,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                           <Icon size={18} color={item.color} />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1 mb-1">
-                            <Icon size={10} color={item.color} />
-                            <span className="text-xs truncate" style={{ color: "#8A93A6" }}>{item.label}</span>
-                          </div>
+                          <p className="text-xs mb-1 truncate" style={{ color: "#8A93A6" }}>{item.label}</p>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                               {item.value}
@@ -537,12 +534,8 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                       {c.title && <p className="text-xs font-medium truncate mb-0.5" style={{ color: "#F5F6FA" }}>{c.title}</p>}
                       <p className="text-xs truncate" style={{ color: "#8A93A6" }}>@{c.subAccount?.handle}</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                      <span className="flex items-center gap-0.5" style={{ color: "#3DFFA2", fontSize: 10 }}><Eye size={9} color="#FF3B3B" />{fmt(c.views ?? 0)}</span>
-                      <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Heart size={9} color="#3DFFA2" />{fmt(c.likes ?? 0)}</span>
-                      <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><MessageCircle size={9} color="#a78bfa" />{fmt(c.comments ?? 0)}</span>
-                      <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Share2 size={9} color="#60a5fa" />{fmt(c.shares ?? 0)}</span>
-                      <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Bookmark size={9} color="#FFA500" />{fmt(c.saves ?? 0)}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-semibold" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(c.views ?? 0)}</span>
                       <a href={c.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={10} color="#8A93A6" /></a>
                       {!previewMode && (
                         <button onClick={() => handleRefresh(c.id)} disabled={refreshing === c.id} title="Refresh stats"

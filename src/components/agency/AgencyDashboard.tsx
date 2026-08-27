@@ -185,10 +185,10 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
   const statItems = [
     { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
-    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#3DFFA2", change: pct(currLikes, prevLikes) },
-    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#a78bfa", change: pct(currComments, prevComments) },
-    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#60a5fa", change: pct(currShares, prevShares) },
-    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FFA500", change: pct(currSaves, prevSaves) },
+    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
+    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pct(currComments, prevComments) },
+    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pct(currShares, prevShares) },
+    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pct(currSaves, prevSaves) },
     { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pct(filteredClips.length, prevClipCount) },
   ];
 
@@ -322,10 +322,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                         <Icon size={18} color={item.color} />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1 mb-1">
-                          <Icon size={10} color={item.color} />
-                          <span className="text-xs truncate" style={{ color: "#8A93A6" }}>{item.label}</span>
-                        </div>
+                        <p className="text-xs mb-1 truncate" style={{ color: "#8A93A6" }}>{item.label}</p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                             {item.value}
@@ -395,12 +392,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                         style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>{c.name[0]}</div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>{c.name}</p>
-                        <div className="flex items-center gap-2.5 mt-0.5 flex-wrap">
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Heart size={9} color="#3DFFA2" />{fmt(c.likes)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><MessageCircle size={9} color="#a78bfa" />{fmt(c.comments)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Share2 size={9} color="#60a5fa" />{fmt(c.shares)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Bookmark size={9} color="#FFA500" />{fmt(c.saves)}</span>
-                        </div>
+                        <p className="text-xs" style={{ color: "#8A93A6" }}>{c.clips} clips</p>
                       </div>
                       <span className="text-sm font-semibold flex-shrink-0" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(c.views)}</span>
                     </div>
@@ -427,19 +419,13 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                         </a>
                       ) : null}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 mb-1">
+                        <div className="flex items-center gap-1">
                           <PlatformIcon platform={clip.subAccount?.platform ?? "other"} size={11} />
                           <span className="text-xs truncate font-medium" style={{ color: PLATFORM_COLORS[clip.subAccount?.platform] ?? "#8A93A6" }}>@{clip.subAccount?.handle}</span>
-                          <span className="text-xs" style={{ color: "#8A93A6" }}>· {clip.clipper?.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="flex items-center gap-0.5" style={{ color: "#3DFFA2", fontSize: 10 }}><Eye size={9} color="#FF3B3B" />{fmt(clip.views ?? 0)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Heart size={9} color="#3DFFA2" />{fmt(clip.likes ?? 0)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><MessageCircle size={9} color="#a78bfa" />{fmt(clip.comments ?? 0)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Share2 size={9} color="#60a5fa" />{fmt(clip.shares ?? 0)}</span>
-                          <span className="flex items-center gap-0.5" style={{ color: "#8A93A6", fontSize: 10 }}><Bookmark size={9} color="#FFA500" />{fmt(clip.saves ?? 0)}</span>
+                          <span className="text-xs truncate" style={{ color: "#8A93A6" }}>· {clip.clipper?.name}</span>
                         </div>
                       </div>
+                      <span className="text-sm font-bold flex-shrink-0" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(clip.views ?? 0)}</span>
                       <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                         <ExternalLink size={11} color="#FF3B3B" />
                       </a>
