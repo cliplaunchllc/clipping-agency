@@ -85,9 +85,10 @@ interface Props {
   allClients: AnyRecord[];
   clips: AnyRecord[];
   totalViews: number;
+  pendingClientUsers?: AnyRecord[];
 }
 
-export default function AgencyDashboard({ userName, clients, clippers, allClients, clips: initialClips }: Props) {
+export default function AgencyDashboard({ userName, clients, clippers, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clippers" | "clips">("overview");
   const [allClips, setAllClips] = useState<AnyRecord[]>(initialClips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
@@ -481,7 +482,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           {/* ── CLIENTS TAB ───────────────────────────────────────────── */}
           {activeTab === "clients" && (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <ClientManagement initialClients={clients as any} />
+            <ClientManagement initialClients={clients as any} pendingClientUsers={pendingClientUsers} allClients={allClients as any} />
           )}
 
           {/* ── CLIPPERS TAB ──────────────────────────────────────────── */}

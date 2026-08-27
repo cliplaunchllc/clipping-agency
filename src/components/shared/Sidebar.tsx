@@ -18,10 +18,12 @@ const NAV_ITEMS = {
   clipper: [
     { label: "Dashboard", href: "/clipper", icon: LayoutDashboard },
     { label: "Submissions", href: "/clipper/submissions", icon: FileText },
+    { label: "Settings", href: "/clipper/settings", icon: Settings },
   ],
   client: [
     { label: "Dashboard", href: "/client", icon: LayoutDashboard },
     { label: "Reports", href: "/client/reports", icon: FileText },
+    { label: "Settings", href: "/client/settings", icon: Settings },
   ],
 };
 

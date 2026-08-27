@@ -6,9 +6,10 @@ import ClientDashboard from "@/components/client/ClientDashboard";
 export default async function ClientPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "client") redirect("/login");
+  if (session.user.status === "pending") redirect("/client/pending");
 
   const clientId = (session.user as { clientId?: string | null }).clientId;
-  if (!clientId) redirect("/login");
+  if (!clientId) redirect("/client/pending");
 
   const client = await prisma.client.findUnique({
     where: { id: clientId },

@@ -7,7 +7,7 @@ export default async function AgencyPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [clients, clippers, clips] = await Promise.all([
+  const [clients, clippers, clips, pendingClientUsers] = await Promise.all([
     prisma.client.findMany({
       include: {
         users: { where: { role: "clipper" }, select: { id: true } },
@@ -34,6 +34,11 @@ export default async function AgencyPage() {
         subAccount: true,
       },
       orderBy: { submittedAt: "desc" },
+    }),
+    prisma.user.findMany({
+      where: { role: "client", status: "pending" },
+      select: { id: true, name: true, email: true, status: true, clientId: true },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -103,6 +108,7 @@ export default async function AgencyPage() {
       allClients={allClientsList}
       clips={serializedClips}
       totalViews={totalViews}
+      pendingClientUsers={pendingClientUsers}
     />
   );
 }

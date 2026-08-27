@@ -16,27 +16,13 @@ const roles: { id: Role; label: string; desc: string }[] = [
 function RocketLogo({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Rocket body */}
-      <path
-        d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z"
-        fill="#FF3B3B"
-      />
-      {/* Nose highlight */}
-      <path
-        d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z"
-        fill="#FF6B6B"
-        opacity="0.6"
-      />
-      {/* Porthole */}
+      <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B" />
+      <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6" />
       <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95" />
       <circle cx="12" cy="9" r="0.7" fill="#FF3B3B" />
-      {/* Body lower */}
       <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020" />
-      {/* Left fin */}
       <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A" />
-      {/* Right fin */}
       <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A" />
-      {/* Exhaust */}
       <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9" />
       <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8" />
     </svg>
@@ -61,6 +47,7 @@ export default function LoginPage() {
       else localStorage.removeItem("agency_logo");
     });
   }, []);
+
   const [selectedRole, setSelectedRole] = useState<Role | null>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("lastRole") as Role | null) ?? null;
@@ -69,6 +56,7 @@ export default function LoginPage() {
   });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -96,9 +84,16 @@ export default function LoginPage() {
       return;
     }
 
+    // If "remember me" is unchecked, mark session as temporary in localStorage
+    if (!rememberMe) {
+      localStorage.setItem("sessionExpireOnClose", "1");
+    } else {
+      localStorage.removeItem("sessionExpireOnClose");
+    }
+
     const res = await fetch("/api/auth/session");
-    const session = await res.json();
-    const role = session?.user?.role;
+    const sessionData = await res.json();
+    const role = sessionData?.user?.role;
 
     const redirectMap: Record<string, string> = {
       agency: "/agency",
@@ -121,6 +116,17 @@ export default function LoginPage() {
     return <div className="min-h-screen" style={{ background: "#05070D" }} />;
   }
 
+  const inputStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#F5F6FA",
+    borderRadius: 12,
+    padding: "12px 16px",
+    fontSize: 14,
+    outline: "none",
+    width: "100%",
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
       {/* Background glows */}
@@ -129,7 +135,6 @@ export default function LoginPage() {
           style={{ background: "radial-gradient(circle, rgba(255,59,59,0.06) 0%, transparent 70%)" }} />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl"
           style={{ background: "radial-gradient(circle, rgba(61,255,162,0.04) 0%, transparent 70%)" }} />
-        {/* Stars */}
         {[...Array(30)].map((_, i) => (
           <div key={i} className="absolute rounded-full"
             style={{
@@ -170,10 +175,7 @@ export default function LoginPage() {
                 key={role.id}
                 onClick={() => handleRoleSelect(role.id)}
                 className="w-full text-left rounded-2xl p-5 transition-all group"
-                style={{
-                  background: "#0B0E17",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
+                style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,59,59,0.4)";
                   (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px rgba(255,59,59,0.1)";
@@ -191,7 +193,7 @@ export default function LoginPage() {
                     <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>{role.desc}</p>
                   </div>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 18l6-6-6-6"/>
+                    <path d="M9 18l6-6-6-6" />
                   </svg>
                 </div>
               </button>
@@ -211,7 +213,7 @@ export default function LoginPage() {
               onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#8A93A6")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6"/>
+                <path d="M15 18l-6-6 6-6" />
               </svg>
               Back
             </button>
@@ -225,17 +227,14 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>
-                  Email address
-                </label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Email address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}
+                  style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = "rgba(255,59,59,0.5)")}
                   onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
                   placeholder="you@example.com"
@@ -243,21 +242,44 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>
-                  Password
-                </label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}
+                  style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = "rgba(255,59,59,0.5)")}
                   onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
                   placeholder="••••••••"
                 />
               </div>
+
+              {/* Remember me */}
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <div
+                  onClick={() => setRememberMe((v) => !v)}
+                  className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: rememberMe ? "rgba(255,59,59,0.85)" : "rgba(255,255,255,0.04)",
+                    border: rememberMe ? "1px solid rgba(255,59,59,0.6)" : "1px solid rgba(255,255,255,0.15)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {rememberMe && (
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <span
+                  className="text-xs"
+                  style={{ color: "#8A93A6" }}
+                  onClick={() => setRememberMe((v) => !v)}
+                >
+                  Remember me for 30 days
+                </span>
+              </label>
 
               {error && (
                 <div className="text-xs px-4 py-3 rounded-xl"
@@ -282,10 +304,15 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {selectedRole === "clipper" && (
+            {(selectedRole === "clipper" || selectedRole === "client") && (
               <p className="text-center text-xs mt-5" style={{ color: "#8A93A6" }}>
-                New clipper?{" "}
-                <Link href="/signup" style={{ color: "#3DFFA2" }}>Create an account</Link>
+                New {roleInfo?.label.toLowerCase()}?{" "}
+                <Link
+                  href={selectedRole === "client" ? "/signup?role=client" : "/signup"}
+                  style={{ color: "#3DFFA2" }}
+                >
+                  Create an account
+                </Link>
               </p>
             )}
           </div>

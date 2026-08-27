@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const ROLE_REDIRECT: Record<string, string> = { agency: "/agency", clipper: "/clipper", client: "/client" };
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
+  const role = (searchParams.get("role") === "client" ? "client" : "clipper") as "clipper" | "client";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +46,7 @@ export default function SignupPage() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, role }),
     });
 
     if (!res.ok) {
@@ -61,7 +64,7 @@ export default function SignupPage() {
       return;
     }
 
-    window.location.href = "/clipper/pending";
+    window.location.href = role === "client" ? "/client/pending" : "/clipper/pending";
   }
 
   const inputStyle: React.CSSProperties = {
@@ -75,6 +78,10 @@ export default function SignupPage() {
     width: "100%",
   };
 
+  const accentColor = role === "client" ? "#a78bfa" : "#3DFFA2";
+  const accentBg = role === "client" ? "rgba(167,139,250,0.1)" : "rgba(61,255,162,0.1)";
+  const accentBorder = role === "client" ? "rgba(167,139,250,0.2)" : "rgba(61,255,162,0.2)";
+
   if (status === "loading" || status === "authenticated") {
     return <div className="min-h-screen" style={{ background: "#05070D" }} />;
   }
@@ -83,13 +90,13 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(61,255,162,0.05) 0%, transparent 70%)" }} />
+          style={{ background: `radial-gradient(circle, ${accentBg.replace("0.1", "0.05")} 0%, transparent 70%)` }} />
       </div>
 
       <div className="relative w-full max-w-md px-4">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden"
-            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: accentBg, border: `1px solid ${accentBorder}` }}>
             {agencyLogo ? (
               <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
             ) : (
@@ -107,10 +114,12 @@ export default function SignupPage() {
             )}
           </div>
           <h1 className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-            Join as a Clipper
+            {role === "client" ? "Join as a Client" : "Join as a Clipper"}
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>
-            Create your account — the agency will assign you to a client
+            {role === "client"
+              ? "Create your account — the agency will connect you to your campaign"
+              : "Create your account — the agency will assign you to a client"}
           </p>
         </div>
 
@@ -120,21 +129,21 @@ export default function SignupPage() {
               <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Your Name</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
                 autoFocus placeholder="Alex Rivera" style={inputStyle}
-                onFocus={(e) => (e.target.style.borderColor = "rgba(61,255,162,0.4)")}
+                onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
                 onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
                 placeholder="you@example.com" style={inputStyle}
-                onFocus={(e) => (e.target.style.borderColor = "rgba(61,255,162,0.4)")}
+                onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
                 onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Password</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
                 placeholder="••••••••" style={inputStyle}
-                onFocus={(e) => (e.target.style.borderColor = "rgba(61,255,162,0.4)")}
+                onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
                 onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
             </div>
             {error && (
@@ -146,21 +155,37 @@ export default function SignupPage() {
             <button type="submit" disabled={loading}
               className="w-full py-3 rounded-xl text-sm font-semibold mt-2"
               style={{
-                background: loading ? "rgba(61,255,162,0.05)" : "rgba(61,255,162,0.15)",
-                border: "1px solid rgba(61,255,162,0.3)",
-                color: "#3DFFA2",
+                background: loading ? accentBg : accentBg,
+                border: `1px solid ${accentBorder}`,
+                color: accentColor,
                 opacity: loading ? 0.7 : 1,
               }}>
               {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <p className="text-center text-xs mt-6" style={{ color: "#8A93A6" }}>
-            Already have an account?{" "}
-            <Link href="/login" style={{ color: "#3DFFA2" }}>Sign in</Link>
-          </p>
+          <div className="text-center text-xs mt-6 space-y-2">
+            <p style={{ color: "#8A93A6" }}>
+              Already have an account?{" "}
+              <Link href="/login" style={{ color: accentColor }}>Sign in</Link>
+            </p>
+            {role === "client" && (
+              <p style={{ color: "#8A93A6" }}>
+                Are you a clipper?{" "}
+                <Link href="/signup" style={{ color: "#3DFFA2" }}>Clipper signup</Link>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "#05070D" }} />}>
+      <SignupForm />
+    </Suspense>
   );
 }
