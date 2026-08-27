@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
+import TopClipsChart from "@/components/shared/TopClipsChart";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink, Check,
@@ -436,6 +437,12 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 </div>
               </div>
 
+              {/* Top Clips chart */}
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {filteredClips.length > 0 && (
+                <TopClipsChart clips={filteredClips as any} />
+              )}
+
             </>
           )}
 
@@ -501,14 +508,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     <button
                       onClick={() => toggleStep(step.id, !step.completed)}
                       disabled={togglingStep === step.id || previewMode}
-                      className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all check-circle"
+                      className="mt-0.5 w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                      title={step.completed ? "Mark incomplete" : "Mark complete"}
                       style={{
-                        background: step.completed ? "rgba(61,255,162,0.2)" : "rgba(255,255,255,0.06)",
-                        border: `1px solid ${step.completed ? "#3DFFA2" : "rgba(255,255,255,0.25)"}`,
+                        background: step.completed ? "rgba(61,255,162,0.2)" : "rgba(255,255,255,0.04)",
+                        border: `1.5px solid ${step.completed ? "#3DFFA2" : "rgba(255,255,255,0.3)"}`,
                         cursor: previewMode ? "default" : "pointer",
                         opacity: togglingStep === step.id ? 0.5 : 1,
+                        borderRadius: 4,
                       }}>
-                      {step.completed ? <Check size={11} color="#3DFFA2" /> : <span className="text-xs" style={{ color: "#8A93A6" }}>{i + 1}</span>}
+                      {step.completed && <Check size={12} color="#3DFFA2" strokeWidth={2.5} />}
                     </button>
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: step.completed ? "#8A93A6" : "#F5F6FA", textDecoration: step.completed ? "line-through" : "none" }}>

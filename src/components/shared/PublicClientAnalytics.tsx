@@ -9,6 +9,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
+import TopClipsChart from "@/components/shared/TopClipsChart";
 
 type TimePeriod = "all" | "1d" | "7d" | "mtd" | "custom";
 
@@ -394,6 +395,13 @@ export default function PublicClientAnalytics({ client }: Props) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Top 10 bar chart */}
+        {filtered.length > 0 && (
+          <div className="mb-6">
+            <TopClipsChart clips={filtered} />
           </div>
         )}
 

@@ -125,57 +125,11 @@ export default function SpaceBackground() {
   }, []);
 
   return (
-    <>
-      {/* Star canvas */}
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 pointer-events-none select-none"
-        style={{ zIndex: 0 }}
-        aria-hidden="true"
-      />
-
-      {/* Orbiting Earth in bottom-right */}
-      <div
-        className="fixed pointer-events-none select-none"
-        style={{ zIndex: 0, bottom: 48, right: 56 }}
-        aria-hidden="true"
-      >
-        {/* Soft center glow (the "sun" reference point) */}
-        <div style={{
-          position: "absolute",
-          top: "50%", left: "50%",
-          width: 6, height: 6,
-          marginTop: -3, marginLeft: -3,
-          borderRadius: "50%",
-          background: "rgba(255,180,60,0.45)",
-          boxShadow: "0 0 14px 6px rgba(255,160,40,0.18)",
-        }} />
-
-        {/* Orbit ring */}
-        <div style={{
-          width: 88, height: 88,
-          borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.07)",
-        }} />
-
-        {/* Planet pivot — rotates at orbit center */}
-        <div className="orbit-pivot" style={{
-          position: "absolute",
-          top: "50%", left: "50%",
-        }}>
-          {/* Earth */}
-          <div className="orbit-planet" style={{
-            position: "absolute",
-            top: -44 - 8,  /* orbit radius + half planet size */
-            left: -8,
-            fontSize: 16,
-            lineHeight: 1,
-            filter: "drop-shadow(0 0 4px rgba(100,180,255,0.5))",
-          }}>
-            🌍
-          </div>
-        </div>
-      </div>
-    </>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none select-none"
+      style={{ zIndex: 0 }}
+      aria-hidden="true"
+    />
   );
 }
