@@ -19,6 +19,33 @@ function serialize(clip: any) {
   };
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+
+  const clip = await prisma.clip.findUnique({ where: { id } });
+  if (!clip) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const { role, id: userId } = session.user;
+
+  if (role === "clipper") {
+    const profile = await prisma.clipperProfile.findUnique({ where: { userId } });
+    if (!profile || clip.clipperId !== profile.id)
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (role !== "agency") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await prisma.clip.delete({ where: { id } });
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

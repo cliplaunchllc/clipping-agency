@@ -133,6 +133,7 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [deletingClip, setDeletingClip] = useState<string | null>(null);
 
   const inputStyle: React.CSSProperties = {
     background: "rgba(255,255,255,0.05)",
@@ -209,6 +210,14 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
       setClips((prev) => prev.map((c) => c.id === clipId ? { ...c, ...updated } : c));
     }
     setRefreshing(null);
+  }
+
+  async function handleDeleteClip(clipId: string) {
+    if (!confirm("Delete this clip? This cannot be undone.")) return;
+    setDeletingClip(clipId);
+    const res = await fetch(`/api/clips/${clipId}`, { method: "DELETE" });
+    if (res.ok) setClips((prev) => prev.filter((c) => c.id !== clipId));
+    setDeletingClip(null);
   }
 
   async function handleRefreshAll() {
@@ -541,6 +550,13 @@ export default function ClipperDashboard({ userName, clientName, subAccounts: in
                           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6" }}>
                           <RotateCw size={10} className={refreshing === c.id ? "animate-spin" : ""} />
                           {refreshing === c.id ? "" : "Sync"}
+                        </button>
+                      )}
+                      {!previewMode && (
+                        <button onClick={() => handleDeleteClip(c.id)} disabled={deletingClip === c.id} title="Delete clip"
+                          className="flex items-center justify-center w-6 h-6 rounded-lg"
+                          style={{ background: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.15)", color: "#FF4757", opacity: deletingClip === c.id ? 0.5 : 1 }}>
+                          <Trash2 size={10} />
                         </button>
                       )}
                     </div>
