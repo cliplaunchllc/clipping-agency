@@ -253,18 +253,20 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
               {/* Stats bar */}
               <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="flex">
+                <div className="grid grid-cols-2">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
+                    const borderRight = (i % 2 !== 1) ? "1px solid rgba(255,255,255,0.06)" : "none";
+                    const borderBottom = i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none";
                     return (
-                      <div key={item.label} className="flex items-center gap-4 px-6 py-6 flex-1 min-w-0"
-                        style={{ borderRight: i < statItems.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                      <div key={item.label} className="flex items-center gap-4 px-6 py-6"
+                        style={{ borderRight, borderBottom }}>
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                           style={{ background: `${item.color}18` }}>
                           <Icon size={18} color={item.color} />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs mb-1 truncate" style={{ color: "#8A93A6" }}>{item.label}</p>
+                        <div>
+                          <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{item.label}</p>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                               {item.value}

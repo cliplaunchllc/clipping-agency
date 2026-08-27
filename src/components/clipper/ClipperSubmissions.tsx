@@ -54,6 +54,20 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+
+  async function handleRefreshAll() {
+    if (refreshingAll || clips.length === 0) return;
+    setRefreshingAll(true);
+    for (const clip of clips.slice(0, 20)) {
+      const res = await fetch(`/api/clips/${clip.id}`, { method: "PATCH" });
+      if (res.ok) {
+        const updated = await res.json();
+        setClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, views: updated.views, likes: updated.likes, comments: updated.comments, shares: updated.shares, saves: updated.saves, lastScraped: updated.lastScraped } : c));
+      }
+    }
+    setRefreshingAll(false);
+  }
 
   async function handleRefresh(clipId: string) {
     setRefreshing(clipId);
@@ -174,11 +188,21 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>{clips.length} clips submitted</p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
-          <Plus size={14} /> Submit Clip
-        </button>
+        <div className="flex items-center gap-3">
+          {clips.length > 0 && (
+            <button onClick={handleRefreshAll} disabled={refreshingAll}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#8A93A6", opacity: refreshingAll ? 0.6 : 1 }}>
+              <RotateCw size={13} className={refreshingAll ? "animate-spin" : ""} />
+              {refreshingAll ? "Refreshing..." : "Refresh All"}
+            </button>
+          )}
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
+            <Plus size={14} /> Submit Clip
+          </button>
+        </div>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
