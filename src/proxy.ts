@@ -12,6 +12,18 @@ export const proxy = auth((req) => {
     return NextResponse.next();
   }
 
+  if (nextUrl.pathname === "/signup") {
+    if (isLoggedIn) {
+      const redirectMap: Record<string, string> = {
+        agency: "/agency",
+        clipper: "/clipper",
+        client: "/client",
+      };
+      return NextResponse.redirect(new URL(redirectMap[role!] || "/login", nextUrl));
+    }
+    return NextResponse.next();
+  }
+
   if (nextUrl.pathname === "/login") {
     if (isLoggedIn) {
       const redirectMap: Record<string, string> = {
