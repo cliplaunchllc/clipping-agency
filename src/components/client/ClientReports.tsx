@@ -11,7 +11,7 @@ function fmt(n: number) {
   return n.toString();
 }
 
-const PLATFORM_COLORS: Record<string, string> = { tiktok: "#FF2D55", instagram: "#DD2A7B", youtube: "#FF0000" };
+const PLATFORM_COLORS: Record<string, string> = { tiktok: "#FF3B3B", instagram: "#FF6060", youtube: "#CC1A1A", twitter: "#8A93A6", other: "#5C6370" };
 
 export default function ClientReports({ submissions, clientName }: { submissions: AnyRecord[]; clientName: string }) {
   const totalViews = submissions.reduce((acc, s) => acc + (s.snapshots[0]?.views ?? 0), 0);
@@ -61,7 +61,7 @@ export default function ClientReports({ submissions, clientName }: { submissions
                   <span className="text-xs font-semibold capitalize" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>{s.platform}</span>
                 </td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>@{s.subAccount?.handle ?? "—"}</td>
-                <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#a78bfa" }}>{fmt(s.snapshots[0]?.views ?? 0)}</td>
+                <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#FF3B3B" }}>{fmt(s.snapshots[0]?.views ?? 0)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.likes ?? 0)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.comments ?? 0)}</td>
                 <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(s.snapshots[0]?.shares ?? 0)}</td>
@@ -70,7 +70,7 @@ export default function ClientReports({ submissions, clientName }: { submissions
                 </td>
                 <td className="px-5 py-3">
                   <a href={s.clipUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink size={12} color="#a78bfa" />
+                    <ExternalLink size={12} color="#FF3B3B" />
                   </a>
                 </td>
               </tr>

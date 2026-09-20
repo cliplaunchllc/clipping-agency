@@ -362,8 +362,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                       <defs>
                         <linearGradient id="clientViewGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                          <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0.02} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -643,7 +643,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>@{clip.handle}</td>
                       <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
                       <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
-                      <td className="px-5 py-3 text-xs" style={{ color: "#a78bfa" }}>{fmt(clip.comments)}</td>
+                      <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>{fmt(clip.comments)}</td>
                       <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
                       <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>{new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
                       <td className="px-5 py-3"><a href={clip.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} color="#FF3B3B" /></a></td>

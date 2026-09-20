@@ -394,8 +394,8 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="agGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />

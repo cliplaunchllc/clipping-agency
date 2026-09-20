@@ -46,6 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           clientId: user.clientId ?? null,
           status: user.status,
+          mustChangePassword: user.mustChangePassword,
         } as any;
       },
     }),
@@ -73,6 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           clientId: user.clientId ?? null,
           status: user.status,
+          mustChangePassword: user.mustChangePassword,
         } as any;
       },
     }),
@@ -87,11 +89,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = u.name;
         token.clientId = u.clientId ?? null;
         token.status = u.status ?? "active";
+        token.mustChangePassword = u.mustChangePassword ?? false;
       }
       if (trigger === "update" && token.id) {
         const fresh = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { name: true, email: true, role: true, clientId: true, status: true },
+          select: { name: true, email: true, role: true, clientId: true, status: true, mustChangePassword: true },
         });
         if (fresh) {
           token.name = fresh.name;
@@ -99,6 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role = fresh.role;
           token.clientId = fresh.clientId ?? null;
           token.status = fresh.status ?? "active";
+          token.mustChangePassword = fresh.mustChangePassword ?? false;
         }
       }
       return token;
@@ -110,6 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.name = (token.name as string) ?? session.user.name;
         session.user.clientId = (token.clientId as string | null) ?? null;
         session.user.status = (token.status as string) ?? "active";
+        session.user.mustChangePassword = (token.mustChangePassword as boolean) ?? false;
       }
       return session;
     },

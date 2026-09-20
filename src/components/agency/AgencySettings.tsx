@@ -2,16 +2,29 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { User, Lock, Bell, Shield, ImageIcon, Camera, X } from "lucide-react";
+import { User, Lock, Bell, Shield, ImageIcon, Camera, X, Users, Plus, Trash2, KeyRound } from "lucide-react";
+
+interface TeamMember {
+  id: string;
+  name: string | null;
+  email: string;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
 
 interface Props {
   userName: string;
   email: string;
+  currentUserId: string;
+  initialTeam: TeamMember[];
+  mustChangePassword: boolean;
 }
 
-export default function AgencySettings({ userName, email }: Props) {
+export default function AgencySettings({ userName, email, currentUserId, initialTeam, mustChangePassword }: Props) {
   const { update: updateSession } = useSession();
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "branding">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "branding" | "team">(
+    mustChangePassword ? "security" : "profile"
+  );
   const [name, setName] = useState(userName);
   const [currentEmail, setCurrentEmail] = useState(email);
   const [newEmail, setNewEmail] = useState(email);
@@ -24,6 +37,24 @@ export default function AgencySettings({ userName, email }: Props) {
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
   const [logoSaving, setLogoSaving] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Security state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  // Team state
+  const [team, setTeam] = useState<TeamMember[]>(initialTeam);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [memberName, setMemberName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [memberError, setMemberError] = useState("");
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/logo").then((r) => r.json()).then((d) => setAgencyLogo(d.logoUrl ?? null));
@@ -129,11 +160,71 @@ export default function AgencySettings({ userName, email }: Props) {
     setEmailSaving(false);
   }
 
+  async function handleChangePassword() {
+    setPasswordError("");
+    if (!currentPassword) { setPasswordError("Enter your current password"); return; }
+    if (newPassword.length < 6) { setPasswordError("New password must be at least 6 characters"); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match"); return; }
+    setPasswordSaving(true);
+    const res = await fetch("/api/user/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setPasswordError(data.error || "Failed to update password");
+    } else {
+      setPasswordSaved(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      await updateSession();
+      setTimeout(() => setPasswordSaved(false), 2500);
+    }
+    setPasswordSaving(false);
+  }
+
+  async function handleAddMember() {
+    setMemberError("");
+    if (!memberName.trim() || !memberEmail.trim() || !memberPassword.trim()) {
+      setMemberError("Name, email, and password are required");
+      return;
+    }
+    setMemberLoading(true);
+    const res = await fetch("/api/agency/team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: memberName.trim(), email: memberEmail.trim(), password: memberPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMemberError(data.error || "Failed to add team member");
+    } else {
+      setTeam((prev) => [...prev, { ...data, createdAt: data.createdAt }]);
+      setMemberName("");
+      setMemberEmail("");
+      setMemberPassword("");
+      setShowAddMember(false);
+    }
+    setMemberLoading(false);
+  }
+
+  async function handleRemoveMember(id: string) {
+    setRemovingId(id);
+    const res = await fetch(`/api/agency/team/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTeam((prev) => prev.filter((m) => m.id !== id));
+    }
+    setRemovingId(null);
+  }
+
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "security", label: "Security", icon: Lock },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "branding", label: "Branding", icon: ImageIcon },
+    { id: "team", label: "Team", icon: Users },
   ];
 
   return (
@@ -215,22 +306,36 @@ export default function AgencySettings({ userName, email }: Props) {
           {activeTab === "security" && (
             <div className="space-y-5">
               <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA" }}>Security</h2>
+              {mustChangePassword && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-2"
+                  style={{ background: "rgba(255,187,0,0.08)", border: "1px solid rgba(255,187,0,0.25)" }}>
+                  <KeyRound size={14} color="#FFBB00" />
+                  <p className="text-sm" style={{ color: "#FFBB00" }}>You're using a temporary password — please set a new one to continue.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Current Password</label>
-                <input type="password" placeholder="••••••••" style={inputStyle} />
+                <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} style={inputStyle} />
               </div>
               <div>
                 <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>New Password</label>
-                <input type="password" placeholder="••••••••" style={inputStyle} />
+                <input type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} />
               </div>
               <div>
                 <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Confirm New Password</label>
-                <input type="password" placeholder="••••••••" style={inputStyle} />
+                <input type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={inputStyle} />
               </div>
-              <button onClick={handleSave}
+              {passwordError && <p className="text-xs" style={{ color: "#FF4757" }}>{passwordError}</p>}
+              <button onClick={handleChangePassword} disabled={passwordSaving}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "#FF3B3B" }}>
-                {saved ? "Updated!" : "Update Password"}
+                style={{
+                  background: passwordSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
+                  border: `1px solid ${passwordSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
+                  color: passwordSaved ? "#3DFFA2" : "#FF3B3B",
+                  opacity: passwordSaving ? 0.6 : 1,
+                  cursor: passwordSaving ? "not-allowed" : "pointer",
+                }}>
+                {passwordSaving ? "Saving..." : passwordSaved ? "Updated!" : "Update Password"}
               </button>
             </div>
           )}
@@ -274,6 +379,117 @@ export default function AgencySettings({ userName, email }: Props) {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "team" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>Team Members</h2>
+                <button
+                  onClick={() => { setShowAddMember(true); setMemberError(""); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "#FF3B3B" }}>
+                  <Plus size={14} />
+                  Add Member
+                </button>
+              </div>
+
+              {/* Member list */}
+              <div className="space-y-2">
+                {team.map((member) => {
+                  const isCurrentUser = member.id === currentUserId;
+                  const isRemoving = removingId === member.id;
+                  return (
+                    <div key={member.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
+                        <span className="text-sm font-semibold" style={{ color: "#FF3B3B" }}>
+                          {(member.name ?? member.email)[0].toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>
+                            {member.name ?? "—"}
+                          </span>
+                          {isCurrentUser && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.25)" }}>
+                              You
+                            </span>
+                          )}
+                          {member.mustChangePassword && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ background: "rgba(255,187,0,0.12)", color: "#FFBB00", border: "1px solid rgba(255,187,0,0.25)" }}>
+                              <KeyRound size={10} />
+                              Temp password
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs truncate mt-0.5" style={{ color: "#8A93A6" }}>{member.email}</p>
+                      </div>
+
+                      {/* Remove */}
+                      {!isCurrentUser && (
+                        <button
+                          onClick={() => handleRemoveMember(member.id)}
+                          disabled={isRemoving}
+                          className="p-2 rounded-lg transition-all"
+                          title="Remove member"
+                          style={{ color: "#8A93A6", opacity: isRemoving ? 0.4 : 1 }}>
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add member form */}
+              {showAddMember && (
+                <div className="mt-4 p-4 rounded-xl space-y-3"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium" style={{ color: "#F5F6FA" }}>New Team Member</p>
+                    <button onClick={() => { setShowAddMember(false); setMemberError(""); setMemberName(""); setMemberEmail(""); setMemberPassword(""); }}>
+                      <X size={15} color="#8A93A6" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Name</label>
+                    <input type="text" value={memberName} onChange={(e) => setMemberName(e.target.value)}
+                      placeholder="Jane Smith" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Email</label>
+                    <input type="email" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)}
+                      placeholder="jane@example.com" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Temporary Password</label>
+                    <input type="text" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)}
+                      placeholder="Min. 6 characters" style={inputStyle} />
+                    <p className="text-xs mt-1" style={{ color: "#8A93A6" }}>They'll be prompted to change this on first login</p>
+                  </div>
+                  {memberError && <p className="text-xs" style={{ color: "#FF4757" }}>{memberError}</p>}
+                  <button onClick={handleAddMember} disabled={memberLoading}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{
+                      background: "rgba(255,59,59,0.15)",
+                      border: "1px solid rgba(255,59,59,0.3)",
+                      color: "#FF3B3B",
+                      opacity: memberLoading ? 0.6 : 1,
+                      cursor: memberLoading ? "not-allowed" : "pointer",
+                    }}>
+                    {memberLoading ? "Adding..." : "Add Member"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

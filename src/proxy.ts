@@ -41,6 +41,12 @@ export const proxy = auth((req) => {
   }
 
   const status = (session as any)?.user?.status;
+  const mustChangePassword = (session as any)?.user?.mustChangePassword;
+
+  // Agency team members with temp passwords must go to settings > security
+  if (role === "agency" && mustChangePassword && nextUrl.pathname !== "/agency/settings") {
+    return NextResponse.redirect(new URL("/agency/settings", nextUrl));
+  }
 
   // Pending clippers can only access the pending page
   if (role === "clipper" && status === "pending" && nextUrl.pathname !== "/clipper/pending") {
