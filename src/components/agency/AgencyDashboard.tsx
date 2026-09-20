@@ -7,8 +7,9 @@ import ClientManagement from "@/components/agency/ClientManagement";
 import ClipperManagement from "@/components/agency/ClipperManagement";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, Users, Scissors, BarChart2,
-  TrendingUp, TrendingDown, ExternalLink, ChevronDown, RotateCw,
+  TrendingUp, TrendingDown, ExternalLink, ChevronDown, RotateCw, UserCheck,
 } from "lucide-react";
+import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -90,7 +91,7 @@ interface Props {
 }
 
 export default function AgencyDashboard({ userName, clients, clippers, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clippers" | "clips">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clippers" | "clips" | "platform-stats">("overview");
   const [allClips, setAllClips] = useState<AnyRecord[]>(initialClips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -162,13 +163,46 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
   const prevSaves = prevClips.reduce((a, c) => a + (c.saves ?? 0), 0);
   const prevClipCount = prevClips.length;
 
+  // Platform stats
+  const viewsByPlatform: Record<string, number> = {};
+  const clipsByPlatform: Record<string, number> = {};
+  filteredClips.forEach((c) => {
+    const p = (c.subAccount?.platform ?? c.platform ?? "other") as string;
+    viewsByPlatform[p] = (viewsByPlatform[p] ?? 0) + (c.views ?? 0);
+    clipsByPlatform[p] = (clipsByPlatform[p] ?? 0) + 1;
+  });
+
+  // Active clippers per period
+  const clipperViewsInPeriod: Record<string, number> = {};
+  filteredClips.forEach((c) => {
+    const name = (c.clipper?.name ?? "Unknown") as string;
+    clipperViewsInPeriod[name] = (clipperViewsInPeriod[name] ?? 0) + (c.views ?? 0);
+  });
+  const activeClippersDisplay = (clippers
+    .filter((c) => c.status === "active" && (selectedClientId === "all" || c.clientId === selectedClientId))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((c) => ({ ...c, periodViews: clipperViewsInPeriod[(c.name as string) ?? ""] ?? 0 })) as AnyRecord[])
+    .sort((a, b) => (b.periodViews as number) - (a.periodViews as number))
+    .slice(0, 8);
+
   // Chart from filtered clips
   const byDate: Record<string, number> = {};
   filteredClips.forEach((c) => {
     const date = (c.submittedAt as string).slice(0, 10);
     byDate[date] = (byDate[date] ?? 0) + (c.views ?? 0);
   });
-  const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({ date, views }));
+  const prevByDate: Record<string, number> = {};
+  prevClips.forEach((c) => {
+    const date = (c.submittedAt as string).slice(0, 10);
+    prevByDate[date] = (prevByDate[date] ?? 0) + (c.views ?? 0);
+  });
+  const currChartDates = Object.keys(byDate).sort();
+  const prevChartDates = Object.keys(prevByDate).sort();
+  const chartData = currChartDates.map((date, i) => ({
+    date,
+    views: byDate[date] ?? 0,
+    prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
+  }));
 
   // Top clippers from filtered
   const clipperMap: Record<string, { name: string; views: number; likes: number; comments: number; shares: number; saves: number; clips: number }> = {};
@@ -215,6 +249,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               { id: "clients", label: `Clients (${clients.length})` },
               { id: "clippers", label: `Clippers${pendingClippers > 0 ? ` · ${pendingClippers} pending` : ""}` },
               { id: "clips", label: `Clips (${allClips.length})` },
+              { id: "platform-stats", label: "Platform Stats" },
             ] as const).map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className="px-5 py-3 text-sm font-medium transition-all relative tab-btn"
@@ -355,7 +390,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 Views Over Time{selectedClient ? ` · ${selectedClient.name}` : ""}
               </h2>
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={180}>
+                <ResponsiveContainer width="100%" height={240}>
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="agGrad" x1="0" y1="0" x2="0" y2="1">
@@ -369,7 +404,11 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                     <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                       tickFormatter={(v) => fmt(Number(v))} width={48} />
                     <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "#3DFFA2" }} />
-                    <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#agGrad)"
+                    {timePeriod !== "all" && (
+                      <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
+                        strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
+                    )}
+                    <Area name="Views" type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#agGrad)"
                       dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -440,6 +479,45 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               </div>
             </div>
 
+            {/* Active Clippers */}
+            {activeClippersDisplay.length > 0 && (
+              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <UserCheck size={14} color="#3DFFA2" />
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+                      {activeClippersDisplay.length}
+                    </span>
+                  </div>
+                  <button onClick={() => setActiveTab("clippers")} className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ color: "#3DFFA2", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
+                    Manage
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  {activeClippersDisplay.map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
+                        {((c.name as string) || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{(c.name as string) ?? (c.email as string)}</p>
+                        <p className="text-xs" style={{ color: "#3DFFA2" }}>{fmt(c.periodViews)} views</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Platform Stats */}
+            <div className="mb-6">
+              <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+            </div>
+
             {/* ── Active Clients ───────────────────────────────────────── */}
             {(selectedClientId === "all" || activeClientsForDisplay.length > 0) && (
               <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -490,6 +568,20 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           {activeTab === "clippers" && (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             <ClipperManagement initialClippers={clippers as any} allClients={allClients as any} />
+          )}
+
+          {/* ── PLATFORM STATS TAB ────────────────────────────────────── */}
+          {activeTab === "platform-stats" && (
+            <div>
+              <div className="mb-6">
+                <h1 className="text-2xl font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Platform Stats</h1>
+                <p className="text-sm" style={{ color: "#8A93A6" }}>View and post breakdown across platforms</p>
+              </div>
+              <div className="mb-6">
+                <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+              </div>
+              <PlatformBreakdownTable viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+            </div>
           )}
 
           {/* ── CLIPS TAB ─────────────────────────────────────────────── */}

@@ -11,6 +11,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -91,7 +92,7 @@ interface ClientData {
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
 
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips" | "platform-stats">("overview");
   const [clips, setClips] = useState<Clip[]>(client.clips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -148,13 +149,33 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const prevSaves = prevClips.reduce((a, c) => a + c.saves, 0);
   const prevClipCount = prevClips.length;
 
+  // Platform stats
+  const viewsByPlatform: Record<string, number> = {};
+  const clipsByPlatform: Record<string, number> = {};
+  filteredClips.forEach((c) => {
+    const p = (c as Clip).platform ?? "other";
+    viewsByPlatform[p] = (viewsByPlatform[p] ?? 0) + (c as Clip).views;
+    clipsByPlatform[p] = (clipsByPlatform[p] ?? 0) + 1;
+  });
+
   // Chart from filtered clips
   const byDate: Record<string, number> = {};
   (filteredClips as Clip[]).forEach((c) => {
     const date = c.submittedAt.slice(0, 10);
     byDate[date] = (byDate[date] ?? 0) + c.views;
   });
-  const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({ date, views }));
+  const prevByDate: Record<string, number> = {};
+  (prevClips as Clip[]).forEach((c) => {
+    const date = c.submittedAt.slice(0, 10);
+    prevByDate[date] = (prevByDate[date] ?? 0) + c.views;
+  });
+  const currChartDates = Object.keys(byDate).sort();
+  const prevChartDates = Object.keys(prevByDate).sort();
+  const chartData = currChartDates.map((date, i) => ({
+    date,
+    views: byDate[date] ?? 0,
+    prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
+  }));
 
   // Top clips from all clips (not time-filtered for leaderboard context)
   const topClips = [...clips].sort((a, b) => b.views - a.views).slice(0, 5);
@@ -193,6 +214,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     { id: "links", label: `Links (${client.links.length})` },
     { id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
     { id: "clips", label: "Clips" },
+    { id: "platform-stats", label: "Platform Stats" },
   ] as const;
 
   const tooltipStyle = {
@@ -336,7 +358,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
                 {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={180}>
+                  <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                       <defs>
                         <linearGradient id="clientViewGrad" x1="0" y1="0" x2="0" y2="1">
@@ -350,13 +372,22 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                         tickFormatter={(v: number) => fmt(v)} width={48} />
                       <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "#3DFFA2" }} />
-                      <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#clientViewGrad)"
+                      {timePeriod !== "all" && (
+                        <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
+                          strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
+                      )}
+                      <Area name="Views" type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#clientViewGrad)"
                         dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
                   <p className="text-sm py-10 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
                 )}
+              </div>
+
+              {/* Platform Stats */}
+              <div className="mb-6">
+                <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
               </div>
 
               {/* Clippers + Top Clips */}
@@ -436,6 +467,39 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   </div>
                 </div>
               </div>
+
+              {/* Active Clippers */}
+              {client.clippers.length > 0 && (
+                <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3DFFA2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+                      {client.clippers.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {client.clippers.map((cl) => (
+                      <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
+                          {(cl.name || "?")[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{cl.name ?? "Clipper"}</p>
+                          <p className="text-xs" style={{ color: "#8A93A6" }}>{cl.clipCount} clips · {fmt(cl.totalViews)} views</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Top Clips chart */}
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -595,6 +659,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ── PLATFORM STATS ─── */}
+          {activeTab === "platform-stats" && (
+            <div>
+              <div className="mb-6">
+                <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+              </div>
+              <PlatformBreakdownTable viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
             </div>
           )}
         </div>

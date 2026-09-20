@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import { Plus, Trash2, ExternalLink, Trophy, X, RotateCw, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, Bookmark, BarChart2 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -138,6 +139,8 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
 
+  const [activeClipperTab, setActiveClipperTab] = useState<"overview" | "platform-stats">("overview");
+
   // Refresh state
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -172,9 +175,26 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
   const prevSaves = prevClips.reduce((a, c) => a + (c.saves ?? 0), 0);
   const prevClipCount = prevClips.length;
 
+  // Platform stats
+  const viewsByPlatform: Record<string, number> = {};
+  const clipsByPlatform: Record<string, number> = {};
+  filteredClips.forEach((c) => {
+    const p = (c.subAccount?.platform ?? "other") as string;
+    viewsByPlatform[p] = (viewsByPlatform[p] ?? 0) + (c.views ?? 0);
+    clipsByPlatform[p] = (clipsByPlatform[p] ?? 0) + 1;
+  });
+
   const byDate: Record<string, number> = {};
   filteredClips.forEach((c) => { const d = c.submittedAt.slice(0, 10); byDate[d] = (byDate[d] ?? 0) + (c.views ?? 0); });
-  const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({ date, views }));
+  const prevByDate: Record<string, number> = {};
+  prevClips.forEach((c) => { const d = c.submittedAt.slice(0, 10); prevByDate[d] = (prevByDate[d] ?? 0) + (c.views ?? 0); });
+  const currChartDates = Object.keys(byDate).sort();
+  const prevChartDates = Object.keys(prevByDate).sort();
+  const chartData = currChartDates.map((date, i) => ({
+    date,
+    views: byDate[date] ?? 0,
+    prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
+  }));
 
   function handleUrlChange(url: string) {
     setProfileUrl(url);
@@ -335,6 +355,22 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             )}
           </div>
 
+          {/* Tab bar */}
+          <div className="flex items-center gap-1 mb-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            {([
+              { id: "overview", label: "Overview" },
+              { id: "platform-stats", label: "Platform Stats" },
+            ] as const).map((tab) => (
+              <button key={tab.id} onClick={() => setActiveClipperTab(tab.id)}
+                className="px-4 py-2.5 text-sm font-medium relative"
+                style={{ color: activeClipperTab === tab.id ? "#F5F6FA" : "#8A93A6" }}>
+                {tab.label}
+                {activeClipperTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#3DFFA2" }} />}
+              </button>
+            ))}
+          </div>
+
+          {activeClipperTab === "overview" && <>
           {/* Stats bar */}
           {(() => {
             const statItems = [
@@ -386,7 +422,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
             {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={160}>
+              <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <defs>
                     <linearGradient id="clipperViewGrad" x1="0" y1="0" x2="0" y2="1">
@@ -398,13 +434,22 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                   <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: string) => fmtDate(v)} />
                   <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
                   <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#3DFFA2" }} />
-                  <Area type="linear" dataKey="views" stroke="#3DFFA2" strokeWidth={2} fill="url(#clipperViewGrad)"
+                  {timePeriod !== "all" && (
+                    <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
+                      strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
+                  )}
+                  <Area name="Views" type="linear" dataKey="views" stroke="#3DFFA2" strokeWidth={2} fill="url(#clipperViewGrad)"
                     dot={{ fill: "#3DFFA2", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DFFA2", strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <p className="text-sm py-8 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
             )}
+          </div>
+
+          {/* Platform Stats */}
+          <div className="mb-6">
+            <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
           </div>
 
           {/* Accounts + Submit */}
@@ -617,6 +662,16 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
               </div>
             </div>
           </div>
+          </>}
+
+          {activeClipperTab === "platform-stats" && (
+            <div>
+              <div className="mb-6">
+                <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+              </div>
+              <PlatformBreakdownTable viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -362,6 +362,10 @@ export default function LoginPage() {
                 </div>
               </button>
             ))}
+            <p className="text-center text-xs pt-1" style={{ color: "#8A93A6" }}>
+              New clipper?{" "}
+              <Link href="/signup" style={{ color: "#3DFFA2" }}>Create an account</Link>
+            </p>
           </div>
         )}
 

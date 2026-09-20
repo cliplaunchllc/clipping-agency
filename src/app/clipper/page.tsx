@@ -9,7 +9,7 @@ export default async function ClipperPage() {
   if (session.user.status === "pending") redirect("/clipper/pending");
 
   const userId = session.user.id;
-  const sessionClientId = session.user.clientId!;
+  const sessionClientId = session.user.clientId;
 
   const profile = await prisma.clipperProfile.findUnique({
     where: { userId },
@@ -23,6 +23,29 @@ export default async function ClipperPage() {
   });
 
   if (!profile) redirect("/login");
+
+  // No client assigned yet — show waiting state
+  if (!sessionClientId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
+        <div className="text-center max-w-md px-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
+            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="#3DFFA2" strokeWidth="1.5"/>
+              <path d="M12 7v5l3 3" stroke="#3DFFA2" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold mb-3" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+            Waiting for Assignment
+          </h1>
+          <p className="text-sm leading-relaxed" style={{ color: "#8A93A6" }}>
+            Your account is active. The agency will assign you to a client campaign shortly — check back soon.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // All distinct clientIds this clipper has clips for, plus their session clientId
   const clipClientIds = [...new Set(profile.clips.map((c) => c.clientId))];
@@ -100,7 +123,7 @@ export default async function ClipperPage() {
     <ClipperDashboard
       userName={session.user.name ?? "Clipper"}
       clients={serializedClients}
-      defaultClientId={sessionClientId}
+      defaultClientId={sessionClientId!}
       subAccounts={serializedSubs}
       clips={serializedClips}
       leaderboardByClient={leaderboardByClient}
