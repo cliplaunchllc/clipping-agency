@@ -2,10 +2,10 @@
 
 export const PLATFORM_COLORS: Record<string, string> = {
   tiktok: "#FF3B3B",
-  instagram: "#FF6060",
+  instagram: "#FF8800",
   youtube: "#CC1A1A",
-  twitter: "#8A93A6",
-  other: "#5C6370",
+  twitter: "#5B9BD5",
+  other: "#6B7280",
 };
 
 export const PLATFORM_LABELS: Record<string, string> = {
@@ -17,25 +17,50 @@ export const PLATFORM_LABELS: Record<string, string> = {
 };
 
 export function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number }) {
+  const r = Math.round(size * 0.25);
+
   if (platform === "tiktok") return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF3B3B">
-      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.96a8.27 8.27 0 004.84 1.54V7.06a4.85 4.85 0 01-1.07-.37z"/>
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="7" fill="#000000" />
+      <path fill="white" d="M22.5 8.5c0 2.5 1.8 4.5 4.5 4.8v3.5c-1.6 0-3.1-.5-4.5-1.4v6.4c0 3.6-2.9 6.5-6.5 6.5S9.5 25.4 9.5 21.8s2.9-6.5 6.5-6.5c.4 0 .7 0 1 .1v3.6c-.3-.1-.7-.1-1-.1-1.7 0-3 1.3-3 3s1.3 3 3 3 3-1.3 3-3V5h3.5c0 1.9 1.5 3.4 3.5 3.5z" />
     </svg>
   );
+
   if (platform === "instagram") return (
-    <svg width={size} height={size} viewBox="0 0 24 24">
-      <path fill="#FF6060" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <defs>
+        <radialGradient id="ig-grad" cx="30%" cy="107%" r="150%">
+          <stop offset="0%" stopColor="#fdf497" />
+          <stop offset="20%" stopColor="#fd5949" />
+          <stop offset="55%" stopColor="#d6249f" />
+          <stop offset="90%" stopColor="#285AEB" />
+        </radialGradient>
+      </defs>
+      <rect width="32" height="32" rx="7" fill="url(#ig-grad)" />
+      <rect x="8" y="8" width="16" height="16" rx="4.5" fill="none" stroke="white" strokeWidth="2" />
+      <circle cx="16" cy="16" r="4" fill="none" stroke="white" strokeWidth="2" />
+      <circle cx="21.5" cy="10.5" r="1.3" fill="white" />
     </svg>
   );
+
   if (platform === "youtube") return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#CC1A1A">
-      <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="7" fill="#FF0000" />
+      <path fill="white" d="M22.8 11.6a2.2 2.2 0 00-1.5-1.5C20 9.7 16 9.7 16 9.7s-4 0-5.3.4a2.2 2.2 0 00-1.5 1.5C8.8 12.9 8.8 16 8.8 16s0 3.1.4 4.4a2.2 2.2 0 001.5 1.5c1.3.4 5.3.4 5.3.4s4 0 5.3-.4a2.2 2.2 0 001.5-1.5c.4-1.3.4-4.4.4-4.4s0-3.1-.4-4.4zM14.2 18.5v-5l4.6 2.5-4.6 2.5z" />
     </svg>
   );
+
   if (platform === "twitter") return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#8A93A6">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="7" fill="#1A1A2E" />
+      <path fill="#E2E8F0" d="M22 9h-2.8l-3.6 4.1L12.2 9H7l5.8 7.7L7.2 23H10l3.9-4.4 3.5 4.4H23l-6-8 4.9-6z" />
     </svg>
   );
-  return <span style={{ fontSize: size * 0.75, color: "#8A93A6" }}>◆</span>;
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx={r} fill="#1E2030" />
+      <text x="16" y="21" textAnchor="middle" fill="#6B7280" fontSize="14" fontWeight="bold">?</text>
+    </svg>
+  );
 }

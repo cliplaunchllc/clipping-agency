@@ -98,6 +98,7 @@ export default async function AgencyPage() {
     name: c.name,
     status: c.status,
     logoUrl: c.logoUrl ?? null,
+    clipsPerDay: c.clipsPerDay ?? null,
   }));
 
   return (

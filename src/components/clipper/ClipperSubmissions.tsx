@@ -11,10 +11,10 @@ function fmt(n: number) {
 
 const PLATFORM_COLORS: Record<string, string> = {
   tiktok: "#FF3B3B",
-  instagram: "#FF6060",
+  instagram: "#FF8800",
   youtube: "#CC1A1A",
-  twitter: "#8A93A6",
-  other: "#5C6370",
+  twitter: "#5B9BD5",
+  other: "#6B7280",
 };
 
 interface Clip {

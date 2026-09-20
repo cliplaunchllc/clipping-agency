@@ -57,7 +57,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  tiktok: "#FF3B3B", instagram: "#FF6060", youtube: "#CC1A1A", twitter: "#8A93A6", other: "#5C6370",
+  tiktok: "#FF3B3B", instagram: "#FF8800", youtube: "#CC1A1A", twitter: "#5B9BD5", other: "#6B7280",
 };
 
 function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number }) {
@@ -380,33 +380,28 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             ];
             return (
               <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="grid grid-cols-3">
+                <div className="grid grid-cols-6">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
-                    const borderRight = (i % 3 !== 2) ? "1px solid rgba(255,255,255,0.06)" : "none";
-                    const borderBottom = i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none";
+                    const borderRight = i < 5 ? "1px solid rgba(255,255,255,0.06)" : "none";
                     return (
-                      <div key={item.label} className="flex items-center gap-4 px-6 py-6"
-                        style={{ borderRight, borderBottom }}>
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      <div key={item.label} className="flex flex-col items-center justify-center gap-1.5 px-4 py-4"
+                        style={{ borderRight }}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: `${item.color}18` }}>
-                          <Icon size={18} color={item.color} />
+                          <Icon size={14} color={item.color} />
                         </div>
-                        <div>
-                          <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{item.label}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-                              {item.value}
-                            </span>
-                            {item.change.ok && (
-                              <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                                style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
-                                {item.change.pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                                {item.change.str}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                        <p className="text-xs" style={{ color: "#8A93A6" }}>{item.label}</p>
+                        <span className="text-lg font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                          {item.value}
+                        </span>
+                        {item.change.ok && (
+                          <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
+                            style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                            {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                            {item.change.str}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -423,8 +418,9 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <defs>
                     <linearGradient id="clipperViewGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0.02} />
+                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.55} />
+                      <stop offset="60%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />

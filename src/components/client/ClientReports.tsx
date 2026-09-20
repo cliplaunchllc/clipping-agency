@@ -11,7 +11,7 @@ function fmt(n: number) {
   return n.toString();
 }
 
-const PLATFORM_COLORS: Record<string, string> = { tiktok: "#FF3B3B", instagram: "#FF6060", youtube: "#CC1A1A", twitter: "#8A93A6", other: "#5C6370" };
+const PLATFORM_COLORS: Record<string, string> = { tiktok: "#FF3B3B", instagram: "#FF8800", youtube: "#CC1A1A", twitter: "#5B9BD5", other: "#6B7280" };
 
 export default function ClientReports({ submissions, clientName }: { submissions: AnyRecord[]; clientName: string }) {
   const totalViews = submissions.reduce((acc, s) => acc + (s.snapshots[0]?.views ?? 0), 0);

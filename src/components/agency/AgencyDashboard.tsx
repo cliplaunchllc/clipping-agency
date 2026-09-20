@@ -219,6 +219,29 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
   const topClippers = Object.values(clipperMap).sort((a, b) => b.views - a.views).slice(0, 5);
   const topClips = [...filteredClips].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
 
+  // Clipper page breakout (MTD)
+  const now = new Date();
+  const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const mtdClips = allClips.filter((c) => new Date(c.submittedAt as string) >= mtdStart);
+  const BREAKOUT_PLATFORMS = ["tiktok", "instagram", "youtube"];
+  const clipperBreakout = clippers
+    .filter((c) => c.status === "active" && (selectedClientId === "all" || c.clientId === selectedClientId))
+    .map((clipper) => {
+      const myMtd = mtdClips.filter((c) => c.clipper?.name === clipper.name);
+      const byPlatform: Record<string, number> = {};
+      myMtd.forEach((c) => {
+        const p = (c.subAccount?.platform ?? "other") as string;
+        byPlatform[p] = (byPlatform[p] ?? 0) + 1;
+      });
+      const client = allClients.find((cl) => cl.id === clipper.clientId);
+      const monthlyTarget = (client as AnyRecord)?.clipsPerDay
+        ? Math.round((client as AnyRecord).clipsPerDay * daysInMonth)
+        : null;
+      return { ...clipper, byPlatform, mtdTotal: myMtd.length, monthlyTarget, clientName: (clipper as AnyRecord).client?.name ?? null } as AnyRecord;
+    })
+    .sort((a, b) => (b.mtdTotal as number) - (a.mtdTotal as number));
+
   const statItems = [
     { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
     { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
@@ -348,38 +371,33 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
             {/* ── Stats bar ───────────────────────────────────────────── */}
             <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="grid grid-cols-3">
+              <div className="grid grid-cols-6">
                 {statItems.map((item, i) => {
                   const Icon = item.icon;
-                  const borderRight = (i % 3 !== 2) ? "1px solid rgba(255,255,255,0.06)" : "none";
-                  const borderBottom = i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none";
+                  const borderRight = i < 5 ? "1px solid rgba(255,255,255,0.06)" : "none";
                   return (
-                    <div key={item.label} className="flex items-center gap-4 px-6 py-6"
-                      style={{ borderRight, borderBottom }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    <div key={item.label} className="flex flex-col items-center justify-center gap-1.5 px-4 py-4"
+                      style={{ borderRight }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: `${item.color}18` }}>
-                        <Icon size={18} color={item.color} />
+                        <Icon size={14} color={item.color} />
                       </div>
-                      <div>
-                        <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{item.label}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-                            {item.value}
-                          </span>
-                          {item.change.ok && (
-                            <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                              style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
-                              {item.change.pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                              {item.change.str}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <p className="text-xs" style={{ color: "#8A93A6" }}>{item.label}</p>
+                      <span className="text-lg font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                        {item.value}
+                      </span>
+                      {item.change.ok && (
+                        <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
+                          style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                          {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                          {item.change.str}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
-              <div className="px-6 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="px-6 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                 <p className="text-xs" style={{ color: "#8A93A6" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
               </div>
             </div>
@@ -394,8 +412,9 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="agGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0.02} />
+                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.55} />
+                        <stop offset="60%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -443,16 +462,86 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                     <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
                       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
+                        style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
                         {((c.name as string) || "?")[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{(c.name as string) ?? (c.email as string)}</p>
-                        <p className="text-xs" style={{ color: "#3DFFA2" }}>{fmt(c.periodViews)} views</p>
+                        {c.client?.name && (
+                          <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{c.client.name as string}</p>
+                        )}
+                        <p className="text-xs" style={{ color: "#FF3B3B" }}>{fmt(c.periodViews)} views</p>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── Clipper Page Breakout ───────────────────────────────── */}
+            {clipperBreakout.length > 0 && (
+              <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2">
+                    <BarChart2 size={14} color="#FF3B3B" />
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
+                  </div>
+                </div>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clipper</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Client</th>
+                      {BREAKOUT_PLATFORMS.map((p) => (
+                        <th key={p} className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: PLATFORM_COLORS[p] ?? "#8A93A6" }}>
+                          {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Total MTD</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Target</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clipperBreakout.map((c, i) => {
+                      const pct = c.monthlyTarget ? Math.min(100, Math.round((c.mtdTotal / c.monthlyTarget) * 100)) : null;
+                      const color = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#8A93A6";
+                      return (
+                        <tr key={c.id as string} style={{ borderBottom: i < clipperBreakout.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
+                                {((c.name as string) || "?")[0].toUpperCase()}
+                              </div>
+                              <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name as string}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3 text-xs" style={{ color: "#8A93A6" }}>{(c.clientName as string) ?? "—"}</td>
+                          {BREAKOUT_PLATFORMS.map((p) => (
+                            <td key={p} className="px-4 py-3 text-center text-sm font-medium" style={{ color: (c.byPlatform as Record<string,number>)[p] > 0 ? (PLATFORM_COLORS[p] ?? "#F5F6FA") : "#5C6370" }}>
+                              {(c.byPlatform as Record<string,number>)[p] ?? 0}
+                            </td>
+                          ))}
+                          <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "#F5F6FA" }}>{c.mtdTotal as number}</td>
+                          <td className="px-4 py-3 text-center text-xs" style={{ color: "#8A93A6" }}>{c.monthlyTarget ?? "—"}</td>
+                          <td className="px-4 py-3">
+                            {pct !== null ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                                </div>
+                                <span className="text-xs font-semibold w-8 text-right flex-shrink-0" style={{ color }}>{pct}%</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs" style={{ color: "#5C6370" }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
 
