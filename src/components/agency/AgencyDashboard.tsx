@@ -417,6 +417,45 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               )}
             </div>
 
+            {/* ── Platform Stats ──────────────────────────────────────── */}
+            <div className="mb-6">
+              <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
+            </div>
+
+            {/* Active Clippers */}
+            {activeClippersDisplay.length > 0 && (
+              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <UserCheck size={14} color="#3DFFA2" />
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+                      {activeClippersDisplay.length}
+                    </span>
+                  </div>
+                  <button onClick={() => setActiveTab("clippers")} className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ color: "#3DFFA2", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
+                    Manage
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  {activeClippersDisplay.map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
+                        {((c.name as string) || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{(c.name as string) ?? (c.email as string)}</p>
+                        <p className="text-xs" style={{ color: "#3DFFA2" }}>{fmt(c.periodViews)} views</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ── Top Clippers + Top Clips ────────────────────────────── */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -477,45 +516,6 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   {topClips.length === 0 && <p className="text-sm" style={{ color: "#8A93A6" }}>No clips in this period</p>}
                 </div>
               </div>
-            </div>
-
-            {/* Active Clippers */}
-            {activeClippersDisplay.length > 0 && (
-              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <UserCheck size={14} color="#3DFFA2" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
-                      {activeClippersDisplay.length}
-                    </span>
-                  </div>
-                  <button onClick={() => setActiveTab("clippers")} className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{ color: "#3DFFA2", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
-                    Manage
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {activeClippersDisplay.map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
-                        {((c.name as string) || "?")[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{(c.name as string) ?? (c.email as string)}</p>
-                        <p className="text-xs" style={{ color: "#3DFFA2" }}>{fmt(c.periodViews)} views</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Platform Stats */}
-            <div className="mb-6">
-              <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
             </div>
 
             {/* ── Active Clients ───────────────────────────────────────── */}

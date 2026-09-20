@@ -390,6 +390,39 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
               </div>
 
+              {/* Active Clippers */}
+              {client.clippers.length > 0 && (
+                <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3DFFA2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+                      {client.clippers.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {client.clippers.map((cl) => (
+                      <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
+                          {(cl.name || "?")[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{cl.name ?? "Clipper"}</p>
+                          <p className="text-xs" style={{ color: "#8A93A6" }}>{cl.clipCount} clips · {fmt(cl.totalViews)} views</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Clippers + Top Clips */}
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="rounded-2xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -467,39 +500,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   </div>
                 </div>
               </div>
-
-              {/* Active Clippers */}
-              {client.clippers.length > 0 && (
-                <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3DFFA2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
-                      {client.clippers.length}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {client.clippers.map((cl) => (
-                      <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
-                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                          style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>
-                          {(cl.name || "?")[0].toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{cl.name ?? "Clipper"}</p>
-                          <p className="text-xs" style={{ color: "#8A93A6" }}>{cl.clipCount} clips · {fmt(cl.totalViews)} views</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Top Clips chart */}
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
