@@ -130,7 +130,7 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8">
+    <div className="px-8 py-8">
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
@@ -205,12 +205,12 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
         </div>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <table className="w-full">
+      <div className="rounded-2xl overflow-x-auto" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <table className="w-full min-w-max">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               {["Platform", "Preview", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link", "Refresh"].map((h) => (
-                <th key={h} className="px-5 py-4 text-left text-xs font-medium uppercase tracking-wider"
+                <th key={h} className="px-4 py-4 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
                   style={{ color: "#8A93A6" }}>{h}</th>
               ))}
             </tr>
@@ -219,13 +219,13 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
             {clips.map((clip, i) => (
               <tr key={clip.id}
                 style={{ borderBottom: i < clips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   <span className="text-xs font-semibold capitalize"
                     style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
                     {clip.platform}
                   </span>
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   {clip.thumbnailUrl ? (
                     <a href={clip.url} target="_blank" rel="noopener noreferrer">
                       <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover"
@@ -235,24 +235,24 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
                     <span style={{ color: "#8A93A6", fontSize: 11 }}>—</span>
                   )}
                 </td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
                   @{clip.handle}
                   {clip.title && <p className="text-xs truncate mt-0.5" style={{ color: "#F5F6FA", maxWidth: 120 }}>{clip.title}</p>}
                 </td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{clip.clientName || "—"}</td>
-                <td className="px-5 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
-                <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{clip.clientName || "—"}</td>
+                <td className="px-4 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
                   {new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   <a href={clip.url} target="_blank" rel="noopener noreferrer">
                     <ExternalLink size={12} color="#3DFFA2" />
                   </a>
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   <button onClick={() => handleRefresh(clip.id)} disabled={refreshing === clip.id} title="Refresh stats from platform">
                     <RotateCw size={12} color="#8A93A6" className={refreshing === clip.id ? "animate-spin" : ""} />
                   </button>

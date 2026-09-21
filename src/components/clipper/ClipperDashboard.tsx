@@ -97,7 +97,7 @@ function detectPlatform(url: string): string {
 interface Props {
   userName: string;
   clientName?: string; // legacy / preview mode
-  clients?: { id: string; name: string; status: string }[];
+  clients?: { id: string; name: string; status: string; clipsPerDay?: number | null }[];
   defaultClientId?: string;
   subAccounts: AnyRecord[];
   clips: AnyRecord[];
@@ -444,6 +444,86 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           <div className="mb-6">
             <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
           </div>
+
+          {/* MTD Goal Breakdown */}
+          {(() => {
+            const now = new Date();
+            const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const client = clients?.find((c) => c.id === selectedClientId);
+            const monthlyTarget = client?.clipsPerDay ? Math.round(client.clipsPerDay * daysInMonth) : null;
+            const BREAKOUT_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
+            const mtdAll = allClips.filter((c) => c.clientId === selectedClientId && new Date(c.submittedAt as string) >= mtdStart);
+            const byPlatform: Record<string, number> = {};
+            mtdAll.forEach((c) => {
+              const p = (c.subAccount?.platform ?? "other") as string;
+              byPlatform[p] = (byPlatform[p] ?? 0) + 1;
+            });
+            const mtdTotal = mtdAll.length;
+            const pct = monthlyTarget ? Math.min(100, Math.round((mtdTotal / monthlyTarget) * 100)) : null;
+            const progressColor = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#FF3B3B";
+            return (
+              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <BarChart2 size={14} color="#FF3B3B" />
+                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                      Monthly Goal — {now.toLocaleString("en-US", { month: "long" })}
+                    </h2>
+                  </div>
+                  {monthlyTarget && (
+                    <span className="text-xs" style={{ color: "#8A93A6" }}>Target: {monthlyTarget} clips</span>
+                  )}
+                </div>
+
+                {/* Overall progress */}
+                <div className="mb-5">
+                  <div className="flex items-end justify-between mb-2">
+                    <div>
+                      <span className="text-3xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{mtdTotal}</span>
+                      {monthlyTarget && <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {monthlyTarget} clips</span>}
+                    </div>
+                    {pct !== null && (
+                      <span className="text-lg font-bold" style={{ color: progressColor }}>{pct}%</span>
+                    )}
+                  </div>
+                  <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <div className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct ?? 0}%`, background: progressColor, boxShadow: `0 0 8px ${progressColor}60` }} />
+                  </div>
+                  {monthlyTarget && (
+                    <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                      {mtdTotal >= monthlyTarget ? "Goal reached!" : `${monthlyTarget - mtdTotal} more clips to reach goal`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Per-platform breakdown */}
+                <div className="grid grid-cols-3 gap-3">
+                  {BREAKOUT_PLATFORMS.map((p) => {
+                    const count = byPlatform[p] ?? 0;
+                    const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+                    const platformPct = mtdTotal > 0 ? Math.round((count / mtdTotal) * 100) : 0;
+                    return (
+                      <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                          <span className="text-xs font-medium" style={{ color }}>
+                            {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{count}</p>
+                        <p className="text-xs" style={{ color: "#8A93A6" }}>{platformPct}% of total</p>
+                        <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${platformPct}%`, background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Accounts + Submit */}
           <div className="grid grid-cols-2 gap-6 mb-6">
