@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/shared/Sidebar";
 import CampaignReporting from "@/components/agency/CampaignReporting";
 
+export const dynamic = "force-dynamic";
+
 export default async function CampaignReportingPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import PublicClientReports from "@/components/shared/PublicClientReports";
 
+export const dynamic = "force-dynamic";
+
 export default async function ShareReportsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
