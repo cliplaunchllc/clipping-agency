@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import {
   Plus, X, Edit2, Trash2, Eye, EyeOff, TrendingUp, TrendingDown,
   Minus, BarChart2, ChevronDown, Link2, Check, ChevronLeft, ChevronRight,
-  UserPlus,
+  UserPlus, DollarSign, Target, Wallet, CheckCircle, Scissors,
 } from "lucide-react";
+import { PieChart, Pie, Cell } from "recharts";
+import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "@/components/shared/PlatformIcon";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -341,86 +343,147 @@ function NewClientModal({ onCreated, onClose }: {
   );
 }
 
-// ─── Report Preview ───────────────────────────────────────────────────────────
+// ─── Donut + Report Preview ───────────────────────────────────────────────────
+
+const DONUT_GRADIENTS: Record<string, [string, string]> = {
+  tiktok:    ["#FF7070", "#AA0000"],
+  instagram: ["#FFCC55", "#CC3300"],
+  youtube:   ["#FF6655", "#880000"],
+  twitter:   ["#90C8F0", "#2A6DB0"],
+  other:     ["#9CA3AF", "#4B5563"],
+};
+
+function ReportDonut({ report }: { report: Report }) {
+  const platformData: Record<string, number> = {
+    tiktok: report.tiktokViews,
+    instagram: report.instagramViews,
+    youtube: report.youtubeViews,
+    twitter: report.twitterViews,
+  };
+
+  const platforms = (Object.keys(platformData) as string[])
+    .filter((p) => platformData[p] > 0)
+    .sort((a, b) => platformData[b] - platformData[a]);
+
+  const total = platforms.reduce((a, p) => a + platformData[p], 0);
+  if (total === 0) return null;
+
+  const pieData = platforms.map((p) => ({
+    name: p,
+    value: platformData[p],
+    gradId: `ag-dg-${report.id}-${p}`,
+    grad: DONUT_GRADIENTS[p] ?? (["#9CA3AF", "#4B5563"] as [string, string]),
+    color: PLATFORM_COLORS[p] ?? "#8A93A6",
+  }));
+  const emptySlice = [{
+    name: "empty", value: 1, color: "rgba(255,255,255,0.07)",
+    gradId: `ag-dg-${report.id}-empty`,
+    grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string],
+  }];
+
+  return (
+    <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "#8A93A6" }}>Platform Breakdown</p>
+      <div className="flex items-center gap-5">
+        <div className="relative flex-shrink-0" style={{ width: 110, height: 110 }}>
+          <PieChart width={110} height={110}>
+            <defs>
+              {(pieData.length > 0 ? pieData : emptySlice).map((e) => (
+                <linearGradient key={e.gradId} id={e.gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={e.grad[0]} stopOpacity={1} />
+                  <stop offset="100%" stopColor={e.grad[1]} stopOpacity={1} />
+                </linearGradient>
+              ))}
+            </defs>
+            <Pie
+              data={pieData.length > 0 ? pieData : emptySlice}
+              cx={50} cy={50}
+              innerRadius={32} outerRadius={48}
+              dataKey="value"
+              paddingAngle={pieData.length > 1 ? 2 : 0}
+              stroke="none"
+              startAngle={90} endAngle={-270}
+            >
+              {(pieData.length > 0 ? pieData : emptySlice).map((e, i) => (
+                <Cell key={i} fill={`url(#${e.gradId})`} />
+              ))}
+            </Pie>
+          </PieChart>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-xs font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(total)}</span>
+            <span className="text-xs mt-0.5" style={{ color: "#8A93A6", fontSize: "0.65rem" }}>views</span>
+          </div>
+        </div>
+        <div className="flex-1 space-y-2 min-w-0">
+          {platforms.map((p) => {
+            const val = platformData[p];
+            const pct = Math.round((val / total) * 100);
+            const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+            return (
+              <div key={p}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <PlatformIcon platform={p} size={11} />
+                    <span className="text-xs truncate" style={{ color: "#F5F6FA" }}>{PLATFORM_LABELS[p] ?? p}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-xs" style={{ color: "#8A93A6" }}>{fmt(val)}</span>
+                    <span className="text-xs font-semibold w-7 text-right" style={{ color }}>{pct}%</span>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ReportPreview({ report, prev }: { report: Report; prev: Report | null }) {
   const approvalRate = report.clipsSubmitted > 0 ? (report.clipsApproved / report.clipsSubmitted) * 100 : null;
   const prevApprovalRate = prev && prev.clipsSubmitted > 0 ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
 
-  const platforms = [
-    { label: "TikTok", key: "tiktokViews" as const, color: "#FF3B3B" },
-    { label: "Instagram", key: "instagramViews" as const, color: "#FF8800" },
-    { label: "YouTube", key: "youtubeViews" as const, color: "#CC1A1A" },
-    { label: "X", key: "twitterViews" as const, color: "#5B9BD5" },
-  ];
-
-  const cards = [
-    { label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
-    { label: "Paid Out This Week", value: fmtCurrency(report.paidOut), curr: report.paidOut, prev: prev?.paidOut ?? null, lastWeek: prev ? fmtCurrency(prev.paidOut) : null },
-    { label: "Effective CPM This Week", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
-    { label: "Budget Remaining", value: report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: report.budgetRemaining ?? 0, prev: prev?.budgetRemaining ?? null, lastWeek: prev?.budgetRemaining != null ? fmtCurrency(prev.budgetRemaining) : null, grey: true },
-    { label: "Approval Rate This Week", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
-    { label: "Clips This Week", value: `${report.clipsApproved} / ${report.clipsSubmitted}`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} / ${prev.clipsSubmitted}` : null, sublabel: "approved / submitted" },
+  const statCards = [
+    { icon: <Eye size={12} color="#3DFFA2" />, label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
+    { icon: <DollarSign size={12} color="#3DFFA2" />, label: "Paid Out", value: fmtCurrency(report.paidOut), curr: report.paidOut, prev: prev?.paidOut ?? null, lastWeek: prev ? fmtCurrency(prev.paidOut) : null },
+    { icon: <Target size={12} color="#FF3B3B" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
+    { icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: report.budgetRemaining ?? 0, prev: prev?.budgetRemaining ?? null, lastWeek: prev?.budgetRemaining != null ? fmtCurrency(prev.budgetRemaining) : null, grey: true },
+    { icon: <CheckCircle size={12} color="#3DFFA2" />, label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
+    { icon: <Scissors size={12} color="#FF3B3B" />, label: "Clips", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
   ];
 
   return (
     <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
       <p className="text-xs font-medium mb-5" style={{ color: "#8A93A6" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {cards.map((c) => (
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {statCards.map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "#8A93A6" }}>{c.label}</p>
-            <p className="text-xl font-bold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{c.value}</p>
-            {c.sublabel && <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{c.sublabel}</p>}
+            <div className="flex items-center gap-2 mb-2">
+              {c.icon}
+              <p className="text-xs font-medium leading-tight" style={{ color: "#8A93A6" }}>{c.label}</p>
+            </div>
+            <p className="text-xl font-bold mb-1 leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{c.value}</p>
+            {c.sublabel && <p className="text-xs mb-1.5" style={{ color: "#8A93A6" }}>{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
             {c.lastWeek && <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Last week: {c.lastWeek}</p>}
           </div>
         ))}
       </div>
-      {report.totalViews > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#05070D" }}>
-            <p className="text-xs font-semibold" style={{ color: "#8A93A6" }}>PLATFORM BREAKDOWN</p>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                {["Platform", "Views This Week", "% of Total", "vs. Last Week"].map((h) => (
-                  <th key={h} className="px-4 py-2 text-left text-xs" style={{ color: "#8A93A6" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {platforms.filter((p) => report[p.key] > 0).map((p) => {
-                const views = report[p.key];
-                const prevViews = prev ? prev[p.key] : null;
-                const pctOfTotal = ((views / report.totalViews) * 100).toFixed(1);
-                const { pct, positive, neutral } = wow(views, prevViews);
-                return (
-                  <tr key={p.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                    <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: p.color }}>{p.label}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "#F5F6FA" }}>{fmt(views)}</td>
-                    <td className="px-4 py-2.5 text-xs" style={{ color: "#8A93A6" }}>{pctOfTotal}%</td>
-                    <td className="px-4 py-2.5">
-                      {prevViews !== null ? (
-                        <span className="text-xs flex items-center gap-1" style={{ color: neutral ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B" }}>
-                          <TrendIcon positive={positive} neutral={neutral} />{pct}
-                        </span>
-                      ) : (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>First week</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+      {/* Donut */}
+      <div className="mb-4">
+        <ReportDonut report={report} />
+      </div>
 
       {/* Narrative */}
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
           {report.weeklySummary && (
             <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#8A93A6" }}>Weekly Summary</p>
@@ -430,20 +493,20 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
           <div className="grid grid-cols-2 gap-3">
             {report.whatsWorking && (
               <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#3DFFA2" }}>What's Working</p>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#3DFFA2" }}>What&apos;s Working</p>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsWorking}</p>
               </div>
             )}
             {report.whatsNotWorking && (
               <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF3B3B" }}>What's Not Working</p>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF3B3B" }}>What&apos;s Not Working</p>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsNotWorking}</p>
               </div>
             )}
           </div>
           {report.nextWeekFocus && (
             <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.15)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF8800" }}>Next Week's Focus</p>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF8800" }}>Next Week&apos;s Focus</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.nextWeekFocus}</p>
             </div>
           )}
@@ -664,7 +727,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   function prevReport(report: Report): Report | null {
     const clientReports = reports
-      .filter((r) => r.clientId === report.clientId && r.published && r.id !== report.id)
+      .filter((r) => r.clientId === report.clientId && r.id !== report.id)
       .sort((a, b) => new Date(b.weekEndDate).getTime() - new Date(a.weekEndDate).getTime());
     return clientReports.find(r => new Date(r.weekEndDate) < new Date(report.weekEndDate)) ?? null;
   }
