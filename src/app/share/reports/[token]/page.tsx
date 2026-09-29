@@ -7,18 +7,21 @@ export const dynamic = "force-dynamic";
 export default async function ShareReportsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const client = await prisma.client.findUnique({
-    where: { shareToken: token },
-    select: {
-      id: true,
-      name: true,
-      logoUrl: true,
-      campaignReports: {
-        where: { published: true },
-        orderBy: { weekEndDate: "desc" },
+  const [client, agencyLogoSetting] = await Promise.all([
+    prisma.client.findUnique({
+      where: { shareToken: token },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        campaignReports: {
+          where: { published: true },
+          orderBy: { weekEndDate: "desc" },
+        },
       },
-    },
-  });
+    }),
+    prisma.siteSetting.findUnique({ where: { key: "agency_logo" } }),
+  ]);
 
   if (!client) notFound();
 
@@ -48,6 +51,7 @@ export default async function ShareReportsPage({ params }: { params: Promise<{ t
     <PublicClientReports
       clientName={client.name}
       logoUrl={client.logoUrl ?? null}
+      agencyLogoUrl={agencyLogoSetting?.value ?? null}
       reports={reports}
     />
   );

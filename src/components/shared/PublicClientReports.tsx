@@ -430,10 +430,11 @@ function CopyLinkButton() {
 interface Props {
   clientName: string;
   logoUrl: string | null;
+  agencyLogoUrl: string | null;
   reports: Report[];
 }
 
-export default function PublicClientReports({ clientName, logoUrl, reports }: Props) {
+export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl, reports }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     new Set(reports.length > 0 ? [reports[0].id] : [])
   );
@@ -460,8 +461,9 @@ export default function PublicClientReports({ clientName, logoUrl, reports }: Pr
       >
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            {logoUrl ? (
-              <img src={logoUrl} alt={clientName} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+            {/* Agency logo */}
+            {agencyLogoUrl ? (
+              <img src={agencyLogoUrl} alt="Agency" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
             ) : (
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -475,7 +477,13 @@ export default function PublicClientReports({ clientName, logoUrl, reports }: Pr
               <p className="text-xs" style={{ color: "#8A93A6" }}>Campaign Reports</p>
             </div>
           </div>
-          <CopyLinkButton />
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Client logo (right side) */}
+            {logoUrl && (
+              <img src={logoUrl} alt={clientName} className="w-7 h-7 rounded-lg object-cover opacity-70" />
+            )}
+            <CopyLinkButton />
+          </div>
         </div>
       </div>
 
