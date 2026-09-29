@@ -10,7 +10,7 @@ export default async function CampaignReportingPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [clients, reports] = await Promise.all([
+  const [clients, reports, ongoingReports] = await Promise.all([
     prisma.client.findMany({
       where: { status: "active" },
       select: { id: true, name: true, logoUrl: true },
@@ -19,6 +19,10 @@ export default async function CampaignReportingPage() {
     prisma.campaignReport.findMany({
       include: { client: { select: { id: true, name: true, logoUrl: true } } },
       orderBy: [{ clientId: "asc" }, { weekEndDate: "desc" }],
+    }),
+    prisma.ongoingReport.findMany({
+      include: { client: { select: { id: true, name: true, logoUrl: true } } },
+      orderBy: [{ clientId: "asc" }, { date: "desc" }],
     }),
   ]);
 
@@ -49,6 +53,24 @@ export default async function CampaignReportingPage() {
     updatedAt: r.updatedAt.toISOString(),
   }));
 
+  const serializedOngoing = ongoingReports.map((r) => ({
+    id: r.id,
+    clientId: r.clientId,
+    client: r.client,
+    date: r.date.toISOString(),
+    campaignName: r.campaignName,
+    totalSubmissions: r.totalSubmissions,
+    pending: r.pending,
+    approved: r.approved,
+    rejected: r.rejected,
+    mainTrend: r.mainTrend,
+    clipperFeedback: r.clipperFeedback,
+    mainOptimization: r.mainOptimization,
+    status: r.status as "Strong" | "Normal" | "NeedsAttention",
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  }));
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
       <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
@@ -56,6 +78,7 @@ export default async function CampaignReportingPage() {
         <CampaignReporting
           clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null }))}
           initialReports={serializedReports}
+          initialOngoingReports={serializedOngoing}
         />
       </main>
     </div>

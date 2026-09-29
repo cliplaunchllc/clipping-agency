@@ -30,6 +30,12 @@ enum ClientStatus {
   archived
 }
 
+enum OngoingStatus {
+  Strong
+  Normal
+  NeedsAttention
+}
+
 model User {
   id                String     @id @default(cuid())
   email             String     @unique
@@ -101,6 +107,7 @@ model Client {
   links            ClientLink[]
   onboardingSteps  ClientOnboardingStep[]
   campaignReports  CampaignReport[]
+  ongoingReports   OngoingReport[]
 }
 
 model ClientLink {
@@ -178,6 +185,25 @@ model CampaignReport {
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model OngoingReport {
+  id               String        @id @default(cuid())
+  clientId         String
+  date             DateTime
+  campaignName     String        @default("")
+  totalSubmissions Int           @default(0)
+  pending          Int           @default(0)
+  approved         Int           @default(0)
+  rejected         Int           @default(0)
+  mainTrend        String?
+  clipperFeedback  String?
+  mainOptimization String?
+  status           OngoingStatus @default(Normal)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
