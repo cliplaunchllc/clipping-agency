@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Scissors, Settings, FileText,
+  LayoutDashboard, Users, Scissors, Settings, FileText, BarChart2,
 } from "lucide-react";
 
 const NAV_ITEMS = {
@@ -13,6 +13,7 @@ const NAV_ITEMS = {
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
     { label: "Clippers", href: "/agency/clippers", icon: Scissors },
+    { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
     { label: "Settings", href: "/agency/settings", icon: Settings },
   ],
   clipper: [
@@ -22,7 +23,6 @@ const NAV_ITEMS = {
   ],
   client: [
     { label: "Dashboard", href: "/client", icon: LayoutDashboard },
-    { label: "Reports", href: "/client/reports", icon: FileText },
     { label: "Settings", href: "/client/settings", icon: Settings },
   ],
 };

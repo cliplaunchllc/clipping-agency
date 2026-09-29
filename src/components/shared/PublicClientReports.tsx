@@ -152,7 +152,6 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
 
   return (
     <div>
-      {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
         {cards.map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -167,7 +166,6 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
         ))}
       </div>
 
-      {/* Platform breakdown */}
       {report.totalViews > 0 && (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: "#05070D" }}>
@@ -215,8 +213,16 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ClientReports({ reports, clientName }: { reports: Report[]; clientName: string }) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(reports.length > 0 ? [reports[0].id] : []));
+interface Props {
+  clientName: string;
+  logoUrl: string | null;
+  reports: Report[];
+}
+
+export default function PublicClientReports({ clientName, logoUrl, reports }: Props) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    new Set(reports.length > 0 ? [reports[0].id] : [])
+  );
 
   function toggleExpand(id: string) {
     setExpandedIds((s) => {
@@ -226,63 +232,73 @@ export default function ClientReports({ reports, clientName }: { reports: Report
     });
   }
 
-  // For WoW comparison: find the report immediately before the current one in the sorted list
   function prevReport(idx: number): Report | null {
     return idx < reports.length - 1 ? reports[idx + 1] : null;
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-8">
-      <h1 className="text-2xl font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
-        Weekly Reports
-      </h1>
-      <p className="text-sm mb-8" style={{ color: "#8A93A6" }}>{clientName}</p>
-
-      {reports.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl py-24"
-          style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          <BarChart2 size={36} style={{ color: "#a78bfa", opacity: 0.4 }} className="mb-3" />
-          <p className="text-sm" style={{ color: "#8A93A6" }}>No reports published yet.</p>
+    <div className="min-h-screen" style={{ background: "#05070D" }}>
+      {/* Header */}
+      <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", background: "#0B0E17" }}>
+        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center gap-3">
+          {logoUrl ? (
+            <img src={logoUrl} alt={clientName} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)" }}>
+              <BarChart2 size={14} color="#FF3B3B" />
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{clientName}</p>
+            <p className="text-xs" style={{ color: "#8A93A6" }}>Weekly Campaign Reports</p>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {reports.map((report, idx) => {
-            const expanded = expandedIds.has(report.id);
-            return (
-              <div key={report.id} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-                {/* Header row */}
-                <button
-                  className="w-full flex items-center justify-between px-5 py-4 text-left"
-                  onClick={() => toggleExpand(report.id)}
-                >
-                  <div>
-                    <p className="text-sm font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>
-                      {fmtWeek(report.weekStartDate, report.weekEndDate)}
-                    </p>
-                    <p className="text-xs" style={{ color: "#8A93A6" }}>
-                      {fmt(report.totalViews)} views · {fmtCurrency(report.paidOut)} paid out
-                    </p>
-                  </div>
-                  <div
-                    className="transition-transform"
-                    style={{ transform: expanded ? "rotate(180deg)" : "none", color: "#8A93A6" }}
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        {reports.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center rounded-2xl py-24"
+            style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <BarChart2 size={36} style={{ color: "#FF3B3B", opacity: 0.4 }} className="mb-3" />
+            <p className="text-sm" style={{ color: "#8A93A6" }}>No reports published yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reports.map((report, idx) => {
+              const expanded = expandedIds.has(report.id);
+              return (
+                <div key={report.id} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button
+                    className="w-full flex items-center justify-between px-5 py-4 text-left"
+                    onClick={() => toggleExpand(report.id)}
                   >
-                    <ChevronDown size={16} />
-                  </div>
-                </button>
+                    <div>
+                      <p className="text-sm font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>
+                        {fmtWeek(report.weekStartDate, report.weekEndDate)}
+                      </p>
+                      <p className="text-xs" style={{ color: "#8A93A6" }}>
+                        {fmt(report.totalViews)} views · {fmtCurrency(report.paidOut)} paid out
+                      </p>
+                    </div>
+                    <div className="transition-transform" style={{ transform: expanded ? "rotate(180deg)" : "none", color: "#8A93A6" }}>
+                      <ChevronDown size={16} />
+                    </div>
+                  </button>
 
-                {expanded && (
-                  <div className="px-5 pb-5">
-                    <ReportCard report={report} prev={prevReport(idx)} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  {expanded && (
+                    <div className="px-5 pb-5">
+                      <ReportCard report={report} prev={prevReport(idx)} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
