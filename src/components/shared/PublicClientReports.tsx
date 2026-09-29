@@ -312,7 +312,8 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               <Link2 size={13} color="#FF3B3B" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>Campaign Link</p>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>Live Campaign Tracker</p>
+              <p className="text-xs mb-1" style={{ color: "#C8CDD8" }}>View all clips, live stats, platform breakdown & real-time performance</p>
               <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{report.campaignLink}</p>
             </div>
           </div>
