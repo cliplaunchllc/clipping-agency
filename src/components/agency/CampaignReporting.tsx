@@ -5,6 +5,7 @@ import {
   Plus, X, Edit2, Trash2, Eye, EyeOff, TrendingUp, TrendingDown,
   Minus, BarChart2, ChevronDown, Link2, Check, ChevronLeft, ChevronRight,
   UserPlus, DollarSign, Target, Wallet, CheckCircle, Scissors,
+  Folder, FolderOpen,
 } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "@/components/shared/PlatformIcon";
@@ -715,6 +716,14 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
+    // Open the most recent month by default
+    if (initialReports.length === 0) return new Set();
+    const dates = initialReports.map((r) => r.weekEndDate).sort((a, b) => b.localeCompare(a));
+    const d = new Date(dates[0]);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return new Set([key]);
+  });
   const [copyingLink, setCopyingLink] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -734,6 +743,32 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   function toggleExpand(id: string) {
     setExpandedIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+
+  function toggleMonth(key: string) {
+    setExpandedMonths((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  }
+
+  function groupByMonth(rpts: Report[]) {
+    const map = new Map<string, Report[]>();
+    for (const r of rpts) {
+      const d = new Date(r.weekEndDate);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    const keys = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+    return keys.map((key) => {
+      const [year, month] = key.split("-").map(Number);
+      const label = new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const monthReports = map.get(key)!.sort(
+        (a, b) => new Date(b.weekEndDate).getTime() - new Date(a.weekEndDate).getTime()
+      );
+      const totalViews = monthReports.reduce((s, r) => s + r.totalViews, 0);
+      const totalPaid = monthReports.reduce((s, r) => s + r.paidOut, 0);
+      const publishedCount = monthReports.filter((r) => r.published).length;
+      return { key, label, reports: monthReports, totalViews, totalPaid, publishedCount };
+    });
   }
 
   function formToPayload(form: FormState) {
@@ -987,7 +1022,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
         </div>
       )}
 
-      {/* Report list */}
+      {/* Report list — grouped by month */}
       {filteredReports.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
           <BarChart2 size={36} style={{ color: "#FF3B3B", opacity: 0.4 }} className="mb-3" />
@@ -995,58 +1030,112 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredReports.map((report) => {
-            const prev = prevReport(report);
-            const expanded = expandedIds.has(report.id);
+          {groupByMonth(filteredReports).map(({ key, label, reports: monthReports, totalViews: mViews, totalPaid: mPaid, publishedCount }) => {
+            const monthOpen = expandedMonths.has(key);
             return (
-              <div key={report.id} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="flex items-center gap-4 px-5 py-4">
+              <div key={key} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)" }}>
+                {/* Month folder header */}
+                <button
+                  className="w-full flex items-center gap-3 px-5 py-4 text-left"
+                  onClick={() => toggleMonth(key)}
+                >
+                  <div className="flex-shrink-0" style={{ color: "#FF3B3B" }}>
+                    {monthOpen
+                      ? <FolderOpen size={18} />
+                      : <Folder size={18} />}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.client.name}</span>
-                      {report.published ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>Published</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>Draft</span>
-                      )}
-                    </div>
-                    <p className="text-xs" style={{ color: "#8A93A6" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
+                    <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{label}</p>
+                    <p className="text-xs" style={{ color: "#8A93A6" }}>
+                      {monthReports.length} {monthReports.length === 1 ? "report" : "reports"}
+                      {" · "}
+                      {publishedCount} published
+                    </p>
                   </div>
-                  <div className="hidden md:flex items-center gap-6">
+                  <div className="hidden md:flex items-center gap-6 flex-shrink-0">
                     <div className="text-right">
-                      <p className="text-xs" style={{ color: "#8A93A6" }}>Views</p>
-                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.totalViews)}</p>
+                      <p className="text-xs" style={{ color: "#8A93A6" }}>Total views</p>
+                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(mViews)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs" style={{ color: "#8A93A6" }}>Paid Out</p>
-                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtCurrency(report.paidOut)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: "#8A93A6" }}>Clips</p>
-                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.clipsApproved}/{report.clipsSubmitted}</p>
+                      <p className="text-xs" style={{ color: "#8A93A6" }}>Total paid out</p>
+                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtCurrency(mPaid)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button title="Preview" onClick={() => setPreviewReport(report)} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                      <Eye size={14} />
-                    </button>
-                    <button title={report.published ? "Unpublish" : "Publish"} onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="p-1.5 rounded-lg" style={{ color: report.published ? "#3DFFA2" : "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                      {report.published ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                    <button title="Edit" onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                      <Edit2 size={14} />
-                    </button>
-                    <button title="Delete" onClick={() => handleDelete(report.id)} disabled={deletingId === report.id} className="p-1.5 rounded-lg" style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)" }}>
-                      <Trash2 size={14} />
-                    </button>
-                    <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)", transform: expanded ? "rotate(180deg)" : "none" }}>
-                      <ChevronDown size={14} />
-                    </button>
+                  <div
+                    className="flex-shrink-0 transition-transform duration-200"
+                    style={{ transform: monthOpen ? "rotate(180deg)" : "none", color: "#8A93A6" }}
+                  >
+                    <ChevronDown size={16} />
                   </div>
-                </div>
-                {expanded && (
-                  <div className="px-5 pb-5">
-                    <ReportPreview report={report} prev={prev} />
+                </button>
+
+                {/* Reports inside the folder */}
+                {monthOpen && (
+                  <div className="px-3 pb-3 space-y-2">
+                    {monthReports.map((report) => {
+                      const prev = prevReport(report);
+                      const expanded = expandedIds.has(report.id);
+                      return (
+                        <div
+                          key={report.id}
+                          className="rounded-xl overflow-hidden"
+                          style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.05)" }}
+                        >
+                          <div className="flex items-center gap-4 px-4 py-3">
+                            {/* Left indent line */}
+                            <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.client.name}</span>
+                                {report.published ? (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>Published</span>
+                                ) : (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>Draft</span>
+                                )}
+                              </div>
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
+                            </div>
+                            <div className="hidden md:flex items-center gap-5 flex-shrink-0">
+                              <div className="text-right">
+                                <p className="text-xs" style={{ color: "#8A93A6" }}>Views</p>
+                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.totalViews)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs" style={{ color: "#8A93A6" }}>Paid Out</p>
+                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtCurrency(report.paidOut)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs" style={{ color: "#8A93A6" }}>Clips</p>
+                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.clipsApproved}/{report.clipsSubmitted}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button title="Preview" onClick={() => setPreviewReport(report)} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
+                                <Eye size={13} />
+                              </button>
+                              <button title={report.published ? "Unpublish" : "Publish"} onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="p-1.5 rounded-lg" style={{ color: report.published ? "#3DFFA2" : "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
+                                {report.published ? <EyeOff size={13} /> : <Eye size={13} />}
+                              </button>
+                              <button title="Edit" onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
+                                <Edit2 size={13} />
+                              </button>
+                              <button title="Delete" onClick={() => handleDelete(report.id)} disabled={deletingId === report.id} className="p-1.5 rounded-lg" style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)" }}>
+                                <Trash2 size={13} />
+                              </button>
+                              <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)", transform: expanded ? "rotate(180deg)" : "none" }}>
+                                <ChevronDown size={13} />
+                              </button>
+                            </div>
+                          </div>
+                          {expanded && (
+                            <div className="px-4 pb-4">
+                              <ReportPreview report={report} prev={prev} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
