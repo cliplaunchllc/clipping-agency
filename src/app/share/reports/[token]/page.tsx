@@ -40,6 +40,7 @@ export default async function ShareReportsPage({ params }: { params: Promise<{ t
     whatsWorking: r.whatsWorking,
     whatsNotWorking: r.whatsNotWorking,
     nextWeekFocus: r.nextWeekFocus,
+    campaignLink: r.campaignLink ?? null,
     publishedAt: r.publishedAt?.toISOString() ?? null,
   }));
 

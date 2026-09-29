@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     clientId, weekStartDate, weekEndDate,
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
-    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus,
+    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
   } = body;
 
   if (!clientId || !weekStartDate || !weekEndDate) {
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       whatsWorking: whatsWorking || null,
       whatsNotWorking: whatsNotWorking || null,
       nextWeekFocus: nextWeekFocus || null,
+      campaignLink: campaignLink || null,
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } } },
   });

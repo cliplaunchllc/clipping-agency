@@ -117,7 +117,7 @@ export default async function ClipperPage() {
     subAccount: c.subAccount ? { platform: c.subAccount.platform, handle: c.subAccount.handle } : null,
   }));
 
-  const serializedClients = clients.map((c) => ({ id: c.id, name: c.name, status: c.status, clipsPerDay: c.clipsPerDay ?? null }));
+  const serializedClients = clients.map((c) => ({ id: c.id, name: c.name, status: c.status, clipsPerDay: c.clipsPerDay ?? null, pageCount: c.pageCount ?? null, dealLengthDays: c.dealLengthDays ?? null }));
 
   return (
     <ClipperDashboard

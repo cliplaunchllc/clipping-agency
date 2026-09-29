@@ -99,6 +99,10 @@ export default async function AgencyPage() {
     status: c.status,
     logoUrl: c.logoUrl ?? null,
     clipsPerDay: c.clipsPerDay ?? null,
+    pageCount: c.pageCount ?? null,
+    dealLengthDays: c.dealLengthDays ?? null,
+    dealStartDate: c.dealStartDate?.toISOString() ?? null,
+    dealEndDate: c.dealEndDate?.toISOString() ?? null,
   }));
 
   return (

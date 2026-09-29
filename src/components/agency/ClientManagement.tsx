@@ -465,7 +465,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                     <div className="flex items-center gap-2">
                       {c.status === "active" && (
                         <>
-                          <Link href={`/agency/clients/${c.id}`} title="Manage client"
+                          <Link href={`/agency/clients/${c.id}?edit=1`} title="Manage client"
                             className="text-xs px-2.5 py-1 rounded-lg inline-flex items-center"
                             style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
                             Manage

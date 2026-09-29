@@ -36,6 +36,8 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
     status: client.status,
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
+    dealStartDate: client.dealStartDate?.toISOString() ?? null,
+    dealEndDate: client.dealEndDate?.toISOString() ?? null,
     pageCount: client.pageCount ?? null,
     clipsPerDay: client.clipsPerDay ?? null,
     createdAt: client.createdAt.toISOString(),

@@ -42,6 +42,7 @@ export default async function CampaignReportingPage() {
     whatsWorking: r.whatsWorking,
     whatsNotWorking: r.whatsNotWorking,
     nextWeekFocus: r.nextWeekFocus,
+    campaignLink: r.campaignLink ?? null,
     published: r.published,
     publishedAt: r.publishedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),

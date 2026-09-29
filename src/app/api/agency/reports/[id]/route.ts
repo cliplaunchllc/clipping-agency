@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     weekStartDate, weekEndDate,
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
-    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus,
+    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
   } = body;
 
   const report = await prisma.campaignReport.update({
@@ -65,6 +65,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(whatsWorking !== undefined && { whatsWorking: whatsWorking || null }),
       ...(whatsNotWorking !== undefined && { whatsNotWorking: whatsNotWorking || null }),
       ...(nextWeekFocus !== undefined && { nextWeekFocus: nextWeekFocus || null }),
+      ...(campaignLink !== undefined && { campaignLink: campaignLink || null }),
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } } },
   });

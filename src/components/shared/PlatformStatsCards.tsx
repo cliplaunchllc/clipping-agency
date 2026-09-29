@@ -23,12 +23,22 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
     .sort((a, b) => (dataByPlatform[b] ?? 0) - (dataByPlatform[a] ?? 0));
   const total = platforms.reduce((a, p) => a + (dataByPlatform[p] ?? 0), 0);
 
+  const DONUT_GRADIENTS: Record<string, [string, string]> = {
+    tiktok:    ["#FF7070", "#AA0000"],
+    instagram: ["#FFCC55", "#CC3300"],
+    youtube:   ["#FF6655", "#880000"],
+    twitter:   ["#90C8F0", "#2A6DB0"],
+    other:     ["#9CA3AF", "#4B5563"],
+  };
+
   const pieData = platforms.map((p) => ({
     name: p,
     value: dataByPlatform[p] ?? 0,
     color: PLATFORM_COLORS[p] ?? "#8A93A6",
+    gradId: `dg-${p}`,
+    grad: DONUT_GRADIENTS[p] ?? ["#9CA3AF", "#4B5563"],
   }));
-  const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)" }];
+  const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)", gradId: "dg-empty", grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string] }];
 
   return (
     <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -45,6 +55,14 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
           {/* Donut */}
           <div className="relative flex-shrink-0" style={{ width: 120, height: 120 }}>
             <PieChart width={120} height={120}>
+              <defs>
+                {(pieData.length > 0 ? pieData : emptySlice).map((entry) => (
+                  <linearGradient key={entry.gradId} id={entry.gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={entry.grad[0]} stopOpacity={1} />
+                    <stop offset="100%" stopColor={entry.grad[1]} stopOpacity={1} />
+                  </linearGradient>
+                ))}
+              </defs>
               <Pie
                 data={pieData.length > 0 ? pieData : emptySlice}
                 cx={55} cy={55}
@@ -56,7 +74,7 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
                 endAngle={-270}
               >
                 {(pieData.length > 0 ? pieData : emptySlice).map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={`url(#${entry.gradId})`} />
                 ))}
               </Pie>
             </PieChart>

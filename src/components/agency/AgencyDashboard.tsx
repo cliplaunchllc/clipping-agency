@@ -8,6 +8,7 @@ import ClipperManagement from "@/components/agency/ClipperManagement";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, Users, Scissors, BarChart2,
   TrendingUp, TrendingDown, ExternalLink, ChevronDown, RotateCw, UserCheck,
+  X, Check, Link2,
 } from "lucide-react";
 import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
 import {
@@ -91,11 +92,29 @@ interface Props {
 }
 
 export default function AgencyDashboard({ userName, clients, clippers, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clippers" | "clips" | "platform-stats">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "targets" | "clients" | "clippers" | "clips" | "platform-stats">("overview");
   const [allClips, setAllClips] = useState<AnyRecord[]>(initialClips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [showLiveLinkModal, setShowLiveLinkModal] = useState(false);
+  const [liveLinkClientId, setLiveLinkClientId] = useState("");
+  const [liveLinkCopied, setLiveLinkCopied] = useState(false);
+  const [liveLinkLoading, setLiveLinkLoading] = useState(false);
+
+  async function handleGetLiveLink() {
+    if (!liveLinkClientId || liveLinkLoading) return;
+    setLiveLinkLoading(true);
+    const res = await fetch(`/api/agency/clients/${liveLinkClientId}/share-token`, { method: "POST" });
+    if (res.ok) {
+      const { token } = await res.json();
+      const url = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(url);
+      setLiveLinkCopied(true);
+      setTimeout(() => setLiveLinkCopied(false), 2500);
+    }
+    setLiveLinkLoading(false);
+  }
 
   async function handleRefreshAll() {
     if (refreshingAll || allClips.length === 0) return;
@@ -130,6 +149,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
   // Controls
   const [selectedClientId, setSelectedClientId] = useState("all");
+  const [trackerClientId, setTrackerClientId] = useState("all");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
@@ -235,8 +255,10 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
         byPlatform[p] = (byPlatform[p] ?? 0) + 1;
       });
       const client = allClients.find((cl) => cl.id === clipper.clientId);
+      // Per clipper: clipsPerDay × 3 platforms × dealLengthDays (or 30)
+      const dealDays = (client as AnyRecord)?.dealLengthDays ?? 30;
       const monthlyTarget = (client as AnyRecord)?.clipsPerDay
-        ? Math.round((client as AnyRecord).clipsPerDay * daysInMonth)
+        ? Math.round((client as AnyRecord).clipsPerDay * 3 * dealDays)
         : null;
       return { ...clipper, byPlatform, mtdTotal: myMtd.length, monthlyTarget, clientName: (clipper as AnyRecord).client?.name ?? null } as AnyRecord;
     })
@@ -262,6 +284,39 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+      {showLiveLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div className="rounded-2xl p-8 w-full max-w-sm fade-in" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-base font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Live Tracking Link</h2>
+              <button onClick={() => { setShowLiveLinkModal(false); setLiveLinkCopied(false); }}><X size={18} color="#8A93A6" /></button>
+            </div>
+            <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>Share a live read-only analytics link with any client. Stats update in real time.</p>
+            <div className="mb-5">
+              <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Select Client</label>
+              <select value={liveLinkClientId} onChange={(e) => setLiveLinkClientId(e.target.value)}
+                className="w-full outline-none appearance-none px-3 py-2.5 rounded-xl text-sm"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
+                <option value="" style={{ background: "#0B0E17" }}>Choose a client…</option>
+                {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
+                  <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleGetLiveLink} disabled={!liveLinkClientId || liveLinkLoading}
+              className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+              style={{ background: liveLinkCopied ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)", border: `1px solid ${liveLinkCopied ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`, color: liveLinkCopied ? "#3DFFA2" : "#FF3B3B", opacity: (!liveLinkClientId || liveLinkLoading) ? 0.5 : 1 }}>
+              {liveLinkLoading ? (
+                <><RotateCw size={14} className="animate-spin" /> Generating…</>
+              ) : liveLinkCopied ? (
+                <><Check size={14} /> Link Copied!</>
+              ) : (
+                <><Link2 size={14} /> Copy Live Link</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
       <Sidebar role="agency" userName={userName} />
       <main className="flex-1 overflow-y-auto ml-60">
         {/* Tab bar */}
@@ -269,6 +324,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           <div className="flex items-center gap-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
             {([
               { id: "overview", label: "Overview" },
+              { id: "targets", label: "Targets" },
               { id: "clients", label: `Clients (${clients.length})` },
               { id: "clippers", label: `Clippers${pendingClippers > 0 ? ` · ${pendingClippers} pending` : ""}` },
               { id: "clips", label: `Clips (${allClips.length})` },
@@ -303,6 +359,11 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                     Updated {Math.round((Date.now() - lastSynced.getTime()) / 60000)}m ago
                   </span>
                 )}
+                <button onClick={() => setShowLiveLinkModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
+                  style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
+                  <Link2 size={11} /> Live Link
+                </button>
                 <button onClick={handleRefreshAll} disabled={refreshingAll}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                   style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B", opacity: refreshingAll ? 0.5 : 1 }}>
@@ -370,7 +431,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             </div>
 
             {/* ── Stats bar ───────────────────────────────────────────── */}
-            <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-2xl mb-2 overflow-hidden fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="grid grid-cols-6">
                 {statItems.map((item, i) => {
                   const Icon = item.icon;
@@ -403,7 +464,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             </div>
 
             {/* ── Views chart ─────────────────────────────────────────── */}
-            <div className="rounded-2xl p-6 mb-6 mt-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-2xl p-6 mb-6 mt-5 fade-up delay-1" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                 Views Over Time{selectedClient ? ` · ${selectedClient.name}` : ""}
               </h2>
@@ -412,9 +473,9 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="agGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.55} />
-                        <stop offset="60%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.02} />
+                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
+                        <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
+                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -437,13 +498,139 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             </div>
 
             {/* ── Platform Stats ──────────────────────────────────────── */}
-            <div className="mb-6">
+            <div className="mb-6 fade-up delay-2">
               <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
             </div>
 
+            {/* ── Totals Tracker (overview) ──────────────────────────── */}
+            {(() => {
+              const TRACKER_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
+              const trackerFilteredClients = trackerClientId === "all"
+                ? allClients.filter((c) => (c as AnyRecord).status === "active")
+                : allClients.filter((c) => c.id === trackerClientId && (c as AnyRecord).status === "active");
+              let totalGoal = 0;
+              const platformGoals: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
+              trackerFilteredClients.forEach((c) => {
+                const cpd = (c as AnyRecord).clipsPerDay as number | null;
+                if (!cpd) return;
+                const deal = (c as AnyRecord).dealLengthDays as number | null ?? 30;
+                const numClip = (c as AnyRecord).pageCount as number | null ?? 0; // pageCount = # clippers in deal
+                if (numClip === 0) return;
+                const perPlatformGoal = Math.round(numClip * cpd * deal);
+                totalGoal += perPlatformGoal * 3;
+                TRACKER_PLATFORMS.forEach((p) => { platformGoals[p] += perPlatformGoal; });
+              });
+              // Filter clips by each client's deal window (dealStartDate + dealLengthDays), fallback to MTD
+              const platformActual: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
+              let totalActual = 0;
+              const trackerClientMap = new Map(trackerFilteredClients.map((c) => [c.id, c]));
+              allClips.forEach((clip) => {
+                const clientData = trackerClientMap.get(clip.clientId as string);
+                if (!clientData) return;
+                const startRaw = (clientData as AnyRecord).dealStartDate as string | null;
+                const dealLen = (clientData as AnyRecord).dealLengthDays as number | null ?? 30;
+                const start = startRaw ? new Date(startRaw) : mtdStart;
+                const end = startRaw ? new Date(new Date(startRaw).getTime() + dealLen * 86400000) : now;
+                const submittedAt = new Date(clip.submittedAt as string);
+                if (submittedAt < start || submittedAt > end) return;
+                const p = (clip.subAccount?.platform ?? "other") as string;
+                if (p in platformActual) platformActual[p] = (platformActual[p] ?? 0) + 1;
+                totalActual += 1;
+              });
+              const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
+              const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
+              const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
+              const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
+              const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
+              const singleStart = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealStartDate as string | null) : null;
+              const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              const computedEnd = singleStart && trackerDeal ? new Date(new Date(singleStart).getTime() + trackerDeal * 86400000) : null;
+              const periodLabel = singleStart && computedEnd
+                ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
+                : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
+              return (
+                <div className="rounded-2xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={14} color="#3DFFA2" />
+                      <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                        Deal Tracker — {periodLabel}
+                      </h2>
+                    </div>
+                    <div className="relative">
+                      <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
+                        className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
+                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
+                        <option value="all" style={{ background: "#0B0E17" }}>All Clients</option>
+                        {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
+                          <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                  {trackerClipper > 0 && (
+                    <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>
+                      {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
+                      {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
+                      {" · 3 platforms"}
+                      {trackerDeal ? ` · ${trackerDeal}-day deal` : ""}
+                      {totalGoal > 0 ? ` → ${totalGoal} total clips` : ""}
+                    </p>
+                  )}
+                  {totalGoal === 0 ? (
+                    <p className="text-sm py-4 text-center" style={{ color: "#8A93A6" }}>No deal terms set. Add clips/day to clients to see the tracker.</p>
+                  ) : (
+                    <>
+                      <div className="mb-5 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="flex items-end justify-between mb-2">
+                          <div>
+                            <span className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{totalActual}</span>
+                            <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {totalGoal} clips deal total</span>
+                          </div>
+                          <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
+                        </div>
+                        <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="h-full rounded-full bar-fill" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60` }} />
+                        </div>
+                        <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                          {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        {TRACKER_PLATFORMS.map((p) => {
+                          const goal = platformGoals[p] ?? 0;
+                          const actual = platformActual[p] ?? 0;
+                          const platPct = goal > 0 ? Math.min(100, Math.round((actual / goal) * 100)) : 0;
+                          const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+                          const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
+                          return (
+                            <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <div className="flex items-center gap-2 mb-3">
+                                <PlatformIcon platform={p} size={13} />
+                                <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
+                              </div>
+                              <div className="flex items-end justify-between mb-2">
+                                <span className="text-xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{actual}</span>
+                                <span className="text-xs" style={{ color: "#8A93A6" }}>/ {goal}</span>
+                              </div>
+                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                <div className="h-full rounded-full bar-fill" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50` }} />
+                              </div>
+                              <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Active Clippers */}
             {activeClippersDisplay.length > 0 && (
-              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-2xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <UserCheck size={14} color="#3DFFA2" />
@@ -478,75 +665,8 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               </div>
             )}
 
-            {/* ── Clipper Page Breakout ───────────────────────────────── */}
-            {clipperBreakout.length > 0 && (
-              <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="flex items-center gap-2">
-                    <BarChart2 size={14} color="#FF3B3B" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
-                  </div>
-                </div>
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clipper</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Client</th>
-                      {BREAKOUT_PLATFORMS.map((p) => (
-                        <th key={p} className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: PLATFORM_COLORS[p] ?? "#8A93A6" }}>
-                          {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
-                        </th>
-                      ))}
-                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Total MTD</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Target</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Progress</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clipperBreakout.map((c, i) => {
-                      const pct = c.monthlyTarget ? Math.min(100, Math.round((c.mtdTotal / c.monthlyTarget) * 100)) : null;
-                      const color = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#8A93A6";
-                      return (
-                        <tr key={c.id as string} style={{ borderBottom: i < clipperBreakout.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                          <td className="px-6 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
-                                {((c.name as string) || "?")[0].toUpperCase()}
-                              </div>
-                              <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name as string}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3 text-xs" style={{ color: "#8A93A6" }}>{(c.clientName as string) ?? "—"}</td>
-                          {BREAKOUT_PLATFORMS.map((p) => (
-                            <td key={p} className="px-4 py-3 text-center text-sm font-medium" style={{ color: (c.byPlatform as Record<string,number>)[p] > 0 ? (PLATFORM_COLORS[p] ?? "#F5F6FA") : "#5C6370" }}>
-                              {(c.byPlatform as Record<string,number>)[p] ?? 0}
-                            </td>
-                          ))}
-                          <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "#F5F6FA" }}>{c.mtdTotal as number}</td>
-                          <td className="px-4 py-3 text-center text-xs" style={{ color: "#8A93A6" }}>{c.monthlyTarget ?? "—"}</td>
-                          <td className="px-4 py-3">
-                            {pct !== null ? (
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
-                                </div>
-                                <span className="text-xs font-semibold w-8 text-right flex-shrink-0" style={{ color }}>{pct}%</span>
-                              </div>
-                            ) : (
-                              <span className="text-xs" style={{ color: "#5C6370" }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
             {/* ── Top Clippers + Top Clips ────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-2 gap-6 mb-6 fade-up delay-4">
               <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -607,45 +727,206 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               </div>
             </div>
 
-            {/* ── Active Clients ───────────────────────────────────────── */}
-            {(selectedClientId === "all" || activeClientsForDisplay.length > 0) && (
-              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Users size={14} color="#FF3B3B" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clients</h2>
+          </>}
+
+          {/* ── TARGETS TAB ───────────────────────────────────────────── */}
+          {activeTab === "targets" && (
+            <div className="space-y-6">
+              {/* ── Clipper Page Breakout ───────────────────────────────── */}
+              {clipperBreakout.length > 0 && (
+                <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center gap-2">
+                      <BarChart2 size={14} color="#FF3B3B" />
+                      <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
+                    </div>
                   </div>
-                  <button onClick={() => setActiveTab("clients")}
-                    className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)" }}>
-                    Manage
-                  </button>
+                  <table className="w-full">
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clipper</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Client</th>
+                        {BREAKOUT_PLATFORMS.map((p) => (
+                          <th key={p} className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: PLATFORM_COLORS[p] ?? "#8A93A6" }}>
+                            {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
+                          </th>
+                        ))}
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Total MTD</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Target</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clipperBreakout.map((c, i) => {
+                        const pct = c.monthlyTarget ? Math.min(100, Math.round((c.mtdTotal / c.monthlyTarget) * 100)) : null;
+                        const color = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#8A93A6";
+                        return (
+                          <tr key={c.id as string} style={{ borderBottom: i < clipperBreakout.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                            <td className="px-6 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                  style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
+                                  {((c.name as string) || "?")[0].toUpperCase()}
+                                </div>
+                                <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name as string}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3 text-xs" style={{ color: "#8A93A6" }}>{(c.clientName as string) ?? "—"}</td>
+                            {BREAKOUT_PLATFORMS.map((p) => (
+                              <td key={p} className="px-4 py-3 text-center text-sm font-medium" style={{ color: (c.byPlatform as Record<string,number>)[p] > 0 ? (PLATFORM_COLORS[p] ?? "#F5F6FA") : "#5C6370" }}>
+                                {(c.byPlatform as Record<string,number>)[p] ?? 0}
+                              </td>
+                            ))}
+                            <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "#F5F6FA" }}>{c.mtdTotal as number}</td>
+                            <td className="px-4 py-3 text-center text-xs" style={{ color: "#8A93A6" }}>{c.monthlyTarget ?? "—"}</td>
+                            <td className="px-4 py-3">
+                              {pct !== null ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                                  </div>
+                                  <span className="text-xs font-semibold w-8 text-right flex-shrink-0" style={{ color }}>{pct}%</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs" style={{ color: "#5C6370" }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {activeClientsForDisplay.map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                      {c.logoUrl ? (
-                        <img src={c.logoUrl} alt={c.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                          style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                          style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B" }}>{c.name[0]}</div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>{c.name}</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{c.users.length} clippers · {c._count.clips} clips</p>
+              )}
+
+              {/* ── Totals Tracker ─────────────────────────────────────── */}
+              {(() => {
+                const TRACKER_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
+                const trackerFilteredClients = trackerClientId === "all"
+                  ? allClients.filter((c) => (c as AnyRecord).status === "active")
+                  : allClients.filter((c) => c.id === trackerClientId && (c as AnyRecord).status === "active");
+                let totalGoal = 0;
+                const platformGoals: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
+                trackerFilteredClients.forEach((c) => {
+                  const cpd = (c as AnyRecord).clipsPerDay as number | null;
+                  if (!cpd) return;
+                  const deal = (c as AnyRecord).dealLengthDays as number | null ?? 30;
+                  const numClip = (c as AnyRecord).pageCount as number | null ?? 0; // pageCount = # clippers in deal
+                  if (numClip === 0) return;
+                  const perPlatformGoal = Math.round(numClip * cpd * deal);
+                  totalGoal += perPlatformGoal * 3;
+                  TRACKER_PLATFORMS.forEach((p) => { platformGoals[p] += perPlatformGoal; });
+                });
+                const platformActual: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
+                let totalActual = 0;
+                const trackerClientMap = new Map(trackerFilteredClients.map((c) => [c.id, c]));
+                allClips.forEach((clip) => {
+                  const clientData = trackerClientMap.get(clip.clientId as string);
+                  if (!clientData) return;
+                  const startRaw = (clientData as AnyRecord).dealStartDate as string | null;
+                  const dealLen = (clientData as AnyRecord).dealLengthDays as number | null ?? 30;
+                  const start = startRaw ? new Date(startRaw) : mtdStart;
+                  const end = startRaw ? new Date(new Date(startRaw).getTime() + dealLen * 86400000) : now;
+                  const submittedAt = new Date(clip.submittedAt as string);
+                  if (submittedAt < start || submittedAt > end) return;
+                  const p = (clip.subAccount?.platform ?? "other") as string;
+                  if (p in platformActual) platformActual[p] = (platformActual[p] ?? 0) + 1;
+                  totalActual += 1;
+                });
+                const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
+                const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
+                const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
+                const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
+                const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
+                const singleStart = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealStartDate as string | null) : null;
+                const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                const computedEnd = singleStart && trackerDeal ? new Date(new Date(singleStart).getTime() + trackerDeal * 86400000) : null;
+                const periodLabel = singleStart && computedEnd
+                  ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
+                  : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
+                return (
+                  <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp size={14} color="#3DFFA2" />
+                        <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                          Deal Tracker — {periodLabel}
+                        </h2>
+                      </div>
+                      <div className="relative">
+                        <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
+                          className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
+                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
+                          <option value="all" style={{ background: "#0B0E17" }}>All Clients</option>
+                          {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
+                            <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
-                  ))}
-                  {activeClientsForDisplay.length === 0 && (
-                    <p className="text-sm col-span-3" style={{ color: "#8A93A6" }}>No active clients</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-          </>}
+                    {trackerClipper > 0 && (
+                      <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>
+                        {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
+                        {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
+                        {" · 3 platforms"}
+                        {trackerDeal ? ` · ${trackerDeal}-day deal` : ""}
+                        {totalGoal > 0 ? ` → ${totalGoal} total clips` : ""}
+                      </p>
+                    )}
+                    {totalGoal === 0 ? (
+                      <p className="text-sm py-4 text-center" style={{ color: "#8A93A6" }}>
+                        No deal terms set. Add clips/day to clients to see the tracker.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mb-5 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <div className="flex items-end justify-between mb-2">
+                            <div>
+                              <span className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{totalActual}</span>
+                              <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {totalGoal} clips deal total</span>
+                            </div>
+                            <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
+                          </div>
+                          <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <div className="h-full rounded-full" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60`, transition: "width 0.5s ease" }} />
+                          </div>
+                          <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                            {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          {TRACKER_PLATFORMS.map((p) => {
+                            const goal = platformGoals[p] ?? 0;
+                            const actual = platformActual[p] ?? 0;
+                            const platPct = goal > 0 ? Math.min(100, Math.round((actual / goal) * 100)) : 0;
+                            const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+                            const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
+                            return (
+                              <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <PlatformIcon platform={p} size={13} />
+                                  <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
+                                </div>
+                                <div className="flex items-end justify-between mb-2">
+                                  <span className="text-xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{actual}</span>
+                                  <span className="text-xs" style={{ color: "#8A93A6" }}>/ {goal}</span>
+                                </div>
+                                <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                  <div className="h-full rounded-full" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50`, transition: "width 0.5s ease" }} />
+                                </div>
+                                <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {/* ── CLIENTS TAB ───────────────────────────────────────────── */}
           {activeTab === "clients" && (

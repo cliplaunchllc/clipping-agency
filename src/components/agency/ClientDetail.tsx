@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save } from "lucide-react";
 
 interface Link { id: string; label: string; url: string; }
@@ -13,6 +13,8 @@ interface ClientData {
   name: string;
   status: string;
   dealLengthDays: number | null;
+  dealStartDate: string | null;
+  dealEndDate: string | null;
   pageCount: number | null;
   clipsPerDay: number | null;
   archivedAt: string | null;
@@ -36,15 +38,17 @@ const inputStyle: React.CSSProperties = {
 
 export default function ClientDetail({ client: initial }: { client: ClientData }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [client, setClient] = useState(initial);
   const [activeTab, setActiveTab] = useState<"deal" | "links" | "onboarding" | "clippers">("deal");
 
-  // Deal terms state
-  const [dealEdit, setDealEdit] = useState(false);
+  // Deal terms state — auto-open edit if ?edit=1 in URL
+  const [dealEdit, setDealEdit] = useState(() => searchParams.get("edit") === "1");
   const [dealForm, setDealForm] = useState({
     name: initial.name,
     dealLengthDays: initial.dealLengthDays?.toString() ?? "",
-    pageCount: initial.pageCount?.toString() ?? "",
+    dealStartDate: initial.dealStartDate ? initial.dealStartDate.slice(0, 10) : "",
+    pageCount: initial.pageCount?.toString() ?? "",   // repurposed as # clippers
     clipsPerDay: initial.clipsPerDay?.toString() ?? "",
   });
   const [dealSaving, setDealSaving] = useState(false);
@@ -74,6 +78,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         ...prev,
         name: dealForm.name,
         dealLengthDays: dealForm.dealLengthDays ? Number(dealForm.dealLengthDays) : null,
+        dealStartDate: dealForm.dealStartDate ? dealForm.dealStartDate : null,
         pageCount: dealForm.pageCount ? Number(dealForm.pageCount) : null,
         clipsPerDay: dealForm.clipsPerDay ? Number(dealForm.clipsPerDay) : null,
       }));
@@ -199,7 +204,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Deal Terms</h2>
             {dealEdit ? (
               <div className="flex items-center gap-2">
-                <button onClick={() => { setDealEdit(false); setDealForm({ name: client.name, dealLengthDays: client.dealLengthDays?.toString() ?? "", pageCount: client.pageCount?.toString() ?? "", clipsPerDay: client.clipsPerDay?.toString() ?? "" }); }}
+                <button onClick={() => { setDealEdit(false); setDealForm({ name: client.name, dealLengthDays: client.dealLengthDays?.toString() ?? "", dealStartDate: client.dealStartDate ? client.dealStartDate.slice(0, 10) : "", pageCount: client.pageCount?.toString() ?? "", clipsPerDay: client.clipsPerDay?.toString() ?? "" }); }}
                   className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "#8A93A6" }}>Cancel</button>
                 <button onClick={saveDeal} disabled={dealSaving}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
@@ -216,44 +221,76 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            {dealEdit ? (
-              <>
+          {dealEdit ? (
+            <>
+              {/* Formula hint */}
+              <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#8A93A6" }}>
+                Goal = <span style={{ color: "#F5F6FA" }}>Clippers</span> × <span style={{ color: "#F5F6FA" }}>3 platforms</span> (TikTok · Instagram · YouTube) × <span style={{ color: "#F5F6FA" }}>Clips/day</span> × <span style={{ color: "#F5F6FA" }}>Deal length</span>
+                {dealForm.pageCount && dealForm.clipsPerDay && dealForm.dealLengthDays ? (
+                  <span className="ml-2" style={{ color: "#3DFFA2" }}>
+                    = {Number(dealForm.pageCount) * 3 * Number(dealForm.clipsPerDay) * Number(dealForm.dealLengthDays)} total clips
+                  </span>
+                ) : null}
+              </div>
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Name</label>
                   <input value={dealForm.name} onChange={(e) => setDealForm((f) => ({ ...f, name: e.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Number of Clippers</label>
+                  <input type="number" value={dealForm.pageCount} onChange={(e) => setDealForm((f) => ({ ...f, pageCount: e.target.value }))} placeholder="e.g. 5" style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clips / Day <span style={{ color: "#5C6370" }}>(per clipper, per platform)</span></label>
+                  <input type="number" value={dealForm.clipsPerDay} onChange={(e) => setDealForm((f) => ({ ...f, clipsPerDay: e.target.value }))} placeholder="e.g. 3" style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Deal Length (days)</label>
                   <input type="number" value={dealForm.dealLengthDays} onChange={(e) => setDealForm((f) => ({ ...f, dealLengthDays: e.target.value }))} placeholder="e.g. 30" style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Pages</label>
-                  <input type="number" value={dealForm.pageCount} onChange={(e) => setDealForm((f) => ({ ...f, pageCount: e.target.value }))} placeholder="e.g. 5" style={inputStyle} />
+                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Deal Start Date</label>
+                  <input type="date" value={dealForm.dealStartDate} onChange={(e) => setDealForm((f) => ({ ...f, dealStartDate: e.target.value }))} style={{ ...inputStyle, colorScheme: "dark" }} />
                 </div>
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clips / Day</label>
-                  <input type="number" value={dealForm.clipsPerDay} onChange={(e) => setDealForm((f) => ({ ...f, clipsPerDay: e.target.value }))} placeholder="e.g. 3" style={inputStyle} />
+                <div className="rounded-xl p-4 flex flex-col justify-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>Deal End Date <span style={{ color: "#5C6370" }}>(auto-computed)</span></p>
+                  <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>
+                    {dealForm.dealStartDate && dealForm.dealLengthDays
+                      ? new Date(new Date(dealForm.dealStartDate).getTime() + Number(dealForm.dealLengthDays) * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : "—"}
+                  </p>
                 </div>
-              </>
-            ) : (
-              <>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Formula summary */}
+              {client.pageCount && client.clipsPerDay && client.dealLengthDays && (
+                <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#8A93A6" }}>
+                  {client.pageCount} clipper{client.pageCount !== 1 ? "s" : ""} × 3 platforms × {client.clipsPerDay} clips/day × {client.dealLengthDays} days
+                  <span className="ml-2 font-semibold" style={{ color: "#3DFFA2" }}>= {client.pageCount * 3 * client.clipsPerDay * client.dealLengthDays} total clips</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: "Client Name", value: client.name },
+                  { label: "Number of Clippers", value: client.pageCount?.toString() ?? "—" },
+                  { label: "Pages per Clipper", value: "3 (TikTok · Instagram · YouTube)" },
+                  { label: "Clips / Day", value: client.clipsPerDay ? `${client.clipsPerDay} per clipper, per platform` : "—" },
                   { label: "Deal Length", value: client.dealLengthDays ? `${client.dealLengthDays} days` : "—" },
-                  { label: "Pages", value: client.pageCount?.toString() ?? "—" },
-                  { label: "Clips / Day", value: client.clipsPerDay?.toString() ?? "—" },
-                  { label: "Total Clips", value: client.clipCount.toString() },
-                  { label: "Started", value: new Date(client.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+                  { label: "Deal Start", value: client.dealStartDate ? new Date(client.dealStartDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" },
+                  { label: "Deal End", value: client.dealStartDate && client.dealLengthDays ? new Date(new Date(client.dealStartDate).getTime() + client.dealLengthDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" },
+                  { label: "Total Clips Submitted", value: client.clipCount.toString() },
                 ].map((item) => (
                   <div key={item.label} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{item.label}</p>
                     <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{item.value}</p>
                   </div>
                 ))}
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

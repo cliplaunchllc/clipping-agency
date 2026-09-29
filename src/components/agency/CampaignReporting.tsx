@@ -38,6 +38,7 @@ interface Report {
   whatsWorking: string | null;
   whatsNotWorking: string | null;
   nextWeekFocus: string | null;
+  campaignLink: string | null;
   published: boolean;
   publishedAt: string | null;
   createdAt: string;
@@ -62,6 +63,7 @@ interface FormState {
   whatsWorking: string;
   whatsNotWorking: string;
   nextWeekFocus: string;
+  campaignLink: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ const EMPTY_FORM: FormState = {
   clientId: "", weekStartDate: "", weekEndDate: "",
   totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
   paidOut: "", effectiveCpm: "", budgetRemaining: "", clipsSubmitted: "", clipsApproved: "",
-  weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "",
+  weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
 };
 
 // ─── Calendar Picker ─────────────────────────────────────────────────────────
@@ -682,6 +684,11 @@ function ReportForm({
           <label style={labelStyle}>Next week's focus</label>
           <textarea rows={3} value={form.nextWeekFocus} onChange={(e) => set("nextWeekFocus", e.target.value)} placeholder="Priorities and goals for next week…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
         </div>
+        <div>
+          <label style={labelStyle}>Campaign link (optional)</label>
+          <input type="url" value={form.campaignLink} onChange={(e) => set("campaignLink", e.target.value)} placeholder="https://…" className={inputCls} style={inputStyle} />
+          <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Shown as a clickable link at the top of the client report.</p>
+        </div>
       </div>
 
       {/* Actions */}
@@ -790,6 +797,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       whatsWorking: form.whatsWorking || null,
       whatsNotWorking: form.whatsNotWorking || null,
       nextWeekFocus: form.nextWeekFocus || null,
+      campaignLink: form.campaignLink || null,
     };
   }
 
@@ -873,6 +881,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       whatsWorking: r.whatsWorking ?? "",
       whatsNotWorking: r.whatsNotWorking ?? "",
       nextWeekFocus: r.nextWeekFocus ?? "",
+      campaignLink: r.campaignLink ?? "",
     };
   }
 

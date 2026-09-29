@@ -97,7 +97,7 @@ function detectPlatform(url: string): string {
 interface Props {
   userName: string;
   clientName?: string; // legacy / preview mode
-  clients?: { id: string; name: string; status: string; clipsPerDay?: number | null }[];
+  clients?: { id: string; name: string; status: string; clipsPerDay?: number | null; pageCount?: number | null; dealLengthDays?: number | null }[];
   defaultClientId?: string;
   subAccounts: AnyRecord[];
   clips: AnyRecord[];
@@ -418,9 +418,9 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <defs>
                     <linearGradient id="clipperViewGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.55} />
-                      <stop offset="60%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.02} />
+                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
+                      <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
+                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -449,9 +449,14 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {(() => {
             const now = new Date();
             const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
             const client = clients?.find((c) => c.id === selectedClientId);
-            const monthlyTarget = client?.clipsPerDay ? Math.round(client.clipsPerDay * daysInMonth) : null;
+            // Per-clipper: clipsPerDay × 3 platforms × dealLengthDays (or 30)
+            const cpd = client?.clipsPerDay ?? null;
+            const deal = client?.dealLengthDays ?? 30;
+            // Total monthly target = clipsPerDay × 3 platforms × deal days
+            const monthlyTarget = cpd ? Math.round(cpd * 3 * deal) : null;
+            // Per-platform target = clipsPerDay × deal days
+            const platformTarget = cpd ? Math.round(cpd * deal) : null;
             const BREAKOUT_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
             const mtdAll = allClips.filter((c) => c.clientId === selectedClientId && new Date(c.submittedAt as string) >= mtdStart);
             const byPlatform: Record<string, number> = {};
@@ -464,7 +469,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             const progressColor = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#FF3B3B";
             return (
               <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <BarChart2 size={14} color="#FF3B3B" />
                     <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
@@ -475,6 +480,11 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                     <span className="text-xs" style={{ color: "#8A93A6" }}>Target: {monthlyTarget} clips</span>
                   )}
                 </div>
+                {cpd && (
+                  <p className="text-xs mb-5" style={{ color: "#8A93A6" }}>
+                    {cpd} clips/day × 3 platforms × {deal} days
+                  </p>
+                )}
 
                 {/* Overall progress */}
                 <div className="mb-5">
@@ -489,7 +499,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                   </div>
                   <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                     <div className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct ?? 0}%`, background: progressColor, boxShadow: `0 0 8px ${progressColor}60` }} />
+                      style={{ width: `${pct ?? 0}%`, background: `linear-gradient(90deg, ${progressColor}80 0%, ${progressColor} 100%)`, boxShadow: `0 0 8px ${progressColor}60` }} />
                   </div>
                   {monthlyTarget && (
                     <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
@@ -498,25 +508,32 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                   )}
                 </div>
 
-                {/* Per-platform breakdown */}
+                {/* Per-platform breakdown with individual targets */}
                 <div className="grid grid-cols-3 gap-3">
                   {BREAKOUT_PLATFORMS.map((p) => {
                     const count = byPlatform[p] ?? 0;
                     const color = PLATFORM_COLORS[p] ?? "#8A93A6";
-                    const platformPct = mtdTotal > 0 ? Math.round((count / mtdTotal) * 100) : 0;
+                    const platPct = platformTarget ? Math.min(100, Math.round((count / platformTarget) * 100)) : (mtdTotal > 0 ? Math.round((count / mtdTotal) * 100) : 0);
                     return (
                       <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                          <PlatformIcon platform={p} size={13} />
                           <span className="text-xs font-medium" style={{ color }}>
                             {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
                           </span>
                         </div>
-                        <p className="text-2xl font-bold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{count}</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{platformPct}% of total</p>
-                        <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${platformPct}%`, background: color }} />
+                        <div className="flex items-end justify-between mb-1">
+                          <p className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{count}</p>
+                          {platformTarget && <span className="text-xs" style={{ color: "#8A93A6" }}>/ {platformTarget}</span>}
                         </div>
+                        <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="h-full rounded-full" style={{
+                            width: `${platPct}%`,
+                            background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`,
+                            boxShadow: `0 0 6px ${color}50`,
+                          }} />
+                        </div>
+                        <p className="text-xs mt-1 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
                       </div>
                     );
                   })}

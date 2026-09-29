@@ -83,7 +83,8 @@ interface OnboardingStep { id: string; title: string; description: string | null
 interface ClientData {
   id: string; name: string; status: string;
   logoUrl: string | null;
-  dealLengthDays: number | null; pageCount: number | null; clipsPerDay: number | null;
+  dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
+  pageCount: number | null; clipsPerDay: number | null;
   createdAt: string;
   clips: Clip[]; clippers: Clipper[];
   links: Link[]; onboardingSteps: OnboardingStep[];
@@ -357,9 +358,9 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                       <defs>
                         <linearGradient id="clientViewGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.55} />
-                          <stop offset="60%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                          <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.02} />
+                          <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
+                          <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
+                          <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -386,6 +387,94 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
               </div>
 
+              {/* ── Deal Targets ─────────────────────────────────────── */}
+              {(() => {
+                const now = new Date();
+                const cpd = client.clipsPerDay;
+                const deal = client.dealLengthDays ?? 30;
+                const numClippers = client.pageCount ?? 0; // pageCount = # clippers entered in deal terms
+                if (!cpd || numClippers === 0) return null;
+                const PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
+                const platColors: Record<string, string> = { tiktok: "#FF3B3B", instagram: "#FF8800", youtube: "#CC1A1A" };
+                const platLabels: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
+                // Use dealStartDate + dealLengthDays as the window; fallback to MTD
+                const start = client.dealStartDate ? new Date(client.dealStartDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+                const end = client.dealStartDate ? new Date(new Date(client.dealStartDate).getTime() + deal * 86400000) : now;
+                const fmtD = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                const periodLabel = client.dealStartDate
+                  ? `${fmtD(start)} – ${fmtD(end)}`
+                  : now.toLocaleString("en-US", { month: "long" });
+                // Per-platform: numClippers × clipsPerDay × dealLengthDays
+                const platTarget = Math.round(numClippers * cpd * deal);
+                const totalTarget = platTarget * 3;
+                const dealClips = clips.filter((c) => { const d = new Date(c.submittedAt); return d >= start && d <= end; });
+                const platActual: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
+                dealClips.forEach((c) => { if (c.platform in platActual) platActual[c.platform]++; });
+                const totalActual = dealClips.length;
+                const totalPct = totalTarget > 0 ? Math.min(100, Math.round((totalActual / totalTarget) * 100)) : 0;
+                const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
+                return (
+                  <div className="rounded-2xl p-6 mb-6 fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                        Deal Target — {periodLabel}
+                      </h2>
+                      <span className="text-xs" style={{ color: "#8A93A6" }}>{numClippers} clipper{numClippers !== 1 ? "s" : ""} · {cpd} clips/day · {deal} days</span>
+                    </div>
+                    <p className="text-xs mb-5" style={{ color: "#8A93A6" }}>{cpd} clips/day × 3 platforms × {deal} days × {numClippers} clipper{numClippers !== 1 ? "s" : ""}</p>
+
+                    {/* Total bar */}
+                    <div className="rounded-xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="flex items-end justify-between mb-2">
+                        <div>
+                          <span className="text-2xl font-bold stat-number" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{totalActual}</span>
+                          <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {totalTarget} clips deal total</span>
+                        </div>
+                        <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
+                      </div>
+                      <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full bar-fill" style={{
+                          width: `${totalPct}%`,
+                          background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`,
+                          boxShadow: `0 0 12px ${totalColor}60`,
+                        }} />
+                      </div>
+                      <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                        {totalActual >= totalTarget ? "Deal target reached!" : `${totalTarget - totalActual} clips remaining`}
+                      </p>
+                    </div>
+
+                    {/* Per-platform */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {PLATFORMS.map((p, i) => {
+                        const actual = platActual[p] ?? 0;
+                        const platPct = platTarget > 0 ? Math.min(100, Math.round((actual / platTarget) * 100)) : 0;
+                        const color = platColors[p];
+                        return (
+                          <div key={p} className={`rounded-xl p-4 fade-up delay-${i + 1}`} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <PlatformIcon platform={p} size={13} />
+                              <span className="text-xs font-semibold" style={{ color }}>{platLabels[p]}</span>
+                            </div>
+                            <div className="flex items-end justify-between mb-1">
+                              <span className="text-2xl font-bold stat-number" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{actual}</span>
+                              <span className="text-xs" style={{ color: "#8A93A6" }}>/ {platTarget}</span>
+                            </div>
+                            <div className="h-1.5 rounded-full overflow-hidden mt-2" style={{ background: "rgba(255,255,255,0.06)" }}>
+                              <div className="h-full rounded-full bar-fill" style={{
+                                width: `${platPct}%`,
+                                background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`,
+                                boxShadow: `0 0 6px ${color}50`,
+                              }} />
+                            </div>
+                            <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Clippers + Top Clips */}
               <div className="grid grid-cols-2 gap-6 mb-6">
