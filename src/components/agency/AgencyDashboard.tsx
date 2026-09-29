@@ -287,11 +287,26 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
       {showLiveLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
           <div className="rounded-2xl p-8 w-full max-w-sm fade-in" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Live Tracking Link</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
+                  <Link2 size={14} color="#FF3B3B" />
+                </div>
+                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Live Tracker Link</h2>
+              </div>
               <button onClick={() => { setShowLiveLinkModal(false); setLiveLinkCopied(false); }}><X size={18} color="#8A93A6" /></button>
             </div>
-            <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>Share a live read-only analytics link with any client. Stats update in real time.</p>
+            <div className="rounded-xl p-4 mb-5" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: "#FF3B3B" }}>What your client sees:</p>
+              <ul className="space-y-1">
+                {["Live views, likes, shares & engagement stats", "Top performing clips with thumbnails & links", "Individual clip breakdown by platform", "Platform-by-platform performance charts", "Real-time deal progress tracking"].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-xs" style={{ color: "#C8CDD8" }}>
+                    <span style={{ color: "#FF3B3B", fontSize: 10 }}>▸</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="mb-5">
               <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Select Client</label>
               <select value={liveLinkClientId} onChange={(e) => setLiveLinkClientId(e.target.value)}
@@ -362,7 +377,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 <button onClick={() => setShowLiveLinkModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                   style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
-                  <Link2 size={11} /> Live Link
+                  <Link2 size={11} /> Share Live Tracker
                 </button>
                 <button onClick={handleRefreshAll} disabled={refreshingAll}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"

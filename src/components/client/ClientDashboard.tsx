@@ -350,6 +350,17 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 </div>
               </div>
 
+              {/* Live tracker callout */}
+              <div className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)" }}>
+                  <BarChart2 size={13} color="#FF3B3B" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: "#FF3B3B" }}>Live Campaign Tracker</p>
+                  <p className="text-xs" style={{ color: "#8A93A6" }}>This is your live dashboard — see all top clips, individual clip stats, platform breakdown, and real-time campaign performance.</p>
+                </div>
+              </div>
+
               {/* Views chart */}
               <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
@@ -584,6 +595,13 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
           {/* ── LINKS ─── */}
           {activeTab === "links" && (
+            <div className="space-y-3">
+              <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                <ExternalLink size={13} color="#FF3B3B" className="flex-shrink-0" />
+                <p className="text-xs" style={{ color: "#8A93A6" }}>
+                  <span style={{ color: "#FF3B3B", fontWeight: 600 }}>Live Tracker</span> — your agency may share a live tracker link here where you can watch top clips, individual clip stats, and real-time performance update as they happen.
+                </p>
+              </div>
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
               {client.links.length === 0 ? (
                 <p className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No links added yet</p>
@@ -601,6 +619,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   ))}
                 </div>
               )}
+            </div>
             </div>
           )}
 
