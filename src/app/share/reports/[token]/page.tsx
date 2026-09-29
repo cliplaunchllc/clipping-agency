@@ -34,6 +34,10 @@ export default async function ShareReportsPage({ params }: { params: Promise<{ t
     budgetRemaining: r.budgetRemaining,
     clipsSubmitted: r.clipsSubmitted,
     clipsApproved: r.clipsApproved,
+    weeklySummary: r.weeklySummary,
+    whatsWorking: r.whatsWorking,
+    whatsNotWorking: r.whatsNotWorking,
+    nextWeekFocus: r.nextWeekFocus,
     publishedAt: r.publishedAt?.toISOString() ?? null,
   }));
 

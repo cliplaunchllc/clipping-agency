@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
     // Link an existing pending client user to this new client record
     const user = await prisma.user.findUnique({ where: { id: existingUserId } });
     if (!user || user.role !== "client") {
-      // Rollback client if user is invalid — delete the just-created client
       await prisma.client.delete({ where: { id: client.id } });
       return NextResponse.json({ error: "Invalid user account" }, { status: 400 });
     }
@@ -42,6 +41,9 @@ export async function POST(req: NextRequest) {
       where: { id: existingUserId },
       data: { clientId: client.id, status: "active" },
     });
+  } else if (!email && !password) {
+    // Name-only quick create (no login credentials yet — agency can add users later)
+    return NextResponse.json({ id: client.id, name: client.name, logoUrl: null }, { status: 201 });
   } else {
     // Create a brand-new user with provided credentials
     if (!email || !password) {

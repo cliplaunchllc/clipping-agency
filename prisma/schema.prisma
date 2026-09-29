@@ -169,6 +169,10 @@ model CampaignReport {
   budgetRemaining Float?
   clipsSubmitted  Int       @default(0)
   clipsApproved   Int       @default(0)
+  weeklySummary   String?
+  whatsWorking    String?
+  whatsNotWorking String?
+  nextWeekFocus   String?
   published       Boolean   @default(false)
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())

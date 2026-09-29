@@ -6,6 +6,20 @@ function agencyOnly(session: { user?: { role?: string } | null } | null) {
   return session?.user?.role === "agency";
 }
 
+function serialize(r: {
+  weekStartDate: Date; weekEndDate: Date; publishedAt: Date | null;
+  createdAt: Date; updatedAt: Date; [key: string]: unknown;
+}) {
+  return {
+    ...r,
+    weekStartDate: r.weekStartDate.toISOString(),
+    weekEndDate: r.weekEndDate.toISOString(),
+    publishedAt: r.publishedAt?.toISOString() ?? null,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
+}
+
 export async function GET() {
   const session = await auth();
   if (!agencyOnly(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,17 +29,7 @@ export async function GET() {
     orderBy: [{ clientId: "asc" }, { weekEndDate: "desc" }],
   });
 
-  return NextResponse.json(reports.map((r) => ({
-    ...r,
-    paidOut: r.paidOut,
-    effectiveCpm: r.effectiveCpm,
-    budgetRemaining: r.budgetRemaining,
-    weekStartDate: r.weekStartDate.toISOString(),
-    weekEndDate: r.weekEndDate.toISOString(),
-    publishedAt: r.publishedAt?.toISOString() ?? null,
-    createdAt: r.createdAt.toISOString(),
-    updatedAt: r.updatedAt.toISOString(),
-  })));
+  return NextResponse.json(reports.map(serialize));
 }
 
 export async function POST(req: NextRequest) {
@@ -34,19 +38,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    clientId,
-    weekStartDate,
-    weekEndDate,
-    totalViews,
-    tiktokViews,
-    instagramViews,
-    youtubeViews,
-    twitterViews,
-    paidOut,
-    effectiveCpm,
-    budgetRemaining,
-    clipsSubmitted,
-    clipsApproved,
+    clientId, weekStartDate, weekEndDate,
+    totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
+    paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
+    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus,
   } = body;
 
   if (!clientId || !weekStartDate || !weekEndDate) {
@@ -68,16 +63,13 @@ export async function POST(req: NextRequest) {
       budgetRemaining: budgetRemaining ?? null,
       clipsSubmitted: clipsSubmitted ?? 0,
       clipsApproved: clipsApproved ?? 0,
+      weeklySummary: weeklySummary || null,
+      whatsWorking: whatsWorking || null,
+      whatsNotWorking: whatsNotWorking || null,
+      nextWeekFocus: nextWeekFocus || null,
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } } },
   });
 
-  return NextResponse.json({
-    ...report,
-    weekStartDate: report.weekStartDate.toISOString(),
-    weekEndDate: report.weekEndDate.toISOString(),
-    publishedAt: report.publishedAt?.toISOString() ?? null,
-    createdAt: report.createdAt.toISOString(),
-    updatedAt: report.updatedAt.toISOString(),
-  }, { status: 201 });
+  return NextResponse.json(serialize(report), { status: 201 });
 }

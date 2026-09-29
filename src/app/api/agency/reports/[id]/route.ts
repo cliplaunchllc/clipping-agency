@@ -6,6 +6,20 @@ function agencyOnly(session: { user?: { role?: string } | null } | null) {
   return session?.user?.role === "agency";
 }
 
+function serialize(r: {
+  weekStartDate: Date; weekEndDate: Date; publishedAt: Date | null;
+  createdAt: Date; updatedAt: Date; [key: string]: unknown;
+}) {
+  return {
+    ...r,
+    weekStartDate: r.weekStartDate.toISOString(),
+    weekEndDate: r.weekEndDate.toISOString(),
+    publishedAt: r.publishedAt?.toISOString() ?? null,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!agencyOnly(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,15 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { client: { select: { id: true, name: true, logoUrl: true } } },
   });
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  return NextResponse.json({
-    ...report,
-    weekStartDate: report.weekStartDate.toISOString(),
-    weekEndDate: report.weekEndDate.toISOString(),
-    publishedAt: report.publishedAt?.toISOString() ?? null,
-    createdAt: report.createdAt.toISOString(),
-    updatedAt: report.updatedAt.toISOString(),
-  });
+  return NextResponse.json(serialize(report));
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,18 +40,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = await req.json();
   const {
-    weekStartDate,
-    weekEndDate,
-    totalViews,
-    tiktokViews,
-    instagramViews,
-    youtubeViews,
-    twitterViews,
-    paidOut,
-    effectiveCpm,
-    budgetRemaining,
-    clipsSubmitted,
-    clipsApproved,
+    weekStartDate, weekEndDate,
+    totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
+    paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
+    weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus,
   } = body;
 
   const report = await prisma.campaignReport.update({
@@ -63,18 +61,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(budgetRemaining !== undefined && { budgetRemaining }),
       ...(clipsSubmitted !== undefined && { clipsSubmitted }),
       ...(clipsApproved !== undefined && { clipsApproved }),
+      ...(weeklySummary !== undefined && { weeklySummary: weeklySummary || null }),
+      ...(whatsWorking !== undefined && { whatsWorking: whatsWorking || null }),
+      ...(whatsNotWorking !== undefined && { whatsNotWorking: whatsNotWorking || null }),
+      ...(nextWeekFocus !== undefined && { nextWeekFocus: nextWeekFocus || null }),
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } } },
   });
 
-  return NextResponse.json({
-    ...report,
-    weekStartDate: report.weekStartDate.toISOString(),
-    weekEndDate: report.weekEndDate.toISOString(),
-    publishedAt: report.publishedAt?.toISOString() ?? null,
-    createdAt: report.createdAt.toISOString(),
-    updatedAt: report.updatedAt.toISOString(),
-  });
+  return NextResponse.json(serialize(report));
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

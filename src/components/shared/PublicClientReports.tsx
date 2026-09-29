@@ -17,6 +17,10 @@ interface Report {
   budgetRemaining: number | null;
   clipsSubmitted: number;
   clipsApproved: number;
+  weeklySummary: string | null;
+  whatsWorking: string | null;
+  whatsNotWorking: string | null;
+  nextWeekFocus: string | null;
   publishedAt: string | null;
 }
 
@@ -205,6 +209,37 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
+        <div className="mt-5 space-y-3">
+          {report.weeklySummary && (
+            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#8A93A6" }}>Weekly Summary</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.weeklySummary}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            {report.whatsWorking && (
+              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.12)" }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#3DFFA2" }}>What's Working</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsWorking}</p>
+              </div>
+            )}
+            {report.whatsNotWorking && (
+              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.12)" }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF3B3B" }}>What's Not Working</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsNotWorking}</p>
+              </div>
+            )}
+          </div>
+          {report.nextWeekFocus && (
+            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.15)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF8800" }}>Next Week's Focus</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.nextWeekFocus}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
