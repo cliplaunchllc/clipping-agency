@@ -15,8 +15,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Apex Media client not found" }, { status: 404 });
   }
 
-  // Clear existing ongoing reports
+  // Clear existing reports
   await prisma.ongoingReport.deleteMany({ where: { clientId: client.id } });
+  await prisma.campaignReport.deleteMany({ where: { clientId: client.id } });
 
   const baseDate = new Date("2026-09-16T12:00:00Z");
   const rows = [
@@ -57,10 +58,59 @@ export async function POST(req: Request) {
     created.push({ date: date.toISOString().slice(0, 10), viewsToday: row.vToday });
   }
 
+  // Seed 2 end-of-week CampaignReports
+  const weeklyReports = [
+    {
+      weekStartDate: new Date("2026-09-16T12:00:00Z"),
+      weekEndDate:   new Date("2026-09-22T12:00:00Z"),
+      totalViews: 465_100,
+      tiktokViews: 280_000,
+      instagramViews: 120_000,
+      youtubeViews: 45_100,
+      twitterViews: 20_000,
+      paidOut: 930.20,
+      effectiveCpm: 2.00,
+      budgetRemaining: 4069.80,
+      clipsSubmitted: 90,
+      clipsApproved: 75,
+      weeklySummary: "Strong opening week with TikTok leading performance. Viral clip on Sep 21 drove a single-day spike of 128K views. Approval rate held at 83%.",
+      whatsWorking: "Short-form TikTok hooks (under 7 sec) are outperforming longer cuts 3:1. Posts between 7–9 PM EST consistently hit higher view velocity.",
+      whatsNotWorking: "Instagram Reels underperformed — lower reach than expected possibly due to hashtag strategy. Testing new tag sets next week.",
+      nextWeekFocus: "Push TikTok volume to 15+ clips/day. Test 3 Instagram Reels formats with broader hashtag sets. Target 600K total views.",
+      published: true,
+      publishedAt: new Date("2026-09-23T09:00:00Z"),
+    },
+    {
+      weekStartDate: new Date("2026-09-23T12:00:00Z"),
+      weekEndDate:   new Date("2026-09-29T12:00:00Z"),
+      totalViews: 817_700,
+      tiktokViews: 520_000,
+      instagramViews: 180_000,
+      youtubeViews: 80_000,
+      twitterViews: 37_700,
+      paidOut: 1635.40,
+      effectiveCpm: 2.00,
+      budgetRemaining: 2434.40,
+      clipsSubmitted: 105,
+      clipsApproved: 91,
+      weeklySummary: "Best week yet — 817K views, up 76% over Week 1. The Sep 27 clip hit 204K views alone, driven by a trending audio hook. Approval rate improved to 87%.",
+      whatsWorking: "Trending audio integrations are delivering outsized reach. Consistency in posting schedule has improved account algorithmic favor on TikTok.",
+      whatsNotWorking: "YouTube Shorts still low relative to effort invested. May reallocate clipper time away from YT toward TikTok and Instagram.",
+      nextWeekFocus: "Target 1M+ total views. Scale TikTok to 20 clips/day. Reduce YouTube to 2 clips/day and redirect effort. Continue trending audio sourcing.",
+      published: true,
+      publishedAt: new Date("2026-09-30T09:00:00Z"),
+    },
+  ];
+
+  for (const wr of weeklyReports) {
+    await prisma.campaignReport.create({ data: { clientId: client.id, ...wr } });
+  }
+
   return NextResponse.json({
     ok: true,
     client: client.name,
-    reportsCreated: created.length,
+    dailyReportsCreated: created.length,
+    weeklyReportsCreated: weeklyReports.length,
     reports: created,
   });
 }

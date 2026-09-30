@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink, Check,
-  TrendingUp, TrendingDown, Activity, ChevronDown, ChevronRight,
+  TrendingUp, TrendingDown, Activity, ChevronDown, ChevronRight, CalendarDays,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -14,6 +14,17 @@ function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();
+}
+
+function fmtCurrency(n: number) {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function fmtWeekRange(start: string, end: string) {
+  const s = new Date(start + "T00:00:00");
+  const e = new Date(end + "T00:00:00");
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
 }
 
 function fmtDate(iso: string) {
@@ -83,6 +94,17 @@ interface OngoingReport {
   viewsTotal: number; viewsToday: number;
 }
 
+interface CampaignReport {
+  id: string; weekStartDate: string; weekEndDate: string;
+  totalViews: number; tiktokViews: number; instagramViews: number;
+  youtubeViews: number; twitterViews: number;
+  paidOut: number; effectiveCpm: number | null; budgetRemaining: number | null;
+  clipsSubmitted: number; clipsApproved: number;
+  weeklySummary: string | null; whatsWorking: string | null;
+  whatsNotWorking: string | null; nextWeekFocus: string | null;
+  publishedAt: string | null;
+}
+
 interface ClientData {
   id: string; name: string; status: string;
   campaignType: "manual" | "cpm";
@@ -95,6 +117,7 @@ interface ClientData {
   clips: Clip[]; clippers: Clipper[];
   links: Link[]; onboardingSteps: OnboardingStep[];
   ongoingReports: OngoingReport[];
+  campaignReports: CampaignReport[];
 }
 
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
@@ -117,6 +140,9 @@ const cardElevated: React.CSSProperties = {
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "contract">("overview");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+  const [expandedWeekReportId, setExpandedWeekReportId] = useState<string | null>(null);
+  const [highlightedWeekId, setHighlightedWeekId] = useState<string | null>(null);
+  const weekReportRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
     if (!client.ongoingReports?.length) return new Set();
     const latest = client.ongoingReports[0].date.slice(0, 7);
@@ -290,6 +316,82 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
             <>
               {client.campaignType === "cpm" ? (
                 <>
+                  {/* ── Latest weekly report notification banner ──── */}
+                  {(() => {
+                    const latest = (client.campaignReports ?? [])[0];
+                    if (!latest) return null;
+                    function scrollToWeekReport(id: string) {
+                      // expand the month group containing weekEndDate
+                      const monthKey = latest.weekEndDate.slice(0, 7);
+                      setExpandedMonths((s) => { const n = new Set(s); n.add(monthKey); return n; });
+                      setExpandedWeekReportId(id);
+                      setHighlightedWeekId(id);
+                      setTimeout(() => {
+                        weekReportRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        setTimeout(() => setHighlightedWeekId(null), 1800);
+                      }, 80);
+                    }
+                    return (
+                      <div
+                        className="mb-5 rounded-xl px-4 py-3.5 flex items-center gap-4"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(61,255,162,0.07) 0%, rgba(61,255,162,0.03) 100%)",
+                          border: "1px solid var(--accent-border)",
+                        }}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+                        >
+                          <CalendarDays size={15} style={{ color: "var(--accent)" }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span
+                              className="text-xs font-semibold uppercase tracking-widest"
+                              style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.07em" }}
+                            >
+                              End of Week Report
+                            </span>
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 10 }}
+                            >
+                              New
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                            {fmtWeekRange(latest.weekStartDate, latest.weekEndDate)}
+                          </p>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                              {fmt(latest.totalViews)} views
+                            </span>
+                            {latest.paidOut > 0 && (
+                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                                · {fmtCurrency(latest.paidOut)} paid out
+                              </span>
+                            )}
+                            {latest.clipsApproved > 0 && (
+                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                                · {latest.clipsApproved} clips approved
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => scrollToWeekReport(latest.id)}
+                          className="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                          style={{ background: "var(--accent-solid)", color: "var(--text-on-accent)" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
+                        >
+                          View Report
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   {/* Campaign Tracker card */}
                   <div style={card} className="p-5 mb-4">
                     <div className="flex items-start gap-3">
@@ -439,135 +541,287 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         })()}
 
                         {/* Month groups */}
-                        <div className="space-y-2">
-                          {months.map((monthKey) => {
-                            const monthReports = monthMap.get(monthKey)!;
-                            const isOpen = expandedMonths.has(monthKey);
-                            const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
+                        {(() => {
+                          const weekReports = (client.campaignReports ?? []);
+                          // Build a map of weekEndDate month → campaign reports
+                          const weekByMonth = new Map<string, CampaignReport[]>();
+                          for (const wr of weekReports) {
+                            const mk = wr.weekEndDate.slice(0, 7);
+                            if (!weekByMonth.has(mk)) weekByMonth.set(mk, []);
+                            weekByMonth.get(mk)!.push(wr);
+                          }
 
-                            return (
-                              <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
-                                <button
-                                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
-                                  style={{ background: "transparent" }}
-                                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                  onClick={() => toggleMonth(monthKey)}
-                                >
-                                  <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-                                    <Activity size={13} style={{ color: "var(--accent)" }} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtMonthLabel(monthKey)}</p>
-                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{monthReports.length} report{monthReports.length !== 1 ? "s" : ""}</p>
-                                  </div>
-                                  <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-                                    <div className="text-right">
-                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                    style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}>
-                                    <ChevronDown size={15} />
-                                  </div>
-                                </button>
+                          return (
+                            <div className="space-y-2">
+                              {months.map((monthKey) => {
+                                const monthReports = monthMap.get(monthKey)!;
+                                const monthWeekReports = weekByMonth.get(monthKey) ?? [];
+                                const isOpen = expandedMonths.has(monthKey);
+                                const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
 
-                                {isOpen && (
-                                  <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                    {monthReports.map((report) => {
-                                      const isExpanded = expandedReportId === report.id;
-                                      const globalIdx = reports.indexOf(report);
-                                      const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
-                                      const viewsTodayChange = prevReport && prevReport.viewsToday > 0
-                                        ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                        : null;
-                                      const changeColor = viewsTodayChange === null
-                                        ? "var(--text-tertiary)"
-                                        : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+                                // Combine daily + weekly rows sorted desc by date
+                                type DailyRow = { kind: "daily"; date: string; report: OngoingReport };
+                                type WeeklyRow = { kind: "weekly"; date: string; report: CampaignReport };
+                                type Row = DailyRow | WeeklyRow;
+                                const rows: Row[] = [
+                                  ...monthReports.map((r): DailyRow => ({ kind: "daily", date: r.date, report: r })),
+                                  ...monthWeekReports.map((r): WeeklyRow => ({ kind: "weekly", date: r.weekEndDate, report: r })),
+                                ].sort((a, b) => b.date.localeCompare(a.date));
 
-                                      return (
-                                        <div key={report.id} className="rounded-lg overflow-hidden"
-                                          style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
-                                          <button
-                                            className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                            style={{ background: "transparent" }}
-                                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                            onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
-                                          >
-                                            <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
-                                                <span className="text-xs px-1.5 py-0.5 rounded"
-                                                  style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
-                                              </div>
-                                            </div>
-                                            <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                              <div className="text-right">
-                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                                <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
-                                              </div>
-                                              <div className="text-right">
-                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                  <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
-                                                  {viewsTodayChange !== null && (
-                                                    <span className="text-xs font-medium" style={{ color: changeColor }}>
-                                                      {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                              <div className="text-right">
-                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
-                                                <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
-                                              </div>
-                                            </div>
-                                            <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                              style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
-                                              <ChevronRight size={13} />
-                                            </div>
-                                          </button>
-
-                                          {isExpanded && (
-                                            <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                {[
-                                                  { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
-                                                  { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
-                                                  { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
-                                                  { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
-                                                ].map((s) => (
-                                                  <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                    <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                                    <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                              {[
-                                                { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
-                                                { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
-                                                { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
-                                              ].filter((s) => s.value).map((s) => (
-                                                <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
-                                                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
+                                return (
+                                  <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
+                                    <button
+                                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
+                                      style={{ background: "transparent" }}
+                                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                      onClick={() => toggleMonth(monthKey)}
+                                    >
+                                      <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                                        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                        <Activity size={13} style={{ color: "var(--accent)" }} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtMonthLabel(monthKey)}</p>
+                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                                          {monthReports.length} daily report{monthReports.length !== 1 ? "s" : ""}
+                                          {monthWeekReports.length > 0 && ` · ${monthWeekReports.length} week summar${monthWeekReports.length !== 1 ? "ies" : "y"}`}
+                                        </p>
+                                      </div>
+                                      <div className="hidden md:flex items-center gap-6 flex-shrink-0">
+                                        <div className="text-right">
+                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                          <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
                                         </div>
-                                      );
-                                    })}
+                                      </div>
+                                      <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                        style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}>
+                                        <ChevronDown size={15} />
+                                      </div>
+                                    </button>
+
+                                    {isOpen && (
+                                      <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                        {rows.map((row) => {
+                                          if (row.kind === "weekly") {
+                                            const wr = row.report;
+                                            const isExpanded = expandedWeekReportId === wr.id;
+                                            const isHighlighted = highlightedWeekId === wr.id;
+                                            return (
+                                              <div
+                                                key={`week-${wr.id}`}
+                                                ref={(el) => { weekReportRefs.current[wr.id] = el; }}
+                                                className="rounded-lg overflow-hidden"
+                                                style={{
+                                                  background: "var(--bg-base)",
+                                                  border: `1px solid ${isHighlighted ? "var(--accent)" : "var(--accent-border)"}`,
+                                                  transition: "border-color 400ms ease, box-shadow 400ms ease",
+                                                  boxShadow: isHighlighted ? "0 0 0 2px var(--accent-muted)" : "none",
+                                                }}
+                                              >
+                                                <button
+                                                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                                  style={{ background: isHighlighted ? "var(--accent-muted)" : "transparent" }}
+                                                  onMouseEnter={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; }}
+                                                  onMouseLeave={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                                                  onClick={() => setExpandedWeekReportId(isExpanded ? null : wr.id)}
+                                                >
+                                                  <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                                                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                                    <CalendarDays size={11} style={{ color: "var(--accent)" }} />
+                                                  </div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                      <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                                                        {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
+                                                      </span>
+                                                      <span
+                                                        className="text-xs px-1.5 py-0.5 rounded font-semibold"
+                                                        style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 9, letterSpacing: "0.06em" }}
+                                                      >
+                                                        WEEK SUMMARY
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                  <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                                    <div className="text-right">
+                                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Total Views</p>
+                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
+                                                    </div>
+                                                    {wr.paidOut > 0 && (
+                                                      <div className="text-right">
+                                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Paid Out</p>
+                                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
+                                                      </div>
+                                                    )}
+                                                    <div className="text-right">
+                                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Clips</p>
+                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                                    style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                                    <ChevronRight size={13} />
+                                                  </div>
+                                                </button>
+
+                                                {isExpanded && (
+                                                  <div className="px-5 pb-5 pt-4 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
+                                                    {/* Stat grid */}
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                      {[
+                                                        { label: "Total Views",  value: fmt(wr.totalViews),                                 color: "var(--accent)" },
+                                                        { label: "Paid Out",     value: fmtCurrency(wr.paidOut),                            color: "var(--success)" },
+                                                        { label: "Clips",        value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`,       color: "var(--text-primary)" },
+                                                        { label: "Eff. CPM",     value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
+                                                      ].map((s) => (
+                                                        <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                          <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
+                                                          <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                    {/* Platform breakdown */}
+                                                    {wr.totalViews > 0 && (() => {
+                                                      const platforms = [
+                                                        { label: "TikTok", views: wr.tiktokViews, color: "var(--accent)" },
+                                                        { label: "Instagram", views: wr.instagramViews, color: "#FF8800" },
+                                                        { label: "YouTube", views: wr.youtubeViews, color: "#CC1A1A" },
+                                                        { label: "X", views: wr.twitterViews, color: "#5B9BD5" },
+                                                      ].filter((p) => p.views > 0);
+                                                      if (platforms.length === 0) return null;
+                                                      return (
+                                                        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+                                                          <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
+                                                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Platform Breakdown</p>
+                                                          </div>
+                                                          <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
+                                                            {platforms.map((p) => (
+                                                              <div key={p.label} className="flex items-center justify-between px-3 py-2">
+                                                                <span className="text-xs font-semibold" style={{ color: p.color }}>{p.label}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                  <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(p.views)}</span>
+                                                                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{((p.views / wr.totalViews) * 100).toFixed(1)}%</span>
+                                                                </div>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      );
+                                                    })()}
+                                                    {/* Text sections */}
+                                                    {[
+                                                      { key: "weeklySummary",    label: "Weekly Summary",     value: wr.weeklySummary,    border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
+                                                      { key: "whatsWorking",     label: "What's Working",     value: wr.whatsWorking,     border: "rgba(61,214,140,0.3)",  bg: "var(--success-bg)",     color: "var(--success)" },
+                                                      { key: "whatsNotWorking",  label: "What's Not Working", value: wr.whatsNotWorking,  border: "rgba(255,59,59,0.2)",   bg: "rgba(255,59,59,0.06)",  color: "var(--danger)" },
+                                                      { key: "nextWeekFocus",    label: "Next Week Focus",    value: wr.nextWeekFocus,    border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",     color: "var(--warning)" },
+                                                    ].filter((s) => s.value).map((s) => (
+                                                      <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                                        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          }
+
+                                          // Daily row
+                                          const report = row.report as OngoingReport;
+                                          const isExpanded = expandedReportId === report.id;
+                                          const globalIdx = reports.indexOf(report);
+                                          const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
+                                          const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                                            ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
+                                            : null;
+                                          const changeColor = viewsTodayChange === null
+                                            ? "var(--text-tertiary)"
+                                            : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+
+                                          return (
+                                            <div key={report.id} className="rounded-lg overflow-hidden"
+                                              style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
+                                              <button
+                                                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                                style={{ background: "transparent" }}
+                                                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                                onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                              >
+                                                <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
+                                                    <span className="text-xs px-1.5 py-0.5 rounded"
+                                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
+                                                  </div>
+                                                </div>
+                                                <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                                  <div className="text-right">
+                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                                  </div>
+                                                  <div className="text-right">
+                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                                      {viewsTodayChange !== null && (
+                                                        <span className="text-xs font-medium" style={{ color: changeColor }}>
+                                                          {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  <div className="text-right">
+                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
+                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                                                  </div>
+                                                </div>
+                                                <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                                  style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                                  <ChevronRight size={13} />
+                                                </div>
+                                              </button>
+
+                                              {isExpanded && (
+                                                <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                    {[
+                                                      { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
+                                                      { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
+                                                      { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
+                                                      { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
+                                                    ].map((s) => (
+                                                      <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                        <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
+                                                        <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                  {[
+                                                    { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
+                                                    { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
+                                                    { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
+                                                  ].filter((s) => s.value).map((s) => (
+                                                    <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
