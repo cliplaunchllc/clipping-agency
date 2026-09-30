@@ -37,9 +37,9 @@ interface Props {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  color: "#F5F6FA",
+  background: "var(--border-subtle)",
+  border: "1px solid var(--border-default)",
+  color: "var(--text-primary)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
@@ -81,8 +81,8 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clippers</h1>
-          <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Clippers</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             {clippers.filter((c) => c.status === "pending").length} pending assignment
           </p>
         </div>
@@ -99,19 +99,19 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
             className="px-4 py-2.5 text-sm font-medium relative tab-btn"
             style={{ color: tab === t.id ? "#F5F6FA" : "#8A93A6" }}>
             {t.label}
-            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF3B3B" }} />}
+            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
           </button>
         ))}
       </div>
 
       {/* ALL / PENDING TABLE */}
       {(tab === "all" || tab === "pending") && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {["Clipper", "Email", "Status", "Assigned Client", "Clips", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
+                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -123,24 +123,24 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-                          style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>
+                          style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>
                           {(c.name || c.email)[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name || "—"}</p>
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.name || "—"}</p>
                           {(c.clipperProfile?.subAccounts ?? []).length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-1.5">
                               {(c.clipperProfile?.subAccounts ?? []).map((s) => (
                                 s.profileUrl ? (
                                   <a key={s.id} href={s.profileUrl} target="_blank" rel="noopener noreferrer"
                                     className="flex items-center gap-1 px-2 py-0.5 rounded-lg transition-opacity hover:opacity-75"
-                                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", textDecoration: "none" }}>
+                                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-subtle)", textDecoration: "none" }}>
                                     <PlatformIcon platform={s.platform} size={11} />
                                     <span className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>@{s.handle}</span>
                                   </a>
                                 ) : (
                                   <div key={s.id} className="flex items-center gap-1 px-2 py-0.5 rounded-lg"
-                                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-subtle)" }}>
                                     <PlatformIcon platform={s.platform} size={11} />
                                     <span className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>@{s.handle}</span>
                                   </div>
@@ -151,12 +151,12 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs" style={{ color: "#8A93A6" }}>{c.email}</td>
+                    <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>{c.email}</td>
                     <td className="px-6 py-4">
                       <span className="text-xs px-2 py-1 rounded-full"
                         style={{
                           background: c.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,165,0,0.1)",
-                          color: c.status === "active" ? "#3DFFA2" : "#FFA500",
+                          color: c.status === "active" ? "var(--success)" : "var(--warning)",
                         }}>
                         {c.status}
                       </span>
@@ -165,31 +165,31 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                       {assigning === c.id ? (
                         <div className="flex items-center gap-2">
                           <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} style={inputStyle}>
-                            <option value="" style={{ background: "#0B0E17" }}>Unassigned</option>
+                            <option value="" style={{ background: "var(--bg-surface)" }}>Unassigned</option>
                             {allClients.filter((cl) => cl.status === "active").map((cl) => (
-                              <option key={cl.id} value={cl.id} style={{ background: "#0B0E17" }}>{cl.name}</option>
+                              <option key={cl.id} value={cl.id} style={{ background: "var(--bg-surface)" }}>{cl.name}</option>
                             ))}
                           </select>
                           <button onClick={() => handleAssign(c.id, selectedClientId || null)}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                            style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "#3DFFA2" }}>
+                            style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)" }}>
                             Save
                           </button>
-                          <button onClick={() => setAssigning(null)} className="text-xs px-2 py-1 rounded" style={{ color: "#8A93A6" }}>Cancel</button>
+                          <button onClick={() => setAssigning(null)} className="text-xs px-2 py-1 rounded" style={{ color: "var(--text-secondary)" }}>Cancel</button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           {clientArchived && (
-                            <span title="Client is archived"><AlertTriangle size={13} color="#FFA500" /></span>
+                            <span title="Client is archived"><AlertTriangle size={13} color="var(--warning)" /></span>
                           )}
-                          <span className="text-xs" style={{ color: clientArchived ? "#FFA500" : "#F5F6FA" }}>
-                            {c.client?.name ?? <span style={{ color: "#8A93A6" }}>Unassigned</span>}
+                          <span className="text-xs" style={{ color: clientArchived ? "var(--warning)" : "#F5F6FA" }}>
+                            {c.client?.name ?? <span style={{ color: "var(--text-secondary)" }}>Unassigned</span>}
                           </span>
-                          {clientArchived && <span className="text-xs" style={{ color: "#8A93A6" }}>(archived)</span>}
+                          {clientArchived && <span className="text-xs" style={{ color: "var(--text-secondary)" }}>(archived)</span>}
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.clipperProfile?._count?.clips ?? 0}</td>
+                    <td className="px-6 py-4 text-xs" style={{ color: "var(--text-primary)" }}>{c.clipperProfile?._count?.clips ?? 0}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {c.status === "active" && (
@@ -200,7 +200,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                         )}
                         <button onClick={() => { setAssigning(c.id); setSelectedClientId(c.clientId ?? ""); }}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                          style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                          style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                           <UserCheck size={12} />
                           {c.status === "pending" ? "Assign" : "Reassign"}
                         </button>
@@ -210,7 +210,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                 );
               })}
               {visible.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                   {tab === "pending" ? "No pending clippers" : "No clippers yet"}
                 </td></tr>
               )}
@@ -224,16 +224,16 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
         <div className="space-y-6">
           {/* Client selector */}
           <div className="flex items-center gap-3">
-            <span className="text-sm" style={{ color: "#8A93A6" }}>Client</span>
+            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>Client</span>
             <div className="relative">
               <select
                 value={accountsClientId}
                 onChange={(e) => setAccountsClientId(e.target.value)}
                 className="appearance-none pl-3 pr-8 py-2.5 text-sm font-medium rounded-xl cursor-pointer outline-none"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", minWidth: 200 }}>
-                <option value="" style={{ background: "#0B0E17" }}>— Select a client —</option>
+                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 200 }}>
+                <option value="" style={{ background: "var(--bg-surface)" }}>— Select a client —</option>
                 {allClients.map((cl) => (
-                  <option key={cl.id} value={cl.id} style={{ background: "#0B0E17" }}>
+                  <option key={cl.id} value={cl.id} style={{ background: "var(--bg-surface)" }}>
                     {cl.name}{cl.status === "archived" ? " (archived)" : ""}
                   </option>
                 ))}
@@ -243,8 +243,8 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
             {accountsClient && (
               <span className="text-xs px-2.5 py-1 rounded-full"
                 style={{
-                  background: accountsClient.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,255,255,0.05)",
-                  color: accountsClient.status === "active" ? "#3DFFA2" : "#8A93A6",
+                  background: accountsClient.status === "active" ? "rgba(61,255,162,0.1)" : "var(--border-subtle)",
+                  color: accountsClient.status === "active" ? "var(--success)" : "#8A93A6",
                 }}>
                 {accountsClient.status}
               </span>
@@ -253,31 +253,31 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
 
           {/* Clippers + their accounts for selected client */}
           {!accountsClientId ? (
-            <div className="rounded-2xl p-12 text-center" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <p className="text-sm" style={{ color: "#8A93A6" }}>Select a client to view accounts</p>
+            <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Select a client to view accounts</p>
             </div>
           ) : clippersForClient.length === 0 ? (
-            <div className="rounded-2xl p-12 text-center" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <p className="text-sm" style={{ color: "#8A93A6" }}>No active clippers assigned to this client</p>
+            <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No active clippers assigned to this client</p>
             </div>
           ) : (
             <div className="space-y-4">
               {clippersForClient.map((clipper) => {
                 const subs = clipper.clipperProfile?.subAccounts ?? [];
                 return (
-                  <div key={clipper.id} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div key={clipper.id} className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                     {/* Clipper header */}
                     <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: subs.length > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                        style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>
+                        style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>
                         {(clipper.name || clipper.email)[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{clipper.name || "—"}</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{clipper.email}</p>
+                        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{clipper.name || "—"}</p>
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{clipper.email}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: "#8A93A6" }}>
+                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                           {subs.length} page{subs.length !== 1 ? "s" : ""} · {clipper.clipperProfile?._count.clips ?? 0} clips
                         </span>
                         <Link href={`/agency/preview/clipper/${clipper.id}`}
@@ -296,7 +296,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                               <>
                                 <PlatformIcon platform={s.platform} size={15} />
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>@{s.handle}</p>
+                                  <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>@{s.handle}</p>
                                   <p className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>{PLATFORM_LABELS[s.platform] ?? s.platform}</p>
                                 </div>
                               </>
@@ -304,12 +304,12 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                             return s.profileUrl ? (
                               <a key={s.id} href={s.profileUrl} target="_blank" rel="noopener noreferrer"
                                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-opacity hover:opacity-75"
-                                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
+                                style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)", textDecoration: "none" }}>
                                 {inner}
                               </a>
                             ) : (
                               <div key={s.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-                                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                                 {inner}
                               </div>
                             );
@@ -318,7 +318,7 @@ export default function ClipperManagement({ initialClippers, allClients }: Props
                       </div>
                     ) : (
                       <div className="px-5 py-4">
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>No pages added yet</p>
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>No pages added yet</p>
                       </div>
                     )}
                   </div>

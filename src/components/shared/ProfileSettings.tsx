@@ -25,9 +25,9 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
   const [passwordMsg, setPasswordMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
+    background: "var(--border-subtle)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
     borderRadius: 12,
     padding: "12px 16px",
     fontSize: 14,
@@ -84,26 +84,26 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
     setPasswordSaving(false);
   }
 
-  const accentColor = role === "client" ? "#a78bfa" : "#3DFFA2";
+  const accentColor = role === "client" ? "var(--accent)" : "var(--success)";
   const accentBg = role === "client" ? "rgba(167,139,250,0.12)" : "rgba(61,255,162,0.12)";
   const accentBorder = role === "client" ? "rgba(167,139,250,0.25)" : "rgba(61,255,162,0.25)";
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#05070D" }}>
+    <div className="flex min-h-screen" style={{ background: "var(--bg-elevated)" }}>
       <Sidebar role={role} userName={name} />
-      <main className="flex-1 ml-60">
+      <main className="flex-1 ml-56">
         <div className="max-w-2xl mx-auto px-8 py-10">
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+          <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             Settings
           </h1>
-          <p className="text-sm mb-8" style={{ color: "#8A93A6" }}>Manage your account information</p>
+          <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Manage your account information</p>
 
           {/* Profile section */}
-          <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h2 className="text-base font-semibold mb-5" style={{ color: "#F5F6FA" }}>Profile</h2>
+          <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h2 className="text-base font-semibold mb-5" style={{ color: "var(--text-primary)" }}>Profile</h2>
             <form onSubmit={handleProfileSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Full Name</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Full Name</label>
                 <input
                   type="text"
                   value={name}
@@ -111,12 +111,12 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                   required
                   style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
                   placeholder="Your name"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Email Address</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Email Address</label>
                 <input
                   type="email"
                   value={email}
@@ -124,7 +124,7 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                   required
                   style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
                   placeholder="you@example.com"
                 />
               </div>
@@ -133,7 +133,7 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                 <div className="text-xs px-4 py-3 rounded-xl"
                   style={{
                     background: profileMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
-                    color: profileMsg.type === "ok" ? "#3DFFA2" : "#FF4757",
+                    color: profileMsg.type === "ok" ? "var(--success)" : "var(--danger)",
                     border: `1px solid ${profileMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
                   }}>
                   {profileMsg.text}
@@ -158,11 +158,11 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
           </div>
 
           {/* Password section */}
-          <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h2 className="text-base font-semibold mb-5" style={{ color: "#F5F6FA" }}>Change Password</h2>
+          <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h2 className="text-base font-semibold mb-5" style={{ color: "var(--text-primary)" }}>Change Password</h2>
             <form onSubmit={handlePasswordSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Current Password</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Current Password</label>
                 <input
                   type="password"
                   value={currentPassword}
@@ -170,12 +170,12 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                   required
                   style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
                   placeholder="••••••••"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>New Password</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>New Password</label>
                 <input
                   type="password"
                   value={newPassword}
@@ -184,12 +184,12 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                   minLength={6}
                   style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
                   placeholder="••••••••"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Confirm New Password</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Confirm New Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -197,7 +197,7 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                   required
                   style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
                   placeholder="••••••••"
                 />
               </div>
@@ -206,7 +206,7 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
                 <div className="text-xs px-4 py-3 rounded-xl"
                   style={{
                     background: passwordMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
-                    color: passwordMsg.type === "ok" ? "#3DFFA2" : "#FF4757",
+                    color: passwordMsg.type === "ok" ? "var(--success)" : "var(--danger)",
                     border: `1px solid ${passwordMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
                   }}>
                   {passwordMsg.text}

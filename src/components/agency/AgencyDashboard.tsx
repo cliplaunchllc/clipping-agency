@@ -265,17 +265,17 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     .sort((a, b) => (b.mtdTotal as number) - (a.mtdTotal as number));
 
   const statItems = [
-    { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
-    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
-    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pct(currComments, prevComments) },
-    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pct(currShares, prevShares) },
-    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pct(currSaves, prevSaves) },
-    { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pct(filteredClips.length, prevClipCount) },
+    { label: "Views", value: fmt(currViews), icon: Eye, color: "var(--accent)", change: pct(currViews, prevViews) },
+    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "var(--accent)", change: pct(currLikes, prevLikes) },
+    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "var(--accent)", change: pct(currComments, prevComments) },
+    { label: "Shares", value: fmt(currShares), icon: Share2, color: "var(--accent)", change: pct(currShares, prevShares) },
+    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "var(--accent)", change: pct(currSaves, prevSaves) },
+    { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "var(--accent)", change: pct(filteredClips.length, prevClipCount) },
   ];
 
   const tooltipStyle = {
-    contentStyle: { background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
-    labelStyle: { color: "#8A93A6" },
+    contentStyle: { background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 12 },
+    labelStyle: { color: "var(--text-secondary)" },
   };
 
   const activeClientsForDisplay = selectedClientId === "all"
@@ -283,44 +283,44 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     : clients.filter((c) => c.id === selectedClientId);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
       {showLiveLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-xl p-8 w-full max-w-sm fade-in" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="rounded-xl p-8 w-full max-w-sm fade-in" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
-                  <Link2 size={14} color="#FF3B3B" />
+                  <Link2 size={14} color="var(--accent)" />
                 </div>
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Live Tracker Link</h2>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Live Tracker Link</h2>
               </div>
               <button onClick={() => { setShowLiveLinkModal(false); setLiveLinkCopied(false); }}><X size={18} color="#8A93A6" /></button>
             </div>
             <div className="rounded-xl p-4 mb-5" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: "#FF3B3B" }}>What your client sees:</p>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--accent)" }}>What your client sees:</p>
               <ul className="space-y-1">
                 {["Live views, likes, shares & engagement stats", "Top performing clips with thumbnails & links", "Individual clip breakdown by platform", "Platform-by-platform performance charts", "Real-time deal progress tracking"].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-xs" style={{ color: "#C8CDD8" }}>
-                    <span style={{ color: "#FF3B3B", fontSize: 10 }}>▸</span>
+                  <li key={item} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-primary)" }}>
+                    <span style={{ color: "var(--accent)", fontSize: 10 }}>▸</span>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
             <div className="mb-5">
-              <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Select Client</label>
+              <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Select Client</label>
               <select value={liveLinkClientId} onChange={(e) => setLiveLinkClientId(e.target.value)}
                 className="w-full outline-none appearance-none px-3 py-2.5 rounded-xl text-sm"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
-                <option value="" style={{ background: "#0B0E17" }}>Choose a client…</option>
+                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+                <option value="" style={{ background: "var(--bg-surface)" }}>Choose a client…</option>
                 {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
-                  <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                  <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{(c as AnyRecord).name}</option>
                 ))}
               </select>
             </div>
             <button onClick={handleGetLiveLink} disabled={!liveLinkClientId || liveLinkLoading}
               className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-              style={{ background: liveLinkCopied ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)", border: `1px solid ${liveLinkCopied ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`, color: liveLinkCopied ? "#3DFFA2" : "#FF3B3B", opacity: (!liveLinkClientId || liveLinkLoading) ? 0.5 : 1 }}>
+              style={{ background: liveLinkCopied ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)", border: `1px solid ${liveLinkCopied ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`, color: liveLinkCopied ? "var(--success)" : "var(--accent)", opacity: (!liveLinkClientId || liveLinkLoading) ? 0.5 : 1 }}>
               {liveLinkLoading ? (
                 <><RotateCw size={14} className="animate-spin" /> Generating…</>
               ) : liveLinkCopied ? (
@@ -333,9 +333,9 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
         </div>
       )}
       <Sidebar role="agency" userName={userName} />
-      <main className="flex-1 overflow-y-auto ml-60">
+      <main className="flex-1 overflow-y-auto ml-56">
         {/* Tab bar */}
-        <div className="sticky top-0 z-30 px-8 pt-6 pb-0" style={{ background: "#05070D" }}>
+        <div className="sticky top-0 z-30 px-8 pt-6 pb-0" style={{ background: "var(--bg-elevated)" }}>
           <div className="flex items-center gap-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
             {([
               { id: "overview", label: "Overview" },
@@ -349,7 +349,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 className="px-5 py-3 text-sm font-medium transition-all relative tab-btn"
                 style={{ color: activeTab === tab.id ? "#F5F6FA" : "#8A93A6" }}>
                 {tab.label}
-                {activeTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF3B3B" }} />}
+                {activeTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
               </button>
             ))}
           </div>
@@ -361,34 +361,34 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           {activeTab === "overview" && <>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                   {selectedClient ? selectedClient.name : "Overview"}
                 </h1>
-                <p className="text-sm mt-0.5" style={{ color: "#8A93A6" }}>
+                <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
                   {selectedClient ? "Single client view" : "All clients & clippers"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 {lastSynced && (
-                  <span className="text-xs" style={{ color: "#8A93A6" }}>
+                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                     Updated {Math.round((Date.now() - lastSynced.getTime()) / 60000)}m ago
                   </span>
                 )}
                 <button onClick={() => setShowLiveLinkModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
-                  style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
+                  style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
                   <Link2 size={11} /> Share Live Tracker
                 </button>
                 <button onClick={handleRefreshAll} disabled={refreshingAll}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
-                  style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B", opacity: refreshingAll ? 0.5 : 1 }}>
+                  style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: refreshingAll ? 0.5 : 1 }}>
                   <RotateCw size={11} className={refreshingAll ? "animate-spin" : ""} />
                   {refreshingAll ? "Syncing…" : "Sync Stats"}
                 </button>
                 {pendingClippers > 0 && (
                   <button onClick={() => setActiveTab("clippers")}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.25)", color: "#FFA500" }}>
+                    style={{ background: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.25)", color: "var(--warning)" }}>
                     <Scissors size={13} />
                     {pendingClippers} clipper{pendingClippers > 1 ? "s" : ""} awaiting assignment
                   </button>
@@ -402,27 +402,27 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               <div className="relative">
                 <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
                   className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", minWidth: 150 }}>
-                  <option value="all" style={{ background: "#0B0E17" }}>All Clients</option>
+                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
+                  <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
                   {allClients.filter((c) => c.status === "active").map((c) => (
-                    <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{c.name}</option>
+                    <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
                   ))}
                 </select>
                 <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
               {/* Divider */}
-              <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />
+              <div style={{ width: 1, height: 20, background: "var(--border-default)", flexShrink: 0 }} />
 
               {/* Time period pills */}
               <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-subtle)" }}>
                 {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
                   <button key={p} onClick={() => setTimePeriod(p)}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
                     style={{
                       background: timePeriod === p ? "rgba(255,59,59,0.2)" : "transparent",
-                      color: timePeriod === p ? "#FF3B3B" : "#8A93A6",
+                      color: timePeriod === p ? "var(--accent)" : "#8A93A6",
                     }}>
                     {p === "all" ? "All" : p === "1d" ? "Day" : p === "7d" ? "Week" : p === "mtd" ? "MTD" : "Custom"}
                   </button>
@@ -435,18 +435,18 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <input type="date" value={customStart} max={customEnd}
                     onChange={(e) => setCustomStart(e.target.value)}
                     className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
-                  <span className="text-xs" style={{ color: "#8A93A6" }}>to</span>
+                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
+                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>to</span>
                   <input type="date" value={customEnd} min={customStart}
                     onChange={(e) => setCustomEnd(e.target.value)}
                     className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
+                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
                 </div>
               )}
             </div>
 
             {/* ── Stats bar ───────────────────────────────────────────── */}
-            <div className="rounded-xl mb-2 overflow-hidden fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+            <div className="rounded-xl mb-2 overflow-hidden fade-up" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="grid grid-cols-6">
                 {statItems.map((item, i) => {
                   const Icon = item.icon;
@@ -458,13 +458,13 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                         style={{ background: `${item.color}18` }}>
                         <Icon size={14} color={item.color} />
                       </div>
-                      <p className="text-xs" style={{ color: "#8A93A6" }}>{item.label}</p>
-                      <span className="text-lg font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                      <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
+                      <span className="text-lg font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                         {item.value}
                       </span>
                       {item.change.ok && (
                         <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                          style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                          style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}>
                           {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                           {item.change.str}
                         </span>
@@ -473,14 +473,14 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   );
                 })}
               </div>
-              <div className="px-6 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                <p className="text-xs" style={{ color: "#8A93A6" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
+              <div className="px-6 py-2" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
               </div>
             </div>
 
             {/* ── Views chart ─────────────────────────────────────────── */}
-            <div className="rounded-xl p-6 mb-6 mt-5 fade-up delay-1" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-              <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+            <div className="rounded-xl p-6 mb-6 mt-5 fade-up delay-1" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 Views Over Time{selectedClient ? ` · ${selectedClient.name}` : ""}
               </h2>
               {chartData.length > 0 ? (
@@ -488,27 +488,27 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="agGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
-                        <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
-                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
+                        <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.82} />
+                        <stop offset="55%" stopColor="var(--accent)" stopOpacity={0.32} />
+                        <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                     <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                       tickFormatter={(v: string) => fmtDate(v)} />
                     <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                       tickFormatter={(v) => fmt(Number(v))} width={48} />
-                    <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "#3DFFA2" }} />
+                    <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--success)" }} />
                     {timePeriod !== "all" && (
                       <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
                         strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
                     )}
-                    <Area name="Views" type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#agGrad)"
-                      dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
+                    <Area name="Views" type="linear" dataKey="views" stroke="var(--accent)" strokeWidth={2} fill="url(#agGrad)"
+                      dot={{ fill: "var(--accent)", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "var(--accent)", strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-sm py-10 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
+                <p className="text-sm py-10 text-center" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>
               )}
             </div>
 
@@ -553,7 +553,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 totalActual += 1;
               });
               const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
-              const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
+              const totalColor = totalPct >= 100 ? "var(--success)" : totalPct >= 60 ? "var(--warning)" : "var(--accent)";
               const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
               const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
               const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
@@ -564,28 +564,28 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
                 : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
               return (
-                <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={14} color="#3DFFA2" />
-                      <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                      <TrendingUp size={14} color="var(--success)" />
+                      <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                         Deal Tracker — {periodLabel}
                       </h2>
                     </div>
                     <div className="relative">
                       <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
                         className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
-                        <option value="all" style={{ background: "#0B0E17" }}>All Clients</option>
+                        style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+                        <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
                         {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
-                          <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                          <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{(c as AnyRecord).name}</option>
                         ))}
                       </select>
                       <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                   {trackerClipper > 0 && (
-                    <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>
+                    <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
                       {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
                       {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
                       {" · 3 platforms"}
@@ -594,21 +594,21 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                     </p>
                   )}
                   {totalGoal === 0 ? (
-                    <p className="text-sm py-4 text-center" style={{ color: "#8A93A6" }}>No deal terms set. Add clips/day to clients to see the tracker.</p>
+                    <p className="text-sm py-4 text-center" style={{ color: "var(--text-secondary)" }}>No deal terms set. Add clips/day to clients to see the tracker.</p>
                   ) : (
                     <>
-                      <div className="mb-5 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="mb-5 rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="flex items-end justify-between mb-2">
                           <div>
-                            <span className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{totalActual}</span>
-                            <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {totalGoal} clips deal total</span>
+                            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{totalActual}</span>
+                            <span className="text-sm ml-1.5" style={{ color: "var(--text-secondary)" }}>/ {totalGoal} clips deal total</span>
                           </div>
                           <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
                         </div>
-                        <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                           <div className="h-full rounded-full bar-fill" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60` }} />
                         </div>
-                        <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                        <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
                           {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
                         </p>
                       </div>
@@ -620,19 +620,19 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                           const color = PLATFORM_COLORS[p] ?? "#8A93A6";
                           const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
                           return (
-                            <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
                               <div className="flex items-center gap-2 mb-3">
                                 <PlatformIcon platform={p} size={13} />
                                 <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
                               </div>
                               <div className="flex items-end justify-between mb-2">
-                                <span className="text-xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{actual}</span>
-                                <span className="text-xs" style={{ color: "#8A93A6" }}>/ {goal}</span>
+                                <span className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{actual}</span>
+                                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/ {goal}</span>
                               </div>
-                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                                 <div className="h-full rounded-full bar-fill" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50` }} />
                               </div>
-                              <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                              <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "var(--success)" : platPct >= 60 ? "var(--warning)" : color }}>{platPct}%</p>
                             </div>
                           );
                         })}
@@ -645,34 +645,34 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
             {/* Active Clippers */}
             {activeClippersDisplay.length > 0 && (
-              <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+              <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <UserCheck size={14} color="#3DFFA2" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Active Clippers</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+                    <UserCheck size={14} color="var(--success)" />
+                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Active Clippers</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>
                       {activeClippersDisplay.length}
                     </span>
                   </div>
                   <button onClick={() => setActiveTab("clippers")} className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{ color: "#3DFFA2", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
+                    style={{ color: "var(--success)", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
                     Manage
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {activeClippersDisplay.map((c) => (
                     <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
+                        style={{ background: "rgba(255,59,59,0.12)", color: "var(--accent)" }}>
                         {((c.name as string) || "?")[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{(c.name as string) ?? (c.email as string)}</p>
+                        <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{(c.name as string) ?? (c.email as string)}</p>
                         {c.client?.name && (
-                          <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{c.client.name as string}</p>
+                          <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{c.client.name as string}</p>
                         )}
-                        <p className="text-xs" style={{ color: "#FF3B3B" }}>{fmt(c.periodViews)} views</p>
+                        <p className="text-xs" style={{ color: "var(--accent)" }}>{fmt(c.periodViews)} views</p>
                       </div>
                     </div>
                   ))}
@@ -682,43 +682,43 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
             {/* ── Top Clippers + Top Clips ────────────────────────────── */}
             <div className="grid grid-cols-2 gap-6 mb-6 fade-up delay-4">
-              <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+              <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={14} color="#3DFFA2" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Top Clippers</h2>
+                    <TrendingUp size={14} color="var(--success)" />
+                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clippers</h2>
                   </div>
-                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
                 </div>
                 <div className="space-y-3">
                   {topClippers.map((c, i) => (
                     <div key={c.name} className="flex items-center gap-3">
-                      <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "#8A93A6" }}>{i + 1}</span>
+                      <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{i + 1}</span>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>{c.name[0]}</div>
+                        style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>{c.name[0]}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>{c.name}</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{c.clips} clips</p>
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{c.clips} clips</p>
                       </div>
-                      <span className="text-sm font-semibold flex-shrink-0" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(c.views)}</span>
+                      <span className="text-sm font-semibold flex-shrink-0" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmt(c.views)}</span>
                     </div>
                   ))}
-                  {topClippers.length === 0 && <p className="text-sm" style={{ color: "#8A93A6" }}>No clips in this period</p>}
+                  {topClippers.length === 0 && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>}
                 </div>
               </div>
 
-              <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+              <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={14} color="#FF3B3B" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Top Clips</h2>
+                    <TrendingUp size={14} color="var(--accent)" />
+                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clips</h2>
                   </div>
-                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
                 </div>
                 <div className="space-y-3">
                   {topClips.map((clip, i) => (
                     <div key={clip.id} className="flex items-center gap-2">
-                      <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "#8A93A6" }}>{i + 1}</span>
+                      <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{i + 1}</span>
                       {clip.thumbnailUrl ? (
                         <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                           <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover" style={{ width: 36, height: 36 }} />
@@ -728,16 +728,16 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                         <div className="flex items-center gap-1">
                           <PlatformIcon platform={clip.subAccount?.platform ?? "other"} size={11} />
                           <span className="text-xs truncate font-medium" style={{ color: PLATFORM_COLORS[clip.subAccount?.platform] ?? "#8A93A6" }}>@{clip.subAccount?.handle}</span>
-                          <span className="text-xs truncate" style={{ color: "#8A93A6" }}>· {clip.clipper?.name}</span>
+                          <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>· {clip.clipper?.name}</span>
                         </div>
                       </div>
-                      <span className="text-sm font-bold flex-shrink-0" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(clip.views ?? 0)}</span>
+                      <span className="text-sm font-bold flex-shrink-0" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmt(clip.views ?? 0)}</span>
                       <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                        <ExternalLink size={11} color="#FF3B3B" />
+                        <ExternalLink size={11} color="var(--accent)" />
                       </a>
                     </div>
                   ))}
-                  {topClips.length === 0 && <p className="text-sm" style={{ color: "#8A93A6" }}>No clips in this period</p>}
+                  {topClips.length === 0 && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>}
                 </div>
               </div>
             </div>
@@ -749,61 +749,61 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             <div className="space-y-6">
               {/* ── Clipper Page Breakout ───────────────────────────────── */}
               {clipperBreakout.length > 0 && (
-                <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                     <div className="flex items-center gap-2">
-                      <BarChart2 size={14} color="#FF3B3B" />
-                      <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
+                      <BarChart2 size={14} color="var(--accent)" />
+                      <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
                     </div>
                   </div>
                   <table className="w-full">
                     <thead>
                       <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clipper</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Client</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Clipper</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Client</th>
                         {BREAKOUT_PLATFORMS.map((p) => (
                           <th key={p} className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: PLATFORM_COLORS[p] ?? "#8A93A6" }}>
                             {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
                           </th>
                         ))}
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Total MTD</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Target</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Progress</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Total MTD</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Target</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Progress</th>
                       </tr>
                     </thead>
                     <tbody>
                       {clipperBreakout.map((c, i) => {
                         const pct = c.monthlyTarget ? Math.min(100, Math.round((c.mtdTotal / c.monthlyTarget) * 100)) : null;
-                        const color = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#8A93A6";
+                        const color = pct !== null ? (pct >= 100 ? "var(--success)" : pct >= 60 ? "var(--warning)" : "var(--accent)") : "#8A93A6";
                         return (
                           <tr key={c.id as string} style={{ borderBottom: i < clipperBreakout.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                  style={{ background: "rgba(255,59,59,0.12)", color: "#FF3B3B" }}>
+                                  style={{ background: "rgba(255,59,59,0.12)", color: "var(--accent)" }}>
                                   {((c.name as string) || "?")[0].toUpperCase()}
                                 </div>
-                                <span className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{c.name as string}</span>
+                                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.name as string}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-3 text-xs" style={{ color: "#8A93A6" }}>{(c.clientName as string) ?? "—"}</td>
+                            <td className="px-6 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>{(c.clientName as string) ?? "—"}</td>
                             {BREAKOUT_PLATFORMS.map((p) => (
                               <td key={p} className="px-4 py-3 text-center text-sm font-medium" style={{ color: (c.byPlatform as Record<string,number>)[p] > 0 ? (PLATFORM_COLORS[p] ?? "#F5F6FA") : "#5C6370" }}>
                                 {(c.byPlatform as Record<string,number>)[p] ?? 0}
                               </td>
                             ))}
-                            <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "#F5F6FA" }}>{c.mtdTotal as number}</td>
-                            <td className="px-4 py-3 text-center text-xs" style={{ color: "#8A93A6" }}>{c.monthlyTarget ?? "—"}</td>
+                            <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.mtdTotal as number}</td>
+                            <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--text-secondary)" }}>{c.monthlyTarget ?? "—"}</td>
                             <td className="px-4 py-3">
                               {pct !== null ? (
                                 <div className="flex items-center gap-2">
-                                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                                     <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
                                   </div>
                                   <span className="text-xs font-semibold w-8 text-right flex-shrink-0" style={{ color }}>{pct}%</span>
                                 </div>
                               ) : (
-                                <span className="text-xs" style={{ color: "#5C6370" }}>—</span>
+                                <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>—</span>
                               )}
                             </td>
                           </tr>
@@ -849,7 +849,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   totalActual += 1;
                 });
                 const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
-                const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
+                const totalColor = totalPct >= 100 ? "var(--success)" : totalPct >= 60 ? "var(--warning)" : "var(--accent)";
                 const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
                 const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
                 const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
@@ -860,28 +860,28 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
                   : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
                 return (
-                  <div className="rounded-xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                  <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-2">
-                        <TrendingUp size={14} color="#3DFFA2" />
-                        <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                        <TrendingUp size={14} color="var(--success)" />
+                        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                           Deal Tracker — {periodLabel}
                         </h2>
                       </div>
                       <div className="relative">
                         <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
                           className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}>
-                          <option value="all" style={{ background: "#0B0E17" }}>All Clients</option>
+                          style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
+                          <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
                           {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
-                            <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{(c as AnyRecord).name}</option>
+                            <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{(c as AnyRecord).name}</option>
                           ))}
                         </select>
                         <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
                     {trackerClipper > 0 && (
-                      <p className="text-xs mb-4" style={{ color: "#8A93A6" }}>
+                      <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
                         {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
                         {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
                         {" · 3 platforms"}
@@ -890,23 +890,23 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                       </p>
                     )}
                     {totalGoal === 0 ? (
-                      <p className="text-sm py-4 text-center" style={{ color: "#8A93A6" }}>
+                      <p className="text-sm py-4 text-center" style={{ color: "var(--text-secondary)" }}>
                         No deal terms set. Add clips/day to clients to see the tracker.
                       </p>
                     ) : (
                       <>
-                        <div className="mb-5 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="mb-5 rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
                           <div className="flex items-end justify-between mb-2">
                             <div>
-                              <span className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{totalActual}</span>
-                              <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {totalGoal} clips deal total</span>
+                              <span className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{totalActual}</span>
+                              <span className="text-sm ml-1.5" style={{ color: "var(--text-secondary)" }}>/ {totalGoal} clips deal total</span>
                             </div>
                             <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
                           </div>
-                          <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                             <div className="h-full rounded-full" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60`, transition: "width 0.5s ease" }} />
                           </div>
-                          <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                          <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
                             {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
                           </p>
                         </div>
@@ -918,19 +918,19 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                             const color = PLATFORM_COLORS[p] ?? "#8A93A6";
                             const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
                             return (
-                              <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
                                 <div className="flex items-center gap-2 mb-3">
                                   <PlatformIcon platform={p} size={13} />
                                   <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
                                 </div>
                                 <div className="flex items-end justify-between mb-2">
-                                  <span className="text-xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{actual}</span>
-                                  <span className="text-xs" style={{ color: "#8A93A6" }}>/ {goal}</span>
+                                  <span className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{actual}</span>
+                                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/ {goal}</span>
                                 </div>
-                                <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                                   <div className="h-full rounded-full" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50`, transition: "width 0.5s ease" }} />
                                 </div>
-                                <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                                <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "var(--success)" : platPct >= 60 ? "var(--warning)" : color }}>{platPct}%</p>
                               </div>
                             );
                           })}
@@ -959,8 +959,8 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           {activeTab === "platform-stats" && (
             <div>
               <div className="mb-6">
-                <h1 className="text-2xl font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Platform Stats</h1>
-                <p className="text-sm" style={{ color: "#8A93A6" }}>View and post breakdown across platforms</p>
+                <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Platform Stats</h1>
+                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>View and post breakdown across platforms</p>
               </div>
               <div className="mb-6">
                 <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
@@ -974,25 +974,25 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             <div>
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>All Clips</h1>
-                  <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>{allClips.length} clips total</p>
+                  <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>All Clips</h1>
+                  <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{allClips.length} clips total</p>
                 </div>
                 {allClips.length > 0 && (
                   <button onClick={handleRefreshAll} disabled={refreshingAll}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#8A93A6", opacity: refreshingAll ? 0.6 : 1 }}>
+                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
                     <RotateCw size={13} className={refreshingAll ? "animate-spin" : ""} />
                     {refreshingAll ? "Refreshing..." : "Refresh All"}
                   </button>
                 )}
               </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                       {["Platform", "Preview", "Title", "Account", "Clipper", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link", "Refresh"].map((h) => (
                         <th key={h} className="px-4 py-4 text-left text-xs font-medium uppercase tracking-wider"
-                          style={{ color: "#8A93A6" }}>{h}</th>
+                          style={{ color: "var(--text-secondary)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1013,33 +1013,33 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                                 style={{ width: 64, height: 36 }} />
                             </a>
                           ) : (
-                            <span style={{ color: "#8A93A6", fontSize: 11 }}>—</span>
+                            <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA", maxWidth: 120 }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)", maxWidth: 120 }}>
                           <span className="truncate block">{clip.title ?? "—"}</span>
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
                           @{clip.subAccount?.handle ?? "—"}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>
                           {clip.clipper?.name ?? clip.clipper?.user?.name ?? "—"}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>
                           {clip.client?.name ?? "—"}
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views ?? 0)}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.likes ?? 0)}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.comments ?? 0)}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.shares ?? 0)}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
                           {clip.submittedAt
                             ? new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
                             : "—"}
                         </td>
                         <td className="px-4 py-3">
                           <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink size={12} color="#FF3B3B" />
+                            <ExternalLink size={12} color="var(--accent)" />
                           </a>
                         </td>
                         <td className="px-4 py-3">
@@ -1051,7 +1051,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                     ))}
                     {allClips.length === 0 && (
                       <tr>
-                        <td colSpan={13} className="px-4 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                        <td colSpan={13} className="px-4 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                           No clips yet.
                         </td>
                       </tr>

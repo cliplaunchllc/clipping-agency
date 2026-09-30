@@ -149,12 +149,12 @@ export default function PublicClientAnalytics({ client }: Props) {
   }
 
   const tooltipStyle = {
-    contentStyle: { background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
-    labelStyle: { color: "#8A93A6" },
+    contentStyle: { background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
+    labelStyle: { color: "var(--text-secondary)" },
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#05070D" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
       {/* Header bar */}
       <div className="sticky top-0 z-20 px-8 py-4 flex items-center justify-between"
         style={{ background: "rgba(5,7,13,0.9)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(10px)" }}>
@@ -165,17 +165,17 @@ export default function PublicClientAnalytics({ client }: Props) {
               style={{ border: "1px solid rgba(255,255,255,0.1)" }} />
           ) : (
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0"
-              style={{ background: "rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+              style={{ background: "rgba(255,59,59,0.15)", color: "var(--accent)" }}>
               {client.name[0]}
             </div>
           )}
           <div>
-            <p className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{client.name}</p>
-            <p className="text-xs" style={{ color: "#8A93A6" }}>Live Analytics</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{client.name}</p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Live Analytics</p>
           </div>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-medium"
-          style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.2)" }}>
+          style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>
           ● Live
         </span>
       </div>
@@ -184,7 +184,7 @@ export default function PublicClientAnalytics({ client }: Props) {
         {/* Time period controls */}
         <div className="flex items-center gap-3 flex-wrap mb-5">
           <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
             {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
               <button key={p} onClick={() => setTimePeriod(p)}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
@@ -200,17 +200,17 @@ export default function PublicClientAnalytics({ client }: Props) {
             <div className="flex items-center gap-2">
               <input type="date" value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)}
                 className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
-              <span className="text-xs" style={{ color: "#8A93A6" }}>to</span>
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-primary)", colorScheme: "dark" }} />
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>to</span>
               <input type="date" value={customEnd} min={customStart} onChange={(e) => setCustomEnd(e.target.value)}
                 className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-primary)", colorScheme: "dark" }} />
             </div>
           )}
         </div>
 
         {/* Stats grid */}
-        <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="grid grid-cols-3">
             {statItems.map((item, i) => {
               const Icon = item.icon;
@@ -224,9 +224,9 @@ export default function PublicClientAnalytics({ client }: Props) {
                     <Icon size={18} color="#FF3B3B" />
                   </div>
                   <div>
-                    <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{item.label}</p>
+                    <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-2xl font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                      <span className="text-2xl font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                         {item.value}
                       </span>
                       {item.change.ok && (
@@ -243,13 +243,13 @@ export default function PublicClientAnalytics({ client }: Props) {
             })}
           </div>
           <div className="px-6 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <p className="text-xs" style={{ color: "#8A93A6" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
           </div>
         </div>
 
         {/* Views chart */}
-        <div className="rounded-2xl p-6 mb-6 mt-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+        <div className="rounded-2xl p-6 mb-6 mt-5" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             Views Over Time
           </h2>
           {chartData.length > 0 ? (
@@ -261,31 +261,31 @@ export default function PublicClientAnalytics({ client }: Props) {
                     <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: string) => fmtDate(v)} />
                 <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => fmt(v)} width={48} />
-                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "#3DFFA2" }} />
+                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--success)" }} />
                 <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#pubGrad)"
                   dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm py-10 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
+            <p className="text-sm py-10 text-center" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>
           )}
         </div>
 
         {/* Top Clips */}
         {topClips.length > 0 && (
-          <div className="rounded-2xl mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-2xl mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between px-6 py-4"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2">
                 <TrendingUp size={14} color="#3DFFA2" />
-                <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Top Clips</h2>
+                <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clips</h2>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
+              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
             </div>
 
             {/* #1 hero card */}
@@ -296,7 +296,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                   <div className="flex items-center gap-4">
                     {/* Rank badge */}
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                      style={{ background: "rgba(61,255,162,0.15)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.25)" }}>1</div>
+                      style={{ background: "rgba(61,255,162,0.15)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.25)" }}>1</div>
 
                     {/* Thumbnail */}
                     {clip.thumbnailUrl ? (
@@ -307,7 +307,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                       </a>
                     ) : (
                       <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
-                        style={{ width: 96, height: 56, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        style={{ width: 96, height: 56, background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <BarChart2 size={18} color="#8A93A6" />
                       </div>
                     )}
@@ -322,30 +322,30 @@ export default function PublicClientAnalytics({ client }: Props) {
                         </span>
                       </div>
                       {clip.title && (
-                        <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{clip.title}</p>
+                        <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{clip.title}</p>
                       )}
                       <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        <span className="text-xs" style={{ color: "#8A93A6" }}>
-                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</span> likes
+                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.likes)}</span> likes
                         </span>
-                        <span className="text-xs" style={{ color: "#8A93A6" }}>
-                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</span> comments
+                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.comments)}</span> comments
                         </span>
-                        <span className="text-xs" style={{ color: "#8A93A6" }}>
-                          <span style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</span> shares
+                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.shares)}</span> shares
                         </span>
                       </div>
                     </div>
 
                     {/* Views + link */}
                     <div className="flex-shrink-0 text-right">
-                      <p className="text-2xl font-bold" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>
+                      <p className="text-2xl font-bold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>
                         {fmt(clip.views)}
                       </p>
-                      <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>views</p>
+                      <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>views</p>
                       <a href={clip.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg"
-                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                         <ExternalLink size={10} /> Open
                       </a>
                     </div>
@@ -355,11 +355,11 @@ export default function PublicClientAnalytics({ client }: Props) {
             })()}
 
             {/* Ranks 2–5 */}
-            <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+            <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
               {topClips.slice(1).map((clip, i) => (
                 <div key={clip.id} className="flex items-center gap-3 px-6 py-3">
                   <span className="w-5 text-xs text-center font-semibold flex-shrink-0"
-                    style={{ color: "#8A93A6" }}>{i + 2}</span>
+                    style={{ color: "var(--text-secondary)" }}>{i + 2}</span>
                   {clip.thumbnailUrl ? (
                     <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                       <img src={clip.thumbnailUrl} alt="thumb" className="rounded-lg object-cover"
@@ -367,7 +367,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                     </a>
                   ) : (
                     <div className="flex-shrink-0 rounded-lg flex items-center justify-center"
-                      style={{ width: 52, height: 32, background: "rgba(255,255,255,0.04)" }}>
+                      style={{ width: 52, height: 32, background: "var(--border-subtle)" }}>
                       <BarChart2 size={11} color="#8A93A6" />
                     </div>
                   )}
@@ -380,14 +380,14 @@ export default function PublicClientAnalytics({ client }: Props) {
                       </span>
                     </div>
                     {clip.title && (
-                      <p className="text-xs truncate" style={{ color: "#8A93A6", maxWidth: 240 }}>{clip.title}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--text-secondary)", maxWidth: 240 }}>{clip.title}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-                    <span style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif", fontWeight: 700 }}>
+                    <span style={{ color: "var(--success)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
                       {fmt(clip.views)}
                     </span>
-                    <span style={{ color: "#8A93A6" }}>{fmt(clip.likes)} likes</span>
+                    <span style={{ color: "var(--text-secondary)" }}>{fmt(clip.likes)} likes</span>
                   </div>
                   <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                     <ExternalLink size={11} color="#FF3B3B" />
@@ -406,17 +406,17 @@ export default function PublicClientAnalytics({ client }: Props) {
         )}
 
         {/* All clips table */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           {/* Table header + filters */}
           <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
             style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-center gap-2">
               <BarChart2 size={14} color="#FF3B3B" />
-              <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 All Clips
               </h2>
               <span className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>
+                style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
                 {tableClips.length}
               </span>
             </div>
@@ -424,7 +424,7 @@ export default function PublicClientAnalytics({ client }: Props) {
             {/* Platform filter */}
             {platforms.length > 1 && (
               <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <button onClick={() => setPlatformFilter("all")}
                   className="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
                   style={{
@@ -447,8 +447,8 @@ export default function PublicClientAnalytics({ client }: Props) {
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider w-8" style={{ color: "#8A93A6" }}>#</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Clip</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider w-8" style={{ color: "var(--text-secondary)" }}>#</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Clip</th>
                   {(["views", "likes", "comments", "shares", "saves", "date"] as const).map((col) => (
                     <th key={col}
                       className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none"
@@ -467,7 +467,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                 {tableClips.map((clip, i) => (
                   <tr key={clip.id} className="table-row-hover"
                     style={{ borderBottom: i < tableClips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <td className="px-5 py-3 text-xs" style={{ color: "#8A93A6" }}>{i + 1}</td>
+                    <td className="px-5 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>{i + 1}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {clip.thumbnailUrl ? (
@@ -477,7 +477,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                           </a>
                         ) : (
                           <div className="flex-shrink-0 rounded flex items-center justify-center"
-                            style={{ width: 48, height: 28, background: "rgba(255,255,255,0.04)" }}>
+                            style={{ width: 48, height: 28, background: "var(--border-subtle)" }}>
                             <BarChart2 size={12} color="#8A93A6" />
                           </div>
                         )}
@@ -490,17 +490,17 @@ export default function PublicClientAnalytics({ client }: Props) {
                             </span>
                           </div>
                           {clip.title && (
-                            <p className="text-xs truncate" style={{ color: "#8A93A6", maxWidth: 160 }}>{clip.title}</p>
+                            <p className="text-xs truncate" style={{ color: "var(--text-secondary)", maxWidth: 160 }}>{clip.title}</p>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.saves)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.likes)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.comments)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.shares)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.saves)}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
                       {new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                     <td className="px-4 py-3">
@@ -512,7 +512,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                 ))}
                 {tableClips.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                    <td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                       No clips in this period
                     </td>
                   </tr>

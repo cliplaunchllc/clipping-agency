@@ -68,9 +68,9 @@ function SignupForm() {
   }
 
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
+    background: "var(--border-subtle)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
     borderRadius: 12,
     padding: "12px 16px",
     fontSize: 14,
@@ -78,16 +78,16 @@ function SignupForm() {
     width: "100%",
   };
 
-  const accentColor = role === "client" ? "#a78bfa" : "#3DFFA2";
-  const accentBg = role === "client" ? "rgba(167,139,250,0.1)" : "rgba(61,255,162,0.1)";
+  const accentColor = role === "client" ? "var(--accent)" : "var(--success)";
+  const accentBg = role === "client" ? "var(--accent-muted)" : "rgba(61,255,162,0.1)";
   const accentBorder = role === "client" ? "rgba(167,139,250,0.2)" : "rgba(61,255,162,0.2)";
 
   if (status === "loading" || status === "authenticated") {
-    return <div className="min-h-screen" style={{ background: "#05070D" }} />;
+    return <div className="min-h-screen" style={{ background: "var(--bg-elevated)" }} />;
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-elevated)" }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl"
           style={{ background: `radial-gradient(circle, ${accentBg.replace("0.1", "0.05")} 0%, transparent 70%)` }} />
@@ -95,16 +95,16 @@ function SignupForm() {
 
       <div className="relative w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden"
-            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: accentBg, border: `1px solid ${accentBorder}` }}>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-4 overflow-hidden"
+            style={agencyLogo ? { border: "1px solid var(--border-default)" } : { background: accentBg, border: `1px solid ${accentBorder}` }}>
             {agencyLogo ? (
               <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
             ) : (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
+                <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="var(--accent)"/>
                 <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
                 <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
-                <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
+                <circle cx="12" cy="9" r="0.7" fill="var(--accent)"/>
                 <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
                 <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
                 <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
@@ -113,42 +113,42 @@ function SignupForm() {
               </svg>
             )}
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             {role === "client" ? "Join as a Client" : "Join as a Clipper"}
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             {role === "client"
               ? "Create your account — the agency will connect you to your campaign"
               : "Create your account — the agency will assign you to a client"}
           </p>
         </div>
 
-        <div className="rounded-2xl p-8" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl p-8" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Your Name</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Your Name</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
                 autoFocus placeholder="Alex Rivera" style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
+                onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Email</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
                 placeholder="you@example.com" style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
+                onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Password</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Password</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
                 placeholder="••••••••" style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = `${accentColor}66`)}
-                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")} />
+                onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")} />
             </div>
             {error && (
               <div className="text-xs px-4 py-3 rounded-xl"
-                style={{ background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.2)" }}>
+                style={{ background: "rgba(255,71,87,0.1)", color: "var(--danger)", border: "1px solid rgba(255,71,87,0.2)" }}>
                 {error}
               </div>
             )}
@@ -165,14 +165,14 @@ function SignupForm() {
           </form>
 
           <div className="text-center text-xs mt-6 space-y-2">
-            <p style={{ color: "#8A93A6" }}>
+            <p style={{ color: "var(--text-secondary)" }}>
               Already have an account?{" "}
               <Link href="/login" style={{ color: accentColor }}>Sign in</Link>
             </p>
             {role === "client" && (
-              <p style={{ color: "#8A93A6" }}>
+              <p style={{ color: "var(--text-secondary)" }}>
                 Are you a clipper?{" "}
-                <Link href="/signup" style={{ color: "#3DFFA2" }}>Clipper signup</Link>
+                <Link href="/signup" style={{ color: "var(--success)" }}>Clipper signup</Link>
               </p>
             )}
           </div>
@@ -184,7 +184,7 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" style={{ background: "#05070D" }} />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "var(--bg-elevated)" }} />}>
       <SignupForm />
     </Suspense>
   );

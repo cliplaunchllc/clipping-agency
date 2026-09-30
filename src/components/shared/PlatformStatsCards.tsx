@@ -41,15 +41,15 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
   const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)", gradId: "dg-empty", grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string] }];
 
   return (
-    <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-5">
         {icon}
-        <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
           {title}
         </h2>
       </div>
       {total === 0 ? (
-        <p className="text-sm text-center py-8" style={{ color: "#8A93A6" }}>No data in this period</p>
+        <p className="text-sm text-center py-8" style={{ color: "var(--text-secondary)" }}>No data in this period</p>
       ) : (
         <div className="flex items-center gap-5">
           {/* Donut */}
@@ -79,10 +79,10 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
               </Pie>
             </PieChart>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-sm font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+              <span className="text-sm font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 {fmt(total)}
               </span>
-              <span className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>{totalLabel}</span>
+              <span className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{totalLabel}</span>
             </div>
           </div>
           {/* Bars */}
@@ -96,16 +96,16 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <PlatformIcon platform={p} size={12} />
-                      <span className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>
+                      <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
                         {PLATFORM_LABELS[p] ?? p}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs" style={{ color: "#8A93A6" }}>{fmt(val)}</span>
+                      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(val)}</span>
                       <span className="text-xs font-semibold w-8 text-right" style={{ color }}>{pct}%</span>
                     </div>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                   </div>
                 </div>
@@ -133,20 +133,20 @@ export function PlatformBreakdownTable({ viewsByPlatform, clipsByPlatform }: Pro
 
   if (platforms.length === 0) {
     return (
-      <div className="rounded-xl p-8 text-center" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
-        <p className="text-sm" style={{ color: "#8A93A6" }}>No platform data in this period</p>
+      <div className="rounded-xl p-8 text-center" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No platform data in this period</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <table className="w-full">
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             {["Platform", "Posts", "Views", "Avg Views / Post", "% of Views"].map((h) => (
               <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider"
-                style={{ color: "#8A93A6" }}>{h}</th>
+                style={{ color: "var(--text-secondary)" }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -165,12 +165,12 @@ export function PlatformBreakdownTable({ viewsByPlatform, clipsByPlatform }: Pro
                     <span className="text-sm font-medium" style={{ color }}>{PLATFORM_LABELS[p] ?? p}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm font-medium" style={{ color: "#F5F6FA" }}>{clips.toLocaleString()}</td>
-                <td className="px-6 py-4 text-sm font-semibold" style={{ color: "#3DFFA2" }}>{fmt(views)}</td>
-                <td className="px-6 py-4 text-sm" style={{ color: "#F5F6FA" }}>{fmt(avg)}</td>
+                <td className="px-6 py-4 text-sm font-medium" style={{ color: "var(--text-primary)" }}>{clips.toLocaleString()}</td>
+                <td className="px-6 py-4 text-sm font-semibold" style={{ color: "var(--success)" }}>{fmt(views)}</td>
+                <td className="px-6 py-4 text-sm" style={{ color: "var(--text-primary)" }}>{fmt(avg)}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", minWidth: 80 }}>
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)", minWidth: 80 }}>
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                     </div>
                     <span className="text-xs font-semibold w-8 text-right" style={{ color }}>{pct}%</span>

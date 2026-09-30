@@ -62,14 +62,14 @@ function WowBadge({ curr, prev, inverted, grey }: {
 }) {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
 
-  if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>First week</span>;
-  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>First week</span>;
+  if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>;
+  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>First week</span>;
 
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
     return (
-      <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+      <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
         <Minus size={11} />
         {`${sign}${fmtCurrency(delta)}`}
       </span>
@@ -96,7 +96,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
     : null;
 
   const platforms = [
-    { label: "TikTok", key: "tiktokViews" as const, color: "#FF3B3B" },
+    { label: "TikTok", key: "tiktokViews" as const, color: "var(--accent)" },
     { label: "Instagram", key: "instagramViews" as const, color: "#FF8800" },
     { label: "YouTube", key: "youtubeViews" as const, color: "#CC1A1A" },
     { label: "X", key: "twitterViews" as const, color: "#5B9BD5" },
@@ -155,10 +155,10 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "#8A93A6" }}>{c.label}</p>
-            <p className="text-xl font-bold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{c.value}</p>
-            {c.sublabel && <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{c.sublabel}</p>}
+          <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
+            <p className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
+            {c.sublabel && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
             {c.lastWeek && (
               <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Last week: {c.lastWeek}</p>
@@ -170,14 +170,14 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {/* Platform breakdown */}
       {report.totalViews > 0 && (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: "#05070D" }}>
-            <p className="text-xs font-semibold" style={{ color: "#8A93A6" }}>PLATFORM BREAKDOWN</p>
+          <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: "var(--bg-base)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>PLATFORM BREAKDOWN</p>
           </div>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 {["Platform", "Views This Week", "% of Total", "vs. Last Week"].map((h) => (
-                  <th key={h} className="px-4 py-2 text-left text-xs" style={{ color: "#8A93A6" }}>{h}</th>
+                  <th key={h} className="px-4 py-2 text-left text-xs" style={{ color: "var(--text-secondary)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -190,8 +190,8 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
                 return (
                   <tr key={p.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                     <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: p.color }}>{p.label}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "#F5F6FA" }}>{fmt(views)}</td>
-                    <td className="px-4 py-2.5 text-xs" style={{ color: "#8A93A6" }}>{pctOfTotal}%</td>
+                    <td className="px-4 py-2.5 text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(views)}</td>
+                    <td className="px-4 py-2.5 text-xs" style={{ color: "var(--text-secondary)" }}>{pctOfTotal}%</td>
                     <td className="px-4 py-2.5">
                       {prevViews !== null ? (
                         <span className="text-xs flex items-center gap-1" style={{ color: neutral ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B" }}>
@@ -199,7 +199,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
                           {pct}
                         </span>
                       ) : (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>First week</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>
                       )}
                     </td>
                   </tr>
@@ -233,41 +233,41 @@ export default function ClientReports({ reports, clientName }: { reports: Report
 
   return (
     <div className="max-w-4xl mx-auto px-8 py-8">
-      <h1 className="text-2xl font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+      <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
         Weekly Reports
       </h1>
-      <p className="text-sm mb-8" style={{ color: "#8A93A6" }}>{clientName}</p>
+      <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>{clientName}</p>
 
       {reports.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center rounded-2xl py-24"
-          style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
           <BarChart2 size={36} style={{ color: "#a78bfa", opacity: 0.4 }} className="mb-3" />
-          <p className="text-sm" style={{ color: "#8A93A6" }}>No reports published yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No reports published yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {reports.map((report, idx) => {
             const expanded = expandedIds.has(report.id);
             return (
-              <div key={report.id} className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={report.id} className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 {/* Header row */}
                 <button
                   className="w-full flex items-center justify-between px-5 py-4 text-left"
                   onClick={() => toggleExpand(report.id)}
                 >
                   <div>
-                    <p className="text-sm font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>
+                    <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
                       {fmtWeek(report.weekStartDate, report.weekEndDate)}
                     </p>
-                    <p className="text-xs" style={{ color: "#8A93A6" }}>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                       {fmt(report.totalViews)} views · {fmtCurrency(report.paidOut)} paid out
                     </p>
                   </div>
                   <div
                     className="transition-transform"
-                    style={{ transform: expanded ? "rotate(180deg)" : "none", color: "#8A93A6" }}
+                    style={{ transform: expanded ? "rotate(180deg)" : "none", color: "var(--text-secondary)" }}
                   >
                     <ChevronDown size={16} />
                   </div>

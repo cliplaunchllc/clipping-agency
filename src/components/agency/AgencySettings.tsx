@@ -101,7 +101,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
   const inputStyle = {
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
+    color: "var(--text-primary)",
     borderRadius: 12,
     padding: "12px 16px",
     fontSize: 14,
@@ -230,8 +230,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
   return (
     <div className="max-w-3xl mx-auto px-8 py-8">
       <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFileChange} />
-      <h1 className="text-2xl font-semibold mb-2" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Settings</h1>
-      <p className="text-sm mb-8" style={{ color: "#8A93A6" }}>Manage your account and preferences</p>
+      <h1 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Settings</h1>
+      <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Manage your account and preferences</p>
 
       <div className="flex gap-6">
         {/* Sidebar tabs */}
@@ -253,16 +253,16 @@ export default function AgencySettings({ userName, email, currentUserId, initial
         </div>
 
         {/* Content */}
-        <div className="flex-1 rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex-1 rounded-2xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           {activeTab === "profile" && (
             <div className="space-y-5">
-              <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA" }}>Profile Information</h2>
+              <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Profile Information</h2>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Display Name</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Display Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Email Address</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Email Address</label>
                 <div className="flex gap-2">
                   <input type="email" value={newEmail} onChange={(e) => { setNewEmail(e.target.value); setEmailError(""); setEmailSaved(false); }}
                     style={inputStyle} placeholder="you@example.com" />
@@ -278,17 +278,17 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     {emailSaving ? "Saving…" : emailSaved ? "Saved!" : "Update"}
                   </button>
                 </div>
-                {emailError && <p className="text-xs mt-1.5" style={{ color: "#FF4757" }}>{emailError}</p>}
-                <p className="text-xs mt-1" style={{ color: "#8A93A6" }}>You'll need to log in again after changing your email</p>
+                {emailError && <p className="text-xs mt-1.5" style={{ color: "var(--danger)" }}>{emailError}</p>}
+                <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>You'll need to log in again after changing your email</p>
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Role</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Role</label>
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)" }}>
                   <Shield size={14} color="#FF3B3B" />
-                  <span className="text-sm" style={{ color: "#FF3B3B" }}>Agency Admin</span>
+                  <span className="text-sm" style={{ color: "var(--accent)" }}>Agency Admin</span>
                 </div>
               </div>
-              {nameError && <p className="text-xs" style={{ color: "#FF4757" }}>{nameError}</p>}
+              {nameError && <p className="text-xs" style={{ color: "var(--danger)" }}>{nameError}</p>}
               <button onClick={handleSave} disabled={nameSaving}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
@@ -305,7 +305,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
 
           {activeTab === "security" && (
             <div className="space-y-5">
-              <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA" }}>Security</h2>
+              <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Security</h2>
               {mustChangePassword && (
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl mb-2"
                   style={{ background: "rgba(255,187,0,0.08)", border: "1px solid rgba(255,187,0,0.25)" }}>
@@ -314,18 +314,18 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                 </div>
               )}
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Current Password</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Current Password</label>
                 <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>New Password</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>New Password</label>
                 <input type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Confirm New Password</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Confirm New Password</label>
                 <input type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={inputStyle} />
               </div>
-              {passwordError && <p className="text-xs" style={{ color: "#FF4757" }}>{passwordError}</p>}
+              {passwordError && <p className="text-xs" style={{ color: "var(--danger)" }}>{passwordError}</p>}
               <button onClick={handleChangePassword} disabled={passwordSaving}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
@@ -342,9 +342,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
 
           {activeTab === "branding" && (
             <div className="space-y-6">
-              <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA" }}>Branding</h2>
+              <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Branding</h2>
               <div>
-                <label className="block text-xs mb-3" style={{ color: "#8A93A6" }}>Agency Logo</label>
+                <label className="block text-xs mb-3" style={{ color: "var(--text-secondary)" }}>Agency Logo</label>
                 <div className="flex items-center gap-5">
                   {/* Preview */}
                   <div className="relative group">
@@ -361,19 +361,19 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <div className="space-y-2">
                     <button onClick={() => logoInputRef.current?.click()} disabled={logoSaving}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-                      style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B", opacity: logoSaving ? 0.6 : 1 }}>
+                      style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: logoSaving ? 0.6 : 1 }}>
                       <Camera size={14} />
                       {logoSaving ? "Saving..." : agencyLogo ? "Change Logo" : "Upload Logo"}
                     </button>
                     {agencyLogo && (
                       <button onClick={() => saveLogo(null)} disabled={logoSaving}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6" }}>
+                        style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)" }}>
                         <X size={14} />
                         Remove Logo
                       </button>
                     )}
-                    <p className="text-xs" style={{ color: "#8A93A6" }}>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                       Appears on the login page and in all sidebars. PNG, JPG, or WebP recommended.
                     </p>
                   </div>
@@ -385,11 +385,11 @@ export default function AgencySettings({ userName, email, currentUserId, initial
           {activeTab === "team" && (
             <div className="space-y-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>Team Members</h2>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Team Members</h2>
                 <button
                   onClick={() => { setShowAddMember(true); setMemberError(""); }}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "#FF3B3B" }}>
+                  style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "var(--accent)" }}>
                   <Plus size={14} />
                   Add Member
                 </button>
@@ -402,11 +402,11 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   const isRemoving = removingId === member.id;
                   return (
                     <div key={member.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
                       {/* Avatar */}
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
-                        <span className="text-sm font-semibold" style={{ color: "#FF3B3B" }}>
+                        <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
                           {(member.name ?? member.email)[0].toUpperCase()}
                         </span>
                       </div>
@@ -414,12 +414,12 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>
+                          <span className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
                             {member.name ?? "—"}
                           </span>
                           {isCurrentUser && (
                             <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2", border: "1px solid rgba(61,255,162,0.25)" }}>
+                              style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.25)" }}>
                               You
                             </span>
                           )}
@@ -431,7 +431,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                             </span>
                           )}
                         </div>
-                        <p className="text-xs truncate mt-0.5" style={{ color: "#8A93A6" }}>{member.email}</p>
+                        <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{member.email}</p>
                       </div>
 
                       {/* Remove */}
@@ -441,7 +441,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                           disabled={isRemoving}
                           className="p-2 rounded-lg transition-all"
                           title="Remove member"
-                          style={{ color: "#8A93A6", opacity: isRemoving ? 0.4 : 1 }}>
+                          style={{ color: "var(--text-secondary)", opacity: isRemoving ? 0.4 : 1 }}>
                           <Trash2 size={15} />
                         </button>
                       )}
@@ -453,36 +453,36 @@ export default function AgencySettings({ userName, email, currentUserId, initial
               {/* Add member form */}
               {showAddMember && (
                 <div className="mt-4 p-4 rounded-xl space-y-3"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium" style={{ color: "#F5F6FA" }}>New Team Member</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>New Team Member</p>
                     <button onClick={() => { setShowAddMember(false); setMemberError(""); setMemberName(""); setMemberEmail(""); setMemberPassword(""); }}>
                       <X size={15} color="#8A93A6" />
                     </button>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Name</label>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Name</label>
                     <input type="text" value={memberName} onChange={(e) => setMemberName(e.target.value)}
                       placeholder="Jane Smith" style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Email</label>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Email</label>
                     <input type="email" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder="jane@example.com" style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Temporary Password</label>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Temporary Password</label>
                     <input type="text" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)}
                       placeholder="Min. 6 characters" style={inputStyle} />
-                    <p className="text-xs mt-1" style={{ color: "#8A93A6" }}>They'll be prompted to change this on first login</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>They'll be prompted to change this on first login</p>
                   </div>
-                  {memberError && <p className="text-xs" style={{ color: "#FF4757" }}>{memberError}</p>}
+                  {memberError && <p className="text-xs" style={{ color: "var(--danger)" }}>{memberError}</p>}
                   <button onClick={handleAddMember} disabled={memberLoading}
                     className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                     style={{
                       background: "rgba(255,59,59,0.15)",
                       border: "1px solid rgba(255,59,59,0.3)",
-                      color: "#FF3B3B",
+                      color: "var(--accent)",
                       opacity: memberLoading ? 0.6 : 1,
                       cursor: memberLoading ? "not-allowed" : "pointer",
                     }}>
@@ -495,7 +495,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
 
           {activeTab === "notifications" && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA" }}>Notification Preferences</h2>
+              <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Notification Preferences</h2>
               {[
                 { label: "New clip submitted", desc: "When a clipper submits a new clip" },
                 { label: "Client activity", desc: "When a client logs in or updates their account" },
@@ -505,8 +505,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                 <div key={item.label} className="flex items-center justify-between py-3"
                   style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{item.label}</p>
-                    <p className="text-xs" style={{ color: "#8A93A6" }}>{item.desc}</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{item.label}</p>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.desc}</p>
                   </div>
                   <div className="w-10 h-5 rounded-full flex items-center cursor-pointer relative"
                     style={{ background: "rgba(255,59,59,0.3)" }}>

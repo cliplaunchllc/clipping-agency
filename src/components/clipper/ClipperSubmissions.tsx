@@ -10,8 +10,8 @@ function fmt(n: number) {
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
-  tiktok: "#FF3B3B",
-  instagram: "#FF8800",
+  tiktok: "var(--accent)",
+  instagram: "var(--warning)",
   youtube: "#CC1A1A",
   twitter: "#5B9BD5",
   other: "#6B7280",
@@ -80,9 +80,9 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
   }
 
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
+    background: "var(--border-subtle)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
     borderRadius: 12,
     padding: "12px 16px",
     fontSize: 14,
@@ -134,44 +134,44 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-2xl p-8 w-full max-w-md"
-            style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="rounded-xl p-8 w-full max-w-md"
+            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 Submit Clip
               </h2>
               <button onClick={() => setShowModal(false)}><X size={18} color="#8A93A6" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip Title</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Clip Title</label>
                 <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)}
                   placeholder="Enter a title for this clip" required style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip URL</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Clip URL</label>
                 <input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)}
                   placeholder="https://..." required style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Your Account</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Your Account</label>
                 <select value={subAccountId} onChange={(e) => setSubAccountId(e.target.value)}
                   required style={{ ...inputStyle, appearance: "none" }}>
-                  <option value="" style={{ background: "#0B0E17" }}>Select account...</option>
+                  <option value="" style={{ background: "var(--bg-surface)" }}>Select account...</option>
                   {subAccounts.map((sa) => (
-                    <option key={sa.id} value={sa.id} style={{ background: "#0B0E17" }}>
+                    <option key={sa.id} value={sa.id} style={{ background: "var(--bg-surface)" }}>
                       @{sa.handle} ({sa.platform})
                     </option>
                   ))}
                 </select>
               </div>
-              {error && <p className="text-xs" style={{ color: "#FF4757" }}>{error}</p>}
+              {error && <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
               <button type="submit" disabled={loading || !clipUrl || !clipTitle || !subAccountId}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
                   background: "rgba(61,255,162,0.15)",
                   border: "1px solid rgba(61,255,162,0.3)",
-                  color: "#3DFFA2",
+                  color: "var(--success)",
                   opacity: loading ? 0.6 : 1,
                 }}>
                 {loading ? "Submitting..." : "Submit Clip"}
@@ -183,35 +183,35 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
 
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             Submissions
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>{clips.length} clips submitted</p>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{clips.length} clips submitted</p>
         </div>
         <div className="flex items-center gap-3">
           {clips.length > 0 && (
             <button onClick={handleRefreshAll} disabled={refreshingAll}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#8A93A6", opacity: refreshingAll ? 0.6 : 1 }}>
+              style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
               <RotateCw size={13} className={refreshingAll ? "animate-spin" : ""} />
               {refreshingAll ? "Refreshing..." : "Refresh All"}
             </button>
           )}
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
+            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "var(--success)" }}>
             <Plus size={14} /> Submit Clip
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl overflow-x-auto" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="rounded-xl overflow-x-auto" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <table className="w-full min-w-max">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               {["Platform", "Preview", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link", "Refresh"].map((h) => (
                 <th key={h} className="px-4 py-4 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
-                  style={{ color: "#8A93A6" }}>{h}</th>
+                  style={{ color: "var(--text-secondary)" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -232,24 +232,24 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
                         style={{ width: 48, height: 27 }} />
                     </a>
                   ) : (
-                    <span style={{ color: "#8A93A6", fontSize: 11 }}>—</span>
+                    <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
                   @{clip.handle}
-                  {clip.title && <p className="text-xs truncate mt-0.5" style={{ color: "#F5F6FA", maxWidth: 120 }}>{clip.title}</p>}
+                  {clip.title && <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-primary)", maxWidth: 120 }}>{clip.title}</p>}
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{clip.clientName || "—"}</td>
-                <td className="px-4 py-3 text-xs font-semibold" style={{ color: "#3DFFA2" }}>{fmt(clip.views)}</td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.likes)}</td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.comments)}</td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#F5F6FA" }}>{fmt(clip.shares)}</td>
-                <td className="px-4 py-3 text-xs" style={{ color: "#8A93A6" }}>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{clip.clientName || "—"}</td>
+                <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.likes)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.comments)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.shares)}</td>
+                <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
                   {new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </td>
                 <td className="px-4 py-3">
                   <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink size={12} color="#3DFFA2" />
+                    <ExternalLink size={12} color="var(--success)" />
                   </a>
                 </td>
                 <td className="px-4 py-3">
@@ -261,7 +261,7 @@ export default function ClipperSubmissions({ clips: initial, subAccounts }: Prop
             ))}
             {clips.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-5 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                <td colSpan={11} className="px-5 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                   No submissions yet. Submit your first clip above.
                 </td>
               </tr>

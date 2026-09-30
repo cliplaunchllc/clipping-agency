@@ -57,12 +57,12 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  tiktok: "#FF3B3B", instagram: "#FF8800", youtube: "#CC1A1A", twitter: "#5B9BD5", other: "#6B7280",
+  tiktok: "var(--accent)", instagram: "var(--warning)", youtube: "#CC1A1A", twitter: "#5B9BD5", other: "#6B7280",
 };
 
 function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number }) {
   if (platform === "tiktok") return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF3B3B">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="var(--accent)">
       <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.96a8.27 8.27 0 004.84 1.54V7.06a4.85 4.85 0 01-1.07-.37z"/>
     </svg>
   );
@@ -81,7 +81,7 @@ function PlatformIcon({ platform, size = 14 }: { platform: string; size?: number
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
     </svg>
   );
-  return <span style={{ fontSize: size * 0.8, color: "#8A93A6" }}>◆</span>;
+  return <span style={{ fontSize: size * 0.8, color: "var(--text-secondary)" }}>◆</span>;
 }
 
 function detectPlatform(url: string): string {
@@ -145,9 +145,9 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
   const [deletingClip, setDeletingClip] = useState<string | null>(null);
 
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
+    background: "var(--border-subtle)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
     borderRadius: 10,
     padding: "10px 14px",
     fontSize: 13,
@@ -287,42 +287,42 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
       {previewMode ? (
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2"
-          style={{ background: "rgba(11,14,23,0.95)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(8px)" }}>
-          <a href="/agency" className="flex items-center gap-1.5 text-xs" style={{ color: "#8A93A6" }}>
+          style={{ background: "rgba(11,14,23,0.95)", borderBottom: "1px solid var(--border-subtle)", backdropFilter: "blur(8px)" }}>
+          <a href="/agency" className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             Back to Agency
           </a>
-          <span className="text-xs" style={{ color: "#8A93A6" }}>
-            Viewing as <span style={{ color: "#F5F6FA" }}>{userName}</span>
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            Viewing as <span style={{ color: "var(--text-primary)" }}>{userName}</span>
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.2)" }}>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.2)" }}>
             Preview
           </span>
         </div>
       ) : (
         <Sidebar role="clipper" userName={userName} />
       )}
-      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-60"}`}>
+      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-56"}`}>
         <div className={`max-w-5xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+              <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 Welcome, {userName.split(" ")[0]}
               </h1>
-              <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>Campaign: {displayClientName}</p>
+              <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Campaign: {displayClientName}</p>
             </div>
             {clients && clients.length > 1 && (
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
                 className="text-xs px-3 py-2 rounded-xl outline-none cursor-pointer"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", minWidth: 160 }}>
+                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 160 }}>
                 {clients.map((c) => (
-                  <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{c.name}</option>
+                  <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
                 ))}
               </select>
             )}
@@ -330,11 +330,11 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
 
           {/* Time period controls */}
           <div className="flex items-center gap-3 flex-wrap mb-4">
-            <div className="flex items-center gap-0.5 rounded-xl p-0.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center gap-0.5 rounded-xl p-0.5" style={{ background: "var(--border-subtle)", border: "1px solid var(--border-subtle)" }}>
               {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
                 <button key={p} onClick={() => setTimePeriod(p)}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors tab-btn"
-                  style={{ background: timePeriod === p ? "rgba(61,255,162,0.2)" : "transparent", color: timePeriod === p ? "#3DFFA2" : "#8A93A6" }}>
+                  style={{ background: timePeriod === p ? "rgba(61,255,162,0.2)" : "transparent", color: timePeriod === p ? "var(--success)" : "#8A93A6" }}>
                   {p === "all" ? "All" : p === "1d" ? "Day" : p === "7d" ? "Week" : p === "mtd" ? "MTD" : "Custom"}
                 </button>
               ))}
@@ -343,11 +343,11 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
               <div className="flex items-center gap-2">
                 <input type="date" value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)}
                   className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
-                <span className="text-xs" style={{ color: "#8A93A6" }}>to</span>
+                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
+                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>to</span>
                 <input type="date" value={customEnd} min={customStart} onChange={(e) => setCustomEnd(e.target.value)}
                   className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
+                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
               </div>
             )}
           </div>
@@ -362,7 +362,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                 className="px-4 py-2.5 text-sm font-medium relative"
                 style={{ color: activeClipperTab === tab.id ? "#F5F6FA" : "#8A93A6" }}>
                 {tab.label}
-                {activeClipperTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#3DFFA2" }} />}
+                {activeClipperTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--success)" }} />}
               </button>
             ))}
           </div>
@@ -371,15 +371,15 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {/* Stats bar */}
           {(() => {
             const statItems = [
-              { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pctChange(currViews, prevViews) },
-              { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pctChange(currLikes, prevLikes) },
-              { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pctChange(currComments, prevComments) },
-              { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pctChange(currShares, prevShares) },
-              { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pctChange(currSaves, prevSaves) },
-              { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pctChange(filteredClips.length, prevClipCount) },
+              { label: "Views", value: fmt(currViews), icon: Eye, color: "var(--accent)", change: pctChange(currViews, prevViews) },
+              { label: "Likes", value: fmt(currLikes), icon: Heart, color: "var(--accent)", change: pctChange(currLikes, prevLikes) },
+              { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "var(--accent)", change: pctChange(currComments, prevComments) },
+              { label: "Shares", value: fmt(currShares), icon: Share2, color: "var(--accent)", change: pctChange(currShares, prevShares) },
+              { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "var(--accent)", change: pctChange(currSaves, prevSaves) },
+              { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "var(--accent)", change: pctChange(filteredClips.length, prevClipCount) },
             ];
             return (
-              <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="grid grid-cols-6">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
@@ -391,13 +391,13 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                           style={{ background: `${item.color}18` }}>
                           <Icon size={14} color={item.color} />
                         </div>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>{item.label}</p>
-                        <span className="text-lg font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
+                        <span className="text-lg font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                           {item.value}
                         </span>
                         {item.change.ok && (
                           <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                            style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                            style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}>
                             {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                             {item.change.str}
                           </span>
@@ -411,32 +411,32 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           })()}
 
           {/* Views chart */}
-          <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
+          <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</h2>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <defs>
                     <linearGradient id="clipperViewGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
-                      <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
-                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.82} />
+                      <stop offset="55%" stopColor="var(--accent)" stopOpacity={0.32} />
+                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                   <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: string) => fmtDate(v)} />
                   <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
-                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
+                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 12 }} labelStyle={{ color: "var(--text-secondary)" }} itemStyle={{ color: "var(--accent)" }} />
                   {timePeriod !== "all" && (
                     <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
                       strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
                   )}
-                  <Area name="Views" type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#clipperViewGrad)"
-                    dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
+                  <Area name="Views" type="linear" dataKey="views" stroke="var(--accent)" strokeWidth={2} fill="url(#clipperViewGrad)"
+                    dot={{ fill: "var(--accent)", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "var(--accent)", strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm py-8 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
+              <p className="text-sm py-8 text-center" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>
             )}
           </div>
 
@@ -466,22 +466,22 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             });
             const mtdTotal = mtdAll.length;
             const pct = monthlyTarget ? Math.min(100, Math.round((mtdTotal / monthlyTarget) * 100)) : null;
-            const progressColor = pct !== null ? (pct >= 100 ? "#3DFFA2" : pct >= 60 ? "#FF9500" : "#FF3B3B") : "#FF3B3B";
+            const progressColor = pct !== null ? (pct >= 100 ? "var(--success)" : pct >= 60 ? "var(--warning)" : "var(--accent)") : "var(--accent)";
             return (
-              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <BarChart2 size={14} color="#FF3B3B" />
-                    <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                    <BarChart2 size={14} color="var(--accent)" />
+                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                       Monthly Goal — {now.toLocaleString("en-US", { month: "long" })}
                     </h2>
                   </div>
                   {monthlyTarget && (
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>Target: {monthlyTarget} clips</span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Target: {monthlyTarget} clips</span>
                   )}
                 </div>
                 {cpd && (
-                  <p className="text-xs mb-5" style={{ color: "#8A93A6" }}>
+                  <p className="text-xs mb-5" style={{ color: "var(--text-secondary)" }}>
                     {cpd} clips/day × 3 platforms × {deal} days
                   </p>
                 )}
@@ -490,19 +490,19 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                 <div className="mb-5">
                   <div className="flex items-end justify-between mb-2">
                     <div>
-                      <span className="text-3xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{mtdTotal}</span>
-                      {monthlyTarget && <span className="text-sm ml-1.5" style={{ color: "#8A93A6" }}>/ {monthlyTarget} clips</span>}
+                      <span className="text-3xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{mtdTotal}</span>
+                      {monthlyTarget && <span className="text-sm ml-1.5" style={{ color: "var(--text-secondary)" }}>/ {monthlyTarget} clips</span>}
                     </div>
                     {pct !== null && (
                       <span className="text-lg font-bold" style={{ color: progressColor }}>{pct}%</span>
                     )}
                   </div>
-                  <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                     <div className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${pct ?? 0}%`, background: `linear-gradient(90deg, ${progressColor}80 0%, ${progressColor} 100%)`, boxShadow: `0 0 8px ${progressColor}60` }} />
                   </div>
                   {monthlyTarget && (
-                    <p className="text-xs mt-1.5" style={{ color: "#8A93A6" }}>
+                    <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
                       {mtdTotal >= monthlyTarget ? "Goal reached!" : `${monthlyTarget - mtdTotal} more clips to reach goal`}
                     </p>
                   )}
@@ -515,7 +515,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                     const color = PLATFORM_COLORS[p] ?? "#8A93A6";
                     const platPct = platformTarget ? Math.min(100, Math.round((count / platformTarget) * 100)) : (mtdTotal > 0 ? Math.round((count / mtdTotal) * 100) : 0);
                     return (
-                      <div key={p} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                         <div className="flex items-center gap-2 mb-2">
                           <PlatformIcon platform={p} size={13} />
                           <span className="text-xs font-medium" style={{ color }}>
@@ -523,17 +523,17 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                           </span>
                         </div>
                         <div className="flex items-end justify-between mb-1">
-                          <p className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{count}</p>
-                          {platformTarget && <span className="text-xs" style={{ color: "#8A93A6" }}>/ {platformTarget}</span>}
+                          <p className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{count}</p>
+                          {platformTarget && <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/ {platformTarget}</span>}
                         </div>
-                        <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                           <div className="h-full rounded-full" style={{
                             width: `${platPct}%`,
                             background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`,
                             boxShadow: `0 0 6px ${color}50`,
                           }} />
                         </div>
-                        <p className="text-xs mt-1 font-semibold" style={{ color: platPct >= 100 ? "#3DFFA2" : platPct >= 60 ? "#FF9500" : color }}>{platPct}%</p>
+                        <p className="text-xs mt-1 font-semibold" style={{ color: platPct >= 100 ? "var(--success)" : platPct >= 60 ? "var(--warning)" : color }}>{platPct}%</p>
                       </div>
                     );
                   })}
@@ -545,46 +545,46 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {/* Accounts + Submit */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* My Accounts */}
-            <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>My Accounts</h2>
+                <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>My Accounts</h2>
                 {!previewMode && (
                   <button onClick={() => setShowAddSub(true)}
                     className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg"
-                    style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
+                    style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "var(--success)" }}>
                     <Plus size={11} /> Add
                   </button>
                 )}
               </div>
 
               {showAddSub && (
-                <form onSubmit={handleAddSubAccount} className="mb-4 p-4 rounded-xl space-y-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <form onSubmit={handleAddSubAccount} className="mb-4 p-4 rounded-xl space-y-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium" style={{ color: "#F5F6FA" }}>Add Account</p>
+                    <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Add Account</p>
                     <button type="button" onClick={() => setShowAddSub(false)}><X size={13} color="#8A93A6" /></button>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Profile URL</label>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Profile URL</label>
                     <input type="url" value={profileUrl} onChange={(e) => handleUrlChange(e.target.value)}
                       placeholder="https://tiktok.com/@yourhandle" style={inputStyle} />
-                    {profileUrl && <p className="text-xs mt-1" style={{ color: "#3DFFA2" }}>Detected: {PLATFORM_LABELS[platform]}</p>}
+                    {profileUrl && <p className="text-xs mt-1" style={{ color: "var(--success)" }}>Detected: {PLATFORM_LABELS[platform]}</p>}
                   </div>
                   {!profileUrl && (
                     <div>
-                      <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Platform</label>
+                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Platform</label>
                       <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={inputStyle}>
-                        {Object.entries(PLATFORM_LABELS).map(([k, v]) => <option key={k} value={k} style={{ background: "#0B0E17" }}>{v}</option>)}
+                        {Object.entries(PLATFORM_LABELS).map(([k, v]) => <option key={k} value={k} style={{ background: "var(--bg-surface)" }}>{v}</option>)}
                       </select>
                     </div>
                   )}
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: "#8A93A6" }}>Handle</label>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Handle</label>
                     <input type="text" value={handle} onChange={(e) => setHandle(e.target.value)} required
                       placeholder="yourhandle" style={inputStyle} />
                   </div>
                   <button type="submit" disabled={addSubLoading || !handle}
                     className="w-full py-2 rounded-lg text-xs font-medium"
-                    style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "#3DFFA2" }}>
+                    style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)" }}>
                     {addSubLoading ? "Adding..." : "Add Account"}
                   </button>
                 </form>
@@ -593,72 +593,72 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
               <div className="space-y-2">
                 {subAccounts.map((s) => (
                   <div key={s.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                     <PlatformIcon platform={s.platform} size={16} />
                     <div className="flex-1 min-w-0">
                       {s.profileUrl ? (
                         <a href={s.profileUrl} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1.5 hover:opacity-75 transition-opacity" style={{ textDecoration: "none" }}>
-                          <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>@{s.handle}</p>
+                          <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>@{s.handle}</p>
                           <ExternalLink size={10} color="#8A93A6" className="flex-shrink-0" />
                         </a>
                       ) : (
-                        <p className="text-sm font-medium truncate" style={{ color: "#F5F6FA" }}>@{s.handle}</p>
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>@{s.handle}</p>
                       )}
                       <p className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>{PLATFORM_LABELS[s.platform]}</p>
                     </div>
                     <button onClick={() => handleDeleteSub(s.id)} className="flex-shrink-0 p-1 rounded hover:bg-white/5">
-                      <Trash2 size={12} color="#FF4757" />
+                      <Trash2 size={12} color="var(--danger)" />
                     </button>
                   </div>
                 ))}
                 {subAccounts.length === 0 && (
-                  <p className="text-xs text-center py-4" style={{ color: "#8A93A6" }}>No accounts yet — add one above</p>
+                  <p className="text-xs text-center py-4" style={{ color: "var(--text-secondary)" }}>No accounts yet — add one above</p>
                 )}
               </div>
             </div>
 
             {/* Submit a Clip */}
-            <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Submit a Clip</h2>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Submit a Clip</h2>
               {previewMode ? (
-                <p className="text-xs" style={{ color: "#8A93A6" }}>Clip submission is only available when logged in as the clipper.</p>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Clip submission is only available when logged in as the clipper.</p>
               ) : subAccounts.length === 0 ? (
-                <p className="text-xs" style={{ color: "#8A93A6" }}>Add a social account first, then submit clips.</p>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Add a social account first, then submit clips.</p>
               ) : (
                 <form onSubmit={handleSubmitClip} className="space-y-4">
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Campaign</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Client Campaign</label>
                     <div className="px-3 py-2.5 rounded-xl text-sm font-medium"
-                      style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                      style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                       {displayClientName}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip Title</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Clip Title</label>
                     <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} required
                       placeholder="Enter a title for this clip" style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Account</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Account</label>
                     <select value={subAccountId} onChange={(e) => setSubAccountId(e.target.value)} style={inputStyle}>
                       {subAccounts.map((s) => (
-                        <option key={s.id} value={s.id} style={{ background: "#0B0E17" }}>
+                        <option key={s.id} value={s.id} style={{ background: "var(--bg-surface)" }}>
                           {PLATFORM_LABELS[s.platform]} — @{s.handle}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Clip URL</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Clip URL</label>
                     <input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} required
                       placeholder="https://tiktok.com/@you/video/..." style={inputStyle} />
                   </div>
-                  {submitError && <p className="text-xs" style={{ color: "#FF4757" }}>{submitError}</p>}
-                  {submitSuccess && <p className="text-xs" style={{ color: "#3DFFA2" }}>✓ Clip submitted!</p>}
+                  {submitError && <p className="text-xs" style={{ color: "var(--danger)" }}>{submitError}</p>}
+                  {submitSuccess && <p className="text-xs" style={{ color: "var(--success)" }}>✓ Clip submitted!</p>}
                   <button type="submit" disabled={submitLoading || !clipUrl || !clipTitle}
                     className="w-full py-3 rounded-xl text-sm font-semibold"
-                    style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "#3DFFA2", opacity: submitLoading ? 0.6 : 1 }}>
+                    style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)", opacity: submitLoading ? 0.6 : 1 }}>
                     {submitLoading ? "Submitting..." : "Submit Clip"}
                   </button>
                 </form>
@@ -669,13 +669,13 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {/* My Clips + Leaderboard */}
           <div className="grid grid-cols-2 gap-6">
             {/* My Clips */}
-            <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>My Clips</h2>
+                <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>My Clips</h2>
                 {!previewMode && clips.length > 0 && (
                   <button onClick={handleRefreshAll} disabled={refreshingAll} title="Refresh all stats"
                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6", opacity: refreshingAll ? 0.6 : 1 }}>
+                    style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
                     <RotateCw size={11} className={refreshingAll ? "animate-spin" : ""} />
                     {refreshingAll ? "Refreshing..." : "Refresh All"}
                   </button>
@@ -690,16 +690,16 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                       </a>
                     )}
                     <div className="flex-1 min-w-0">
-                      {c.title && <p className="text-xs font-medium truncate mb-0.5" style={{ color: "#F5F6FA" }}>{c.title}</p>}
-                      <p className="text-xs truncate" style={{ color: "#8A93A6" }}>@{c.subAccount?.handle}</p>
+                      {c.title && <p className="text-xs font-medium truncate mb-0.5" style={{ color: "var(--text-primary)" }}>{c.title}</p>}
+                      <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>@{c.subAccount?.handle}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-sm font-semibold" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(c.views ?? 0)}</span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmt(c.views ?? 0)}</span>
                       <a href={c.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={10} color="#8A93A6" /></a>
                       {!previewMode && (
                         <button onClick={() => handleRefresh(c.id)} disabled={refreshing === c.id} title="Refresh stats"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6" }}>
+                          style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)" }}>
                           <RotateCw size={10} className={refreshing === c.id ? "animate-spin" : ""} />
                           {refreshing === c.id ? "" : "Sync"}
                         </button>
@@ -707,48 +707,48 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                       {!previewMode && (
                         <button onClick={() => handleDeleteClip(c.id)} disabled={deletingClip === c.id} title="Delete clip"
                           className="flex items-center justify-center w-6 h-6 rounded-lg"
-                          style={{ background: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.15)", color: "#FF4757", opacity: deletingClip === c.id ? 0.5 : 1 }}>
+                          style={{ background: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.15)", color: "var(--danger)", opacity: deletingClip === c.id ? 0.5 : 1 }}>
                           <Trash2 size={10} />
                         </button>
                       )}
                     </div>
                   </div>
                 ))}
-                {clips.length === 0 && <p className="text-xs" style={{ color: "#8A93A6" }}>No clips yet</p>}
+                {clips.length === 0 && <p className="text-xs" style={{ color: "var(--text-secondary)" }}>No clips yet</p>}
               </div>
             </div>
 
             {/* Leaderboard */}
-            <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Trophy size={14} color="#FFA500" />
-                  <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Leaderboard</h2>
+                  <Trophy size={14} color="var(--warning)" />
+                  <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Leaderboard</h2>
                 </div>
-                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>Views</span>
+                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
               </div>
               <div className="space-y-2">
                 {activeLeaderboard.map((entry, i) => {
                   const isMe = entry.name === userName;
                   return (
                     <div key={entry.id} className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span className="text-xs w-5 text-right flex-shrink-0" style={{ color: i === 0 ? "#FFA500" : "#8A93A6" }}>
+                      <span className="text-xs w-5 text-right flex-shrink-0" style={{ color: i === 0 ? "var(--warning)" : "#8A93A6" }}>
                         {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}
                       </span>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: isMe ? "rgba(61,255,162,0.2)" : "rgba(255,255,255,0.06)", color: isMe ? "#3DFFA2" : "#F5F6FA" }}>
+                        style={{ background: isMe ? "rgba(61,255,162,0.2)" : "var(--border-subtle)", color: isMe ? "var(--success)" : "#F5F6FA" }}>
                         {(entry.name || "?")[0]}
                       </div>
-                      <span className="text-sm flex-1 font-medium" style={{ color: isMe ? "#3DFFA2" : "#F5F6FA" }}>
+                      <span className="text-sm flex-1 font-medium" style={{ color: isMe ? "var(--success)" : "#F5F6FA" }}>
                         {entry.name}{isMe ? " (you)" : ""}
                       </span>
-                      <span className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                      <span className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                         {fmt(entry.totalViews)}
                       </span>
                     </div>
                   );
                 })}
-                {activeLeaderboard.length === 0 && <p className="text-xs" style={{ color: "#8A93A6" }}>No data yet</p>}
+                {activeLeaderboard.length === 0 && <p className="text-xs" style={{ color: "var(--text-secondary)" }}>No data yet</p>}
               </div>
             </div>
           </div>

@@ -48,54 +48,55 @@ export default function Sidebar({ role, userName }: SidebarProps) {
     });
   }, []);
 
-  const roleColors: Record<string, string> = {
-    agency: "#FF3B3B",
-    clipper: "#3DFFA2",
-    client: "#a78bfa",
-  };
-
-  const roleLabels: Record<string, string> = {
-    agency: "Agency Admin",
-    clipper: "Clipper",
-    client: "Client",
-  };
-
   return (
     <aside
-      className="w-60 flex flex-col h-screen fixed left-0 top-0 z-40"
+      className="w-56 flex flex-col h-screen fixed left-0 top-0 z-40"
       style={{
-        background: "#0B0E17",
-        borderRight: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "4px 0 24px rgba(0,0,0,0.4), 1px 0 0 rgba(255,59,59,0.04)",
+        background: "var(--bg-subtle)",
+        borderRight: "1px solid var(--border-subtle)",
       }}
     >
       {/* Logo */}
-      <div className="px-6 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
-          style={agencyLogo ? {} : { background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", boxShadow: "0 0 12px rgba(255,59,59,0.2)" }}>
+      <div
+        className="px-5 py-4 flex items-center gap-3"
+        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+      >
+        <div
+          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+          style={
+            agencyLogo
+              ? { border: "1px solid var(--border-default)" }
+              : {
+                  background: "var(--accent-muted)",
+                  border: "1px solid var(--accent-border)",
+                }
+          }
+        >
           {agencyLogo ? (
             <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B"/>
-              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6"/>
-              <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95"/>
-              <circle cx="12" cy="9" r="0.7" fill="#FF3B3B"/>
-              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020"/>
-              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A"/>
-              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A"/>
-              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9"/>
-              <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8"/>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="var(--accent)" />
+              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="var(--accent)" opacity="0.5" />
+              <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.9" />
+              <circle cx="12" cy="9" r="0.7" fill="var(--accent)" />
+              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="var(--accent-solid)" />
+              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="var(--accent-solid)" />
+              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="var(--accent-solid)" />
+              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="var(--warning)" opacity="0.9" />
             </svg>
           )}
         </div>
-        <span className="font-semibold text-sm" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+        <span
+          className="font-semibold text-sm tracking-tight"
+          style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+        >
           ClipLaunch
         </span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-3 space-y-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -103,43 +104,60 @@ export default function Sidebar({ role, userName }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm relative transition-colors nav-link"
               style={{
-                color: isActive ? roleColors[role] : "#8A93A6",
-                background: isActive ? `${roleColors[role]}18` : "transparent",
-                fontWeight: isActive ? 600 : 400,
-                boxShadow: isActive ? `0 0 14px ${roleColors[role]}25, inset 0 0 0 1px ${roleColors[role]}22` : "none",
+                color: isActive ? "var(--accent)" : "var(--text-secondary)",
+                background: isActive ? "var(--accent-muted)" : "transparent",
+                fontWeight: isActive ? 500 : 400,
               }}
             >
-              <Icon size={16} />
+              {/* Active indicator bar */}
+              {isActive && (
+                <span
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full"
+                  style={{ height: "60%", background: "var(--accent)" }}
+                />
+              )}
+              <Icon size={15} strokeWidth={isActive ? 2 : 1.75} />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
+      {/* Section divider + role label */}
+      <div className="px-5 pb-1 pt-2">
+        <p
+          className="text-xs uppercase tracking-widest"
+          style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.08em" }}
+        >
+          {role}
+        </p>
+      </div>
+
       {/* User */}
-      <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="flex items-center gap-3 mb-3">
+      <div className="px-3 py-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+        <div className="flex items-center gap-2.5 px-2 mb-2">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
-            style={{ background: `${roleColors[role]}22`, color: roleColors[role] }}
+            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+            style={{
+              background: "var(--accent-muted)",
+              color: "var(--accent)",
+              fontSize: 10,
+            }}
           >
             {userName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>
+            <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
               {userName}
-            </p>
-            <p className="text-xs" style={{ color: "#8A93A6" }}>
-              {roleLabels[role]}
             </p>
           </div>
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full text-xs py-2 px-3 rounded-lg text-left transition-colors"
-          style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}
+          className="w-full text-xs py-1.5 px-3 rounded-md text-left transition-colors nav-link"
+          style={{ color: "var(--text-tertiary)" }}
         >
           Sign out
         </button>

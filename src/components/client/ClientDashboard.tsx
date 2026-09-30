@@ -99,6 +99,21 @@ interface ClientData {
 
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
 
+/* ── Shared style fragments ──────────────────────────────────────── */
+const card: React.CSSProperties = {
+  background: "var(--bg-surface)",
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-lg)",
+  boxShadow: "var(--shadow-inset-top)",
+};
+
+const cardElevated: React.CSSProperties = {
+  background: "var(--bg-elevated)",
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-lg)",
+  boxShadow: "var(--shadow-inset-top)",
+};
+
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "deal" | "onboarding" | "reports" | "contract">("overview");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
@@ -114,38 +129,28 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const [steps, setSteps] = useState<OnboardingStep[]>(client.onboardingSteps);
   const [togglingStep, setTogglingStep] = useState<string | null>(null);
 
-  // Time filtered clips
   const [rangeStart, rangeEnd] = getRange(timePeriod, customStart, customEnd);
   const filteredClips = inRange(clips, rangeStart, rangeEnd);
   const prevClips = timePeriod === "all"
     ? []
     : (() => { const [ps, pe] = getPrevRange(rangeStart, rangeEnd); return inRange(clips, ps, pe); })();
 
-  // Stats
-  const currViews = filteredClips.reduce((a, c) => a + c.views, 0);
-  const currLikes = filteredClips.reduce((a, c) => a + c.likes, 0);
+  const currViews    = filteredClips.reduce((a, c) => a + c.views, 0);
+  const currLikes    = filteredClips.reduce((a, c) => a + c.likes, 0);
   const currComments = filteredClips.reduce((a, c) => a + c.comments, 0);
-  const currShares = filteredClips.reduce((a, c) => a + c.shares, 0);
-  const currSaves = filteredClips.reduce((a, c) => a + c.saves, 0);
-
-  const prevViews = prevClips.reduce((a, c) => a + c.views, 0);
-  const prevLikes = prevClips.reduce((a, c) => a + c.likes, 0);
+  const currShares   = filteredClips.reduce((a, c) => a + c.shares, 0);
+  const currSaves    = filteredClips.reduce((a, c) => a + c.saves, 0);
+  const prevViews    = prevClips.reduce((a, c) => a + c.views, 0);
+  const prevLikes    = prevClips.reduce((a, c) => a + c.likes, 0);
   const prevComments = prevClips.reduce((a, c) => a + c.comments, 0);
-  const prevShares = prevClips.reduce((a, c) => a + c.shares, 0);
-  const prevSaves = prevClips.reduce((a, c) => a + c.saves, 0);
+  const prevShares   = prevClips.reduce((a, c) => a + c.shares, 0);
+  const prevSaves    = prevClips.reduce((a, c) => a + c.saves, 0);
   const prevClipCount = prevClips.length;
 
-  // Chart from filtered clips
   const byDate: Record<string, number> = {};
-  (filteredClips as Clip[]).forEach((c) => {
-    const date = c.submittedAt.slice(0, 10);
-    byDate[date] = (byDate[date] ?? 0) + c.views;
-  });
+  filteredClips.forEach((c) => { const d = c.submittedAt.slice(0, 10); byDate[d] = (byDate[d] ?? 0) + c.views; });
   const prevByDate: Record<string, number> = {};
-  (prevClips as Clip[]).forEach((c) => {
-    const date = c.submittedAt.slice(0, 10);
-    prevByDate[date] = (prevByDate[date] ?? 0) + c.views;
-  });
+  prevClips.forEach((c) => { const d = c.submittedAt.slice(0, 10); prevByDate[d] = (prevByDate[d] ?? 0) + c.views; });
   const currChartDates = Object.keys(byDate).sort();
   const prevChartDates = Object.keys(prevByDate).sort();
   const chartData = currChartDates.map((date, i) => ({
@@ -154,10 +159,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
   }));
 
-  // Onboarding
   const completedSteps = steps.filter((s) => s.completed).length;
-  const onboardingPct = steps.length > 0
-    ? Math.round((completedSteps / steps.length) * 100) : 0;
+  const onboardingPct = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
 
   async function toggleStep(stepId: string, completed: boolean) {
     if (previewMode) return;
@@ -167,118 +170,172 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stepId, completed }),
     });
-    if (res.ok) {
-      setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, completed } : s));
-    }
+    if (res.ok) setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, completed } : s));
     setTogglingStep(null);
   }
 
   const statItems = [
-    { label: "Views", value: fmt(currViews), icon: Eye, color: "#FF3B3B", change: pct(currViews, prevViews) },
-    { label: "Likes", value: fmt(currLikes), icon: Heart, color: "#FF3B3B", change: pct(currLikes, prevLikes) },
-    { label: "Comments", value: fmt(currComments), icon: MessageCircle, color: "#FF3B3B", change: pct(currComments, prevComments) },
-    { label: "Shares", value: fmt(currShares), icon: Share2, color: "#FF3B3B", change: pct(currShares, prevShares) },
-    { label: "Saves", value: fmt(currSaves), icon: Bookmark, color: "#FF3B3B", change: pct(currSaves, prevSaves) },
-    { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pct(filteredClips.length, prevClipCount) },
+    { label: "Views",    value: fmt(currViews),    icon: Eye,         change: pct(currViews,    prevViews)    },
+    { label: "Likes",    value: fmt(currLikes),    icon: Heart,       change: pct(currLikes,    prevLikes)    },
+    { label: "Comments", value: fmt(currComments), icon: MessageCircle, change: pct(currComments, prevComments) },
+    { label: "Shares",   value: fmt(currShares),   icon: Share2,      change: pct(currShares,   prevShares)   },
+    { label: "Saves",    value: fmt(currSaves),    icon: Bookmark,    change: pct(currSaves,    prevSaves)    },
+    { label: "Clips",    value: filteredClips.length.toString(), icon: BarChart2, change: pct(filteredClips.length, prevClipCount) },
   ];
 
   type TabId = "overview" | "reports" | "onboarding" | "contract" | "deal";
   const tabs: { id: TabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     ...(client.campaignType === "cpm" ? [
-      { id: "reports" as TabId, label: "Campaign Reports" },
-      { id: "onboarding" as TabId, label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
-      { id: "contract" as TabId, label: "Contract" },
+      { id: "reports"    as TabId, label: "Reports" },
+      { id: "onboarding" as TabId, label: steps.length > 0 ? `Onboarding · ${onboardingPct}%` : "Onboarding" },
+      { id: "contract"   as TabId, label: "Contract" },
     ] : []),
     { id: "deal", label: "Deal Terms" },
   ];
 
   const tooltipStyle = {
-    contentStyle: { background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
-    labelStyle: { color: "#8A93A6" },
+    contentStyle: {
+      background: "var(--bg-elevated)",
+      border: "1px solid var(--border-default)",
+      borderRadius: "var(--radius-md)",
+      fontSize: 12,
+    },
+    labelStyle: { color: "var(--text-secondary)" },
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
       {previewMode ? (
-        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2"
-          style={{ background: "rgba(11,14,23,0.95)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(8px)" }}>
-          <a href="/agency" className="flex items-center gap-1.5 text-xs" style={{ color: "#8A93A6" }}>
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2.5"
+          style={{
+            background: "var(--bg-subtle)",
+            borderBottom: "1px solid var(--border-default)",
+          }}
+        >
+          <a href="/agency" className="flex items-center gap-1.5 text-xs transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)")}
+          >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Back to Agency
+            Agency
           </a>
-          <span className="text-xs" style={{ color: "#8A93A6" }}>Viewing as <span style={{ color: "#F5F6FA" }}>{client.name}</span></span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.2)" }}>Preview</span>
+          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            Viewing as <span style={{ color: "var(--text-primary)" }}>{client.name}</span>
+          </span>
+          <span
+            className="text-xs px-2 py-0.5 rounded-md font-medium"
+            style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}
+          >
+            Preview
+          </span>
         </div>
       ) : (
         <Sidebar role="client" userName={userName} />
       )}
 
-      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-60"}`}>
-        <div className={`max-w-6xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
-          {/* Header */}
+      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-56"}`}>
+        <div className={`max-w-5xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
+
+          {/* ── Page header ────────────────────────────────────────── */}
           <div className="flex items-center gap-4 mb-6">
             {client.logoUrl && (
-              <img src={client.logoUrl} alt={client.name}
-                className="w-14 h-14 rounded-2xl object-cover flex-shrink-0"
-                style={{ border: "1px solid rgba(255,255,255,0.1)" }} />
+              <img
+                src={client.logoUrl}
+                alt={client.name}
+                className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                style={{ border: "1px solid var(--border-default)" }}
+              />
             )}
             <div>
-              <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{client.name}</h1>
-              {client.campaignType !== "cpm" && (
-                <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>{clips.length} clips · {client.clippers.flatMap((cl) => cl.subAccounts).length} accounts</p>
-              )}
-              {client.campaignType === "cpm" && (
-                <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>CPM Campaign</p>
-              )}
+              <h1
+                className="text-xl font-semibold tracking-tight"
+                style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+              >
+                {client.name}
+              </h1>
+              <p className="text-sm mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {client.campaignType === "cpm" ? "CPM Campaign" : `${clips.length} clips · ${client.clippers.flatMap((cl) => cl.subAccounts).length} accounts`}
+              </p>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mb-8" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          {/* ── Tabs ───────────────────────────────────────────────── */}
+          <div className="flex gap-0 mb-7" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
             {tabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="px-4 py-2.5 text-sm font-medium relative tab-btn"
-                style={{ color: activeTab === tab.id ? "#F5F6FA" : "#8A93A6" }}>
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="px-4 py-2.5 text-sm relative tab-btn"
+                style={{
+                  color: activeTab === tab.id ? "var(--text-primary)" : "var(--text-tertiary)",
+                  fontWeight: activeTab === tab.id ? 500 : 400,
+                  background: "transparent",
+                  border: "none",
+                }}
+              >
                 {tab.label}
-                {activeTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF3B3B" }} />}
+                {activeTab === tab.id && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: "var(--accent)" }}
+                  />
+                )}
               </button>
             ))}
           </div>
 
-          {/* ── OVERVIEW ────────────────────────────────────────────────── */}
+          {/* ── OVERVIEW ─────────────────────────────────────────────── */}
           {activeTab === "overview" && (
             <>
               {client.campaignType === "cpm" ? (
-                /* CPM Overview: tracker card + recent reports feed */
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Campaign Tracker card */}
-                  <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,59,59,0.15)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
-                        <Activity size={16} color="#FF3B3B" />
+                  <div style={card} className="p-5">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+                      >
+                        <Activity size={15} style={{ color: "var(--accent)" }} />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Live Campaign Tracker</p>
-                        <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>View all clips, live performance stats, platform breakdown, real-time views, CPM, and exact payout — updated continuously.</p>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                        >
+                          Live Campaign Tracker
+                        </p>
+                        <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                          All clips, live performance stats, platform breakdown, real-time views, CPM, and exact payout — updated continuously.
+                        </p>
+                        {client.campaignTrackerUrl ? (
+                          <a
+                            href={client.campaignTrackerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            style={{
+                              background: "var(--accent-solid)",
+                              color: "var(--text-on-accent)",
+                              textDecoration: "none",
+                              boxShadow: "var(--shadow-inset-top)",
+                            }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
+                          >
+                            <ExternalLink size={12} />
+                            Open Live Tracker
+                          </a>
+                        ) : (
+                          <p className="text-xs mt-3" style={{ color: "var(--text-tertiary)" }}>
+                            Tracker link will appear here once set up.
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {client.campaignTrackerUrl ? (
-                      <a
-                        href={client.campaignTrackerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold mt-2 transition-all"
-                        style={{ background: "#FF3B3B", color: "#fff", boxShadow: "0 0 24px rgba(255,59,59,0.45)", textDecoration: "none" }}
-                      >
-                        <ExternalLink size={14} />
-                        Open Live Tracker
-                      </a>
-                    ) : (
-                      <div className="mt-2 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>Your live tracker link will appear here once set up.</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Recent Activity feed */}
@@ -295,45 +352,64 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     }
 
                     return (
-                      <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-                        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                          <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Recent Activity</p>
+                      <div style={{ ...card, overflow: "hidden", padding: 0 }}>
+                        <div
+                          className="flex items-center justify-between px-5 py-3.5"
+                          style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                        >
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Recent Activity</p>
                           <button
                             onClick={() => setActiveTab("reports")}
-                            className="text-xs font-medium"
-                            style={{ color: "#FF3B3B" }}
+                            className="text-xs font-medium transition-colors"
+                            style={{ color: "var(--accent)" }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.7")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
                           >
-                            View All Reports →
+                            View all →
                           </button>
                         </div>
-                        <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                        <div>
                           {recent.map((report, idx) => {
                             const prevReport = reports[idx + 1] ?? null;
-                            const viewsTodayChange = prevReport
-                              ? prevReport.viewsToday > 0
-                                ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                : null
+                            const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                              ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
                               : null;
-                            const changeColor = viewsTodayChange === null ? "#8A93A6" : viewsTodayChange >= 0 ? "#3DFFA2" : "#FF4757";
+                            const changeColor = viewsTodayChange === null
+                              ? "var(--text-tertiary)"
+                              : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+
                             return (
-                              <div key={report.id} className="flex items-center gap-4 px-5 py-3.5">
+                              <div
+                                key={report.id}
+                                className="flex items-center gap-4 px-5 py-3 table-row-hover"
+                                style={{ borderTop: idx > 0 ? "1px solid var(--border-subtle)" : "none" }}
+                              >
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtDay(report.date)}</span>
-                                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(255,59,59,0.08)", color: "#FF3B3B" }}>{dayName(report.date)}</span>
+                                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                      {fmtDay(report.date)}
+                                    </span>
+                                    <span
+                                      className="text-xs px-1.5 py-0.5 rounded"
+                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}
+                                    >
+                                      {dayName(report.date)}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-5 flex-shrink-0">
+                                <div className="flex items-center gap-6 flex-shrink-0">
                                   <div className="text-right">
-                                    <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
-                                    <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{report.approved}</p>
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="text-xs" style={{ color: "#8A93A6" }}>Views Today</p>
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
                                     <div className="flex items-center justify-end gap-1.5">
-                                      <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsToday)}</p>
+                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                                        {fmt(report.viewsToday)}
+                                      </p>
                                       {viewsTodayChange !== null && (
-                                        <span className="text-xs font-semibold" style={{ color: changeColor }}>
+                                        <span className="text-xs font-medium" style={{ color: changeColor }}>
                                           {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
                                         </span>
                                       )}
@@ -349,56 +425,83 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   })()}
                 </div>
               ) : (
-                /* Non-CPM Overview: simplified — stats bar + chart */
+                /* Non-CPM Overview */
                 <>
                   {/* Time period controls */}
-                  <div className="flex items-center gap-3 flex-wrap mb-4">
-                    <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex items-center gap-3 flex-wrap mb-5">
+                    <div
+                      className="flex items-center gap-0.5 rounded-lg p-0.5"
+                      style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+                    >
                       {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
-                        <button key={p} onClick={() => setTimePeriod(p)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                        <button
+                          key={p}
+                          onClick={() => setTimePeriod(p)}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
                           style={{
-                            background: timePeriod === p ? "rgba(255,59,59,0.2)" : "transparent",
-                            color: timePeriod === p ? "#FF3B3B" : "#8A93A6",
-                          }}>
+                            background: timePeriod === p ? "var(--accent-muted)" : "transparent",
+                            color: timePeriod === p ? "var(--accent)" : "var(--text-tertiary)",
+                          }}
+                        >
                           {p === "all" ? "All" : p === "1d" ? "Day" : p === "7d" ? "Week" : p === "mtd" ? "MTD" : "Custom"}
                         </button>
                       ))}
                     </div>
                     {timePeriod === "custom" && (
                       <div className="flex items-center gap-2">
-                        <input type="date" value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)}
-                          className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
-                        <span className="text-xs" style={{ color: "#8A93A6" }}>to</span>
-                        <input type="date" value={customEnd} min={customStart} onChange={(e) => setCustomEnd(e.target.value)}
-                          className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA", colorScheme: "dark" }} />
+                        <input
+                          type="date" value={customStart} max={customEnd}
+                          onChange={(e) => setCustomStart(e.target.value)}
+                          className="text-xs px-3 py-1.5 rounded-md outline-none"
+                          style={{
+                            background: "var(--bg-surface)",
+                            border: "1px solid var(--border-default)",
+                            color: "var(--text-primary)",
+                            colorScheme: "dark",
+                            height: 32,
+                          }}
+                        />
+                        <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>to</span>
+                        <input
+                          type="date" value={customEnd} min={customStart}
+                          onChange={(e) => setCustomEnd(e.target.value)}
+                          className="text-xs px-3 py-1.5 rounded-md outline-none"
+                          style={{
+                            background: "var(--bg-surface)",
+                            border: "1px solid var(--border-default)",
+                            color: "var(--text-primary)",
+                            colorScheme: "dark",
+                            height: 32,
+                          }}
+                        />
                       </div>
                     )}
                   </div>
 
                   {/* Stats bar */}
-                  <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                  <div style={{ ...card, overflow: "hidden", padding: 0 }} className="mb-4">
                     <div className="grid grid-cols-6">
                       {statItems.map((item, i) => {
                         const Icon = item.icon;
-                        const borderRight = i < 5 ? "1px solid rgba(255,255,255,0.06)" : "none";
                         return (
-                          <div key={item.label} className="flex flex-col items-center justify-center gap-1.5 px-4 py-4"
-                            style={{ borderRight }}>
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ background: `${item.color}18` }}>
-                              <Icon size={14} color={item.color} />
-                            </div>
-                            <p className="text-xs" style={{ color: "#8A93A6" }}>{item.label}</p>
-                            <span className="text-lg font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+                          <div
+                            key={item.label}
+                            className="flex flex-col items-center justify-center gap-1.5 px-3 py-4"
+                            style={{ borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none" }}
+                          >
+                            <Icon size={14} style={{ color: "var(--text-tertiary)" }} />
+                            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{item.label}</p>
+                            <span
+                              className="text-lg font-semibold leading-none tabular-nums"
+                              style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                            >
                               {item.value}
                             </span>
                             {item.change.ok && (
-                              <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                                style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                              <span
+                                className="flex items-center gap-0.5 text-xs font-medium leading-none"
+                                style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}
+                              >
                                 {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                                 {item.change.str}
                               </span>
@@ -407,40 +510,56 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         );
                       })}
                     </div>
-                    <div className="px-6 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                      <p className="text-xs" style={{ color: "#8A93A6" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
+                    <div
+                      className="px-5 py-2"
+                      style={{ borderTop: "1px solid var(--border-subtle)" }}
+                    >
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                        {prevLabel(timePeriod, customStart, customEnd)}
+                      </p>
                     </div>
                   </div>
 
                   {/* Views chart */}
-                  <div className="rounded-xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-                    <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
+                  <div style={card} className="p-5 mb-4">
+                    <h2
+                      className="text-sm font-semibold mb-4"
+                      style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                    >
+                      Views Over Time
+                    </h2>
                     {chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={240}>
+                      <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                           <defs>
                             <linearGradient id="clientViewGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.82} />
-                              <stop offset="55%" stopColor="#FF3B3B" stopOpacity={0.32} />
-                              <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.04} />
+                              <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.6} />
+                              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                          <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                          <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
                             tickFormatter={(v: string) => fmtDate(v)} />
-                          <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
-                            tickFormatter={(v: number) => fmt(v)} width={48} />
-                          <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "#3DFFA2" }} />
+                          <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
+                            tickFormatter={(v: number) => fmt(v)} width={44} />
+                          <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--text-primary)" }} />
                           {timePeriod !== "all" && (
-                            <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
-                              strokeWidth={1.5} fill="none" strokeDasharray="5 3" dot={false} />
+                            <Area name="Prev Period" type="linear" dataKey="prevViews"
+                              stroke="var(--border-strong)" strokeWidth={1.5} fill="none"
+                              strokeDasharray="5 3" dot={false} />
                           )}
-                          <Area name="Views" type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#clientViewGrad)"
-                            dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
+                          <Area name="Views" type="linear" dataKey="views"
+                            stroke="var(--accent)" strokeWidth={1.5}
+                            fill="url(#clientViewGrad)"
+                            dot={false}
+                            activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }}
+                          />
                         </AreaChart>
                       </ResponsiveContainer>
                     ) : (
-                      <p className="text-sm py-10 text-center" style={{ color: "#8A93A6" }}>No clips in this period</p>
+                      <p className="text-sm py-10 text-center" style={{ color: "var(--text-tertiary)" }}>
+                        No clips in this period
+                      </p>
                     )}
                   </div>
                 </>
@@ -448,67 +567,105 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
             </>
           )}
 
-          {/* ── DEAL TERMS ─── */}
+          {/* ── DEAL TERMS ───────────────────────────────────────────── */}
           {activeTab === "deal" && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Deal Length", value: client.dealLengthDays ? `${client.dealLengthDays} days` : "—" },
                 { label: "Pages", value: client.pageCount?.toString() ?? "—" },
                 { label: "Clips / Day", value: client.clipsPerDay?.toString() ?? "—" },
-                { label: "Total Clips Submitted", value: client.clips.length.toString() },
+                { label: "Total Clips", value: client.clips.length.toString() },
                 { label: "Active Clippers", value: client.clippers.length.toString() },
                 { label: "Started", value: new Date(client.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) },
               ].map((item) => (
-                <div key={item.label} className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-                  <p className="text-xs mb-2" style={{ color: "#8A93A6" }}>{item.label}</p>
-                  <p className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{item.value}</p>
+                <div key={item.label} style={card} className="p-5">
+                  <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {item.label}
+                  </p>
+                  <p
+                    className="text-2xl font-semibold tabular-nums"
+                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                  >
+                    {item.value}
+                  </p>
                 </div>
               ))}
             </div>
           )}
 
-
-          {/* ── ONBOARDING ─── */}
+          {/* ── ONBOARDING ───────────────────────────────────────────── */}
           {activeTab === "onboarding" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {steps.length > 0 && (
-                <div className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                <div style={card} className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>Progress — {completedSteps} of {steps.length} complete</span>
-                    <span className="text-xs font-medium" style={{ color: "#3DFFA2" }}>{onboardingPct}%</span>
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {completedSteps} of {steps.length} complete
+                    </span>
+                    <span className="text-xs font-medium tabular-nums" style={{ color: "var(--success)" }}>
+                      {onboardingPct}%
+                    </span>
                   </div>
-                  <div className="h-2 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
-                    <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${onboardingPct}%`, background: "linear-gradient(90deg, #3DFFA2, #FF3B3B)" }} />
+                  <div className="h-1.5 rounded-full" style={{ background: "var(--bg-hover)" }}>
+                    <div
+                      className="h-1.5 rounded-full bar-fill"
+                      style={{ width: `${onboardingPct}%`, background: "var(--success)" }}
+                    />
                   </div>
                 </div>
               )}
-              <div className="space-y-2">
-                {steps.map((step, i) => (
-                  <div key={step.id} className="flex items-start gap-4 p-4 rounded-2xl transition-all"
-                    style={{ background: "#0B0E17", border: `1px solid ${step.completed ? "rgba(61,255,162,0.15)" : "rgba(255,255,255,0.08)"}` }}>
+              <div className="space-y-1.5">
+                {steps.map((step) => (
+                  <div
+                    key={step.id}
+                    className="flex items-start gap-3 p-4 rounded-xl transition-colors"
+                    style={{
+                      background: "var(--bg-surface)",
+                      border: `1px solid ${step.completed ? "rgba(61,214,140,0.2)" : "var(--border-default)"}`,
+                    }}
+                  >
                     <button
                       onClick={() => toggleStep(step.id, !step.completed)}
                       disabled={togglingStep === step.id || previewMode}
-                      className="mt-0.5 w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                      className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors check-circle"
                       title={step.completed ? "Mark incomplete" : "Mark complete"}
                       style={{
-                        background: step.completed ? "rgba(61,255,162,0.2)" : "rgba(255,255,255,0.04)",
-                        border: `1.5px solid ${step.completed ? "#3DFFA2" : "rgba(255,255,255,0.3)"}`,
+                        background: step.completed ? "var(--success-bg)" : "var(--bg-hover)",
+                        border: `1.5px solid ${step.completed ? "var(--success)" : "var(--border-strong)"}`,
                         cursor: previewMode ? "default" : "pointer",
                         opacity: togglingStep === step.id ? 0.5 : 1,
                         borderRadius: 4,
-                      }}>
-                      {step.completed && <Check size={12} color="#3DFFA2" strokeWidth={2.5} />}
+                      }}
+                    >
+                      {step.completed && <Check size={10} style={{ color: "var(--success)" }} strokeWidth={2.5} />}
                     </button>
                     <div className="flex-1">
-                      <p className="text-sm font-medium" style={{ color: step.completed ? "#8A93A6" : "#F5F6FA", textDecoration: step.completed ? "line-through" : "none" }}>
+                      <p
+                        className="text-sm font-medium"
+                        style={{
+                          color: step.completed ? "var(--text-tertiary)" : "var(--text-primary)",
+                          textDecoration: step.completed ? "line-through" : "none",
+                        }}
+                      >
                         {step.title}
                       </p>
-                      {step.description && <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>{step.description}</p>}
+                      {step.description && (
+                        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                          {step.description}
+                        </p>
+                      )}
                       {step.linkUrl && (
-                        <a href={step.linkUrl} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs mt-1.5 px-3 py-1 rounded-lg font-medium transition-colors"
-                          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
+                        <a
+                          href={step.linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs mt-2 px-2.5 py-1 rounded-md font-medium transition-colors"
+                          style={{
+                            background: "var(--accent-muted)",
+                            border: "1px solid var(--accent-border)",
+                            color: "var(--accent)",
+                          }}
+                        >
                           <ExternalLink size={10} /> Open Link
                         </a>
                       )}
@@ -516,69 +673,87 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   </div>
                 ))}
                 {steps.length === 0 && (
-                  <p className="text-center text-sm py-12" style={{ color: "#8A93A6" }}>No onboarding steps set up yet</p>
+                  <div className="text-center py-16">
+                    <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No onboarding steps yet</p>
+                  </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* ── CONTRACT (CPM only) ─── */}
+          {/* ── CONTRACT ─────────────────────────────────────────────── */}
           {activeTab === "contract" && client.campaignType === "cpm" && (
-            <div className="max-w-2xl">
+            <div className="max-w-xl">
               {client.contractUrl ? (
-                <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(123,159,249,0.15)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 8px 32px rgba(0,0,0,0.5)" }}>
-                  {/* Header */}
-                  <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="flex items-center gap-3 mb-1">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(123,159,249,0.1)", border: "1px solid rgba(123,159,249,0.2)" }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B9FF9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                <div style={card} className="overflow-hidden p-0">
+                  <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Signed Agreement</p>
-                        <p className="text-xs" style={{ color: "#8A93A6" }}>Your executed campaign contract</p>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Signed Agreement</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your executed campaign contract</p>
                       </div>
                     </div>
                   </div>
-                  {/* Body */}
-                  <div className="px-6 py-6 flex flex-col items-start gap-4">
-                    <div className="w-full rounded-lg px-4 py-3 flex items-center gap-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  <div className="px-5 py-4 flex flex-col items-start gap-3">
+                    <div
+                      className="w-full rounded-md px-3 py-2 flex items-center gap-2"
+                      style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                       </svg>
-                      <p className="text-xs truncate flex-1" style={{ color: "#8A93A6" }}>{client.contractUrl}</p>
+                      <p className="text-xs truncate flex-1" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
+                        {client.contractUrl}
+                      </p>
                     </div>
                     <a
                       href={client.contractUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                      style={{ background: "rgba(123,159,249,0.12)", border: "1px solid rgba(123,159,249,0.25)", color: "#7B9FF9", boxShadow: "0 0 18px rgba(123,159,249,0.12)" }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                      style={{
+                        background: "var(--accent-solid)",
+                        color: "var(--text-on-accent)",
+                        textDecoration: "none",
+                        boxShadow: "var(--shadow-inset-top)",
+                      }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
                     >
-                      <ExternalLink size={14} />
-                      Open Signed Agreement
+                      <ExternalLink size={13} />
+                      Open Agreement
                     </a>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B9FF9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3, marginBottom: 16 }}>
+                <div
+                  className="flex flex-col items-center justify-center rounded-xl py-20"
+                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4, marginBottom: 12 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                   </svg>
-                  <p className="text-base font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>No contract on file yet</p>
-                  <p className="text-sm" style={{ color: "#8A93A6" }}>Your signed agreement will appear here once shared.</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No contract on file yet</p>
+                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your signed agreement will appear here once shared.</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── CAMPAIGN REPORTS (CPM) ───────────────────────────────── */}
+          {/* ── CAMPAIGN REPORTS (CPM) ────────────────────────────────── */}
           {activeTab === "reports" && client.campaignType === "cpm" && (() => {
-            const REPORT_COLOR = "#FF3B3B";
             const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
 
-            // Group by month
             const monthMap = new Map<string, OngoingReport[]>();
             for (const r of reports) {
               const key = r.date.slice(0, 7);
@@ -590,187 +765,259 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
             function toggleMonth(k: string) {
               setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
             }
-
             function fmtMonthLabel(key: string) {
               const [y, m] = key.split("-").map(Number);
               return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
             }
-
             function dayName(dateStr: string) {
               return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
             }
-
             function fmtDay(dateStr: string) {
               return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
             }
 
             if (reports.length === 0) {
               return (
-                <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Activity size={36} style={{ color: REPORT_COLOR, opacity: 0.3 }} className="mb-4" />
-                  <p className="text-base font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>No reports yet</p>
-                  <p className="text-sm" style={{ color: "#8A93A6" }}>Your campaign reports will appear here.</p>
+                <div
+                  className="flex flex-col items-center justify-center rounded-xl py-20"
+                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+                >
+                  <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
+                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No reports yet</p>
+                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your campaign reports will appear here.</p>
                 </div>
               );
             }
 
-            // Summary stats across all reports
-            const totalApproved = reports.reduce((s, r) => s + r.approved, 0);
+            const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
             const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
-            const overallRate = totalSubmissions > 0 ? Math.round((totalApproved / totalSubmissions) * 100) : 0;
+            const overallRate      = totalSubmissions > 0 ? Math.round((totalApproved / totalSubmissions) * 100) : 0;
 
             return (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Summary cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Total Reports", value: reports.length.toString(), sub: "all time", color: REPORT_COLOR },
-                    { label: "Clips Approved", value: totalApproved.toLocaleString(), sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "#3DFFA2" },
-                    { label: "Approval Rate", value: `${overallRate}%`, sub: "overall", color: overallRate >= 60 ? "#3DFFA2" : overallRate >= 40 ? REPORT_COLOR : "#FF8800" },
+                    { label: "Total Reports",   value: reports.length.toString(),             sub: "all time",                            color: "var(--text-primary)" },
+                    { label: "Clips Approved",  value: totalApproved.toLocaleString(),        sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
+                    { label: "Approval Rate",   value: `${overallRate}%`,                     sub: "overall",                             color: overallRate >= 60 ? "var(--success)" : overallRate >= 40 ? "var(--accent)" : "var(--warning)" },
                   ].map((s) => (
-                    <div key={s.label} className="rounded-xl p-4" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 4px 20px rgba(0,0,0,0.4)" }}>
-                      <p className="text-xs mb-2" style={{ color: "#8A93A6" }}>{s.label}</p>
-                      <p className="text-2xl font-bold mb-0.5" style={{ color: s.color, fontFamily: "Space Grotesk, sans-serif" }}>{s.value}</p>
-                      <p className="text-xs" style={{ color: "#5C6370" }}>{s.sub}</p>
+                    <div key={s.label} style={card} className="p-4">
+                      <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                        {s.label}
+                      </p>
+                      <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
+                        {s.value}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Month groups */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {months.map((monthKey) => {
                     const monthReports = monthMap.get(monthKey)!;
                     const isOpen = expandedMonths.has(monthKey);
-                    const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
+                    const mApproved  = monthReports.reduce((s, r) => s + r.approved, 0);
                     const mSubmitted = monthReports.reduce((s, r) => s + r.totalSubmissions, 0);
                     const mRate = mSubmitted > 0 ? Math.round((mApproved / mSubmitted) * 100) : 0;
 
                     return (
-                      <div key={monthKey} className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 4px 24px rgba(0,0,0,0.4)" }}>
+                      <div
+                        key={monthKey}
+                        style={{ ...card, overflow: "hidden", padding: 0 }}
+                      >
                         {/* Month header */}
                         <button
-                          className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+                          className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
+                          style={{ background: "transparent" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
                           onClick={() => toggleMonth(monthKey)}
                         >
-                          <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.15)" }}>
-                            <Activity size={15} style={{ color: REPORT_COLOR }} />
+                          <div
+                            className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                            style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+                          >
+                            <Activity size={13} style={{ color: "var(--accent)" }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{fmtMonthLabel(monthKey)}</p>
-                            <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>
+                            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                              {fmtMonthLabel(monthKey)}
+                            </p>
+                            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                               {monthReports.length} report{monthReports.length !== 1 ? "s" : ""}
                             </p>
                           </div>
                           <div className="hidden md:flex items-center gap-6 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
-                              <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{mApproved.toLocaleString()}</p>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                              <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Rate</p>
-                              <p className="text-sm font-semibold" style={{ color: mRate >= 60 ? "#3DFFA2" : mRate >= 40 ? REPORT_COLOR : "#FF8800" }}>{mRate}%</p>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Rate</p>
+                              <p
+                                className="text-sm font-semibold tabular-nums"
+                                style={{ color: mRate >= 60 ? "var(--success)" : mRate >= 40 ? "var(--accent)" : "var(--warning)" }}
+                              >
+                                {mRate}%
+                              </p>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 ml-2 transition-transform duration-200" style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "#8A93A6" }}>
-                            <ChevronDown size={16} />
+                          <div
+                            className="flex-shrink-0 ml-2 transition-transform duration-200"
+                            style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}
+                          >
+                            <ChevronDown size={15} />
                           </div>
                         </button>
 
                         {/* Report rows */}
                         {isOpen && (
-                          <div className="px-3 pb-3 space-y-2">
-                            {monthReports.map((report, rIdx) => {
+                          <div
+                            className="px-3 pb-3 space-y-1.5 pt-1"
+                            style={{ borderTop: "1px solid var(--border-subtle)" }}
+                          >
+                            {monthReports.map((report) => {
                               const isExpanded = expandedReportId === report.id;
-                              const rate = report.totalSubmissions > 0 ? Math.round((report.approved / report.totalSubmissions) * 100) : null;
-                              // prev report within the full sorted list
+                              const rate = report.totalSubmissions > 0
+                                ? Math.round((report.approved / report.totalSubmissions) * 100)
+                                : null;
                               const globalIdx = reports.indexOf(report);
                               const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
-                              const viewsTodayChange = prevReport
-                                ? prevReport.viewsToday > 0
-                                  ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                  : null
+                              const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                                ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
                                 : null;
-                              const changeColor = viewsTodayChange === null ? "#8A93A6" : viewsTodayChange >= 0 ? "#3DFFA2" : "#FF4757";
+                              const changeColor = viewsTodayChange === null
+                                ? "var(--text-tertiary)"
+                                : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
 
                               return (
-                                <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: "#05070D", border: `1px solid ${isExpanded ? "rgba(255,59,59,0.2)" : "rgba(255,255,255,0.05)"}`, transition: "border-color 0.15s" }}>
+                                <div
+                                  key={report.id}
+                                  className="rounded-lg overflow-hidden"
+                                  style={{
+                                    background: "var(--bg-base)",
+                                    border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`,
+                                    transition: "border-color 120ms ease",
+                                  }}
+                                >
                                   {/* Row header */}
                                   <button
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.015] transition-colors"
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                    style={{ background: "transparent" }}
+                                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
                                     onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
                                   >
-                                    {/* Left accent */}
-                                    <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: `${REPORT_COLOR}40` }} />
-
-                                    {/* Date + day */}
+                                    {/* Left accent bar */}
+                                    <div
+                                      className="w-0.5 self-stretch flex-shrink-0 rounded-full"
+                                      style={{ background: "var(--accent-border)" }}
+                                    />
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtDay(report.date)}</span>
-                                        <span className="text-xs font-medium px-1.5 py-0.5 rounded" style={{ background: "rgba(255,59,59,0.08)", color: REPORT_COLOR }}>{dayName(report.date)}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                          {fmtDay(report.date)}
+                                        </span>
+                                        <span
+                                          className="text-xs px-1.5 py-0.5 rounded"
+                                          style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}
+                                        >
+                                          {dayName(report.date)}
+                                        </span>
                                       </div>
                                     </div>
-
-                                    {/* Stats */}
                                     <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
                                       <div className="text-right">
-                                        <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
-                                        <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{report.approved}</p>
+                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
                                       </div>
                                       {rate !== null && (
                                         <div className="text-right">
-                                          <p className="text-xs" style={{ color: "#8A93A6" }}>Rate</p>
-                                          <p className="text-sm font-semibold" style={{ color: rate >= 60 ? "#3DFFA2" : rate >= 40 ? REPORT_COLOR : "#FF8800" }}>{rate}%</p>
+                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Rate</p>
+                                          <p
+                                            className="text-sm font-semibold tabular-nums"
+                                            style={{ color: rate >= 60 ? "var(--success)" : rate >= 40 ? "var(--accent)" : "var(--warning)" }}
+                                          >
+                                            {rate}%
+                                          </p>
                                         </div>
                                       )}
                                       <div className="text-right">
-                                        <p className="text-xs" style={{ color: "#8A93A6" }}>Views Today</p>
+                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
                                         <div className="flex items-center justify-end gap-1.5">
-                                          <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsToday)}</p>
+                                          <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                                            {fmt(report.viewsToday)}
+                                          </p>
                                           {viewsTodayChange !== null && (
-                                            <span className="text-xs font-semibold" style={{ color: changeColor }}>
+                                            <span className="text-xs font-medium" style={{ color: changeColor }}>
                                               {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
                                             </span>
                                           )}
                                         </div>
                                       </div>
                                       <div className="text-right">
-                                        <p className="text-xs" style={{ color: "#8A93A6" }}>Views Total</p>
-                                        <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsTotal)}</p>
+                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
+                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                                          {fmt(report.viewsTotal)}
+                                        </p>
                                       </div>
                                     </div>
-
-                                    <div className="flex-shrink-0 ml-2 transition-transform duration-200" style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "#8A93A6" }}>
-                                      <ChevronRight size={14} />
+                                    <div
+                                      className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                      style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}
+                                    >
+                                      <ChevronRight size={13} />
                                     </div>
                                   </button>
 
                                   {/* Expanded detail */}
                                   {isExpanded && (
-                                    <div className="px-5 pb-5 pt-1 space-y-4">
-                                      {/* Key stats */}
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div
+                                      className="px-5 pb-5 pt-3 space-y-3"
+                                      style={{ borderTop: "1px solid var(--border-subtle)" }}
+                                    >
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {[
-                                          { label: "Approved", value: report.approved, display: report.approved.toString(), color: "#3DFFA2" },
-                                          { label: "Views Today", value: report.viewsToday, display: fmt(report.viewsToday), color: REPORT_COLOR },
-                                          { label: "Views Total", value: report.viewsTotal, display: fmt(report.viewsTotal), color: "#F5F6FA" },
-                                          { label: "Approval Rate", value: rate, display: rate !== null ? `${rate}%` : "—", color: rate !== null && rate >= 60 ? "#3DFFA2" : "#F5F6FA" },
+                                          { label: "Approved",      value: report.approved.toString(),                                   color: "var(--success)" },
+                                          { label: "Views Today",   value: fmt(report.viewsToday),                                       color: "var(--accent)" },
+                                          { label: "Views Total",   value: fmt(report.viewsTotal),                                       color: "var(--text-primary)" },
+                                          { label: "Approval Rate", value: rate !== null ? `${rate}%` : "—",                            color: rate !== null && rate >= 60 ? "var(--success)" : "var(--text-primary)" },
                                         ].map((s) => (
-                                          <div key={s.label} className="rounded-lg p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                            <p className="text-xs mb-1.5" style={{ color: "#8A93A6" }}>{s.label}</p>
-                                            <p className="text-2xl font-bold" style={{ color: s.color, fontFamily: "Space Grotesk, sans-serif" }}>{s.display}</p>
+                                          <div
+                                            key={s.label}
+                                            className="rounded-lg p-3"
+                                            style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}
+                                          >
+                                            <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
+                                            <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
+                                              {s.value}
+                                            </p>
                                           </div>
                                         ))}
                                       </div>
 
-                                      {/* Narrative insights */}
                                       {[
-                                        { key: "mainTrend", label: "Main Trend", value: report.mainTrend, color: REPORT_COLOR, accent: "rgba(255,59,59,0.06)" },
-                                        { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, color: "#FF8800", accent: "rgba(255,136,0,0.06)" },
-                                        { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "#8A93A6", accent: "rgba(255,255,255,0.03)" },
+                                        { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
+                                        { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
+                                        { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
                                       ].filter((s) => s.value).map((s) => (
-                                        <div key={s.key} className="rounded-xl p-4" style={{ background: s.accent, border: "1px solid rgba(255,255,255,0.06)" }}>
-                                          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: s.color }}>{s.label}</p>
-                                          <p className="text-sm leading-relaxed" style={{ color: "#C8CDD8" }}>{s.value}</p>
+                                        <div
+                                          key={s.key}
+                                          className="rounded-lg p-4"
+                                          style={{ background: s.bg, border: `1px solid ${s.border}` }}
+                                        >
+                                          <p
+                                            className="text-xs font-semibold uppercase tracking-widest mb-2"
+                                            style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}
+                                          >
+                                            {s.label}
+                                          </p>
+                                          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                                            {s.value}
+                                          </p>
                                         </div>
                                       ))}
                                     </div>

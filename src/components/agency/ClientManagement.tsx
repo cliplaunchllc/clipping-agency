@@ -36,9 +36,9 @@ interface Props {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  color: "#F5F6FA",
+  background: "var(--border-subtle)",
+  border: "1px solid var(--border-default)",
+  color: "var(--text-primary)",
   borderRadius: 12,
   padding: "12px 16px",
   fontSize: 14,
@@ -47,9 +47,9 @@ const inputStyle: React.CSSProperties = {
 };
 
 const selectStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  color: "#F5F6FA",
+  background: "var(--border-subtle)",
+  border: "1px solid var(--border-default)",
+  color: "var(--text-primary)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
@@ -209,9 +209,9 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       {/* Add modal */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-2xl p-8 w-full max-w-md" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="rounded-xl p-8 w-full max-w-md" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Add Client</h2>
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Add Client</h2>
               <button onClick={() => { setShowAdd(false); resetAddForm(); }}><X size={18} color="#8A93A6" /></button>
             </div>
 
@@ -225,7 +225,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   className="flex-1 py-2.5 text-xs font-medium transition-colors"
                   style={{
                     background: addMode === m.id ? "rgba(255,59,59,0.12)" : "transparent",
-                    color: addMode === m.id ? "#FF3B3B" : "#8A93A6",
+                    color: addMode === m.id ? "var(--accent)" : "#8A93A6",
                     borderRight: m.id === "connect" ? "1px solid rgba(255,255,255,0.08)" : "none",
                   }}>
                   {m.label}
@@ -235,15 +235,15 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Campaign / Brand Name</label>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Campaign / Brand Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Acme Corp" style={inputStyle} />
               </div>
 
               {addMode === "connect" ? (
                 <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>
+                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>
                     Client Account
-                    {pendingUsers.length === 0 && <span style={{ color: "#FFA500" }}> — no pending signups yet</span>}
+                    {pendingUsers.length === 0 && <span style={{ color: "var(--warning)" }}> — no pending signups yet</span>}
                   </label>
                   <select
                     value={selectedUserId}
@@ -251,33 +251,33 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                     required
                     style={{ ...inputStyle, appearance: "none" as const }}
                   >
-                    <option value="" style={{ background: "#0B0E17" }}>Select a client account...</option>
+                    <option value="" style={{ background: "var(--bg-surface)" }}>Select a client account...</option>
                     {pendingUsers.map((u) => (
-                      <option key={u.id} value={u.id} style={{ background: "#0B0E17" }}>
+                      <option key={u.id} value={u.id} style={{ background: "var(--bg-surface)" }}>
                         {u.name ? `${u.name} — ` : ""}{u.email}
                       </option>
                     ))}
                   </select>
                   {pendingUsers.length === 0 && (
-                    <p className="text-xs mt-2" style={{ color: "#8A93A6" }}>
-                      Ask your client to sign up at <span style={{ color: "#FF3B3B" }}>/signup?role=client</span>, then come back here to connect their account.
+                    <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
+                      Ask your client to sign up at <span style={{ color: "var(--accent)" }}>/signup?role=client</span>, then come back here to connect their account.
                     </p>
                   )}
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Login Email</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Client Login Email</label>
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="client@acme.com" style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: "#8A93A6" }}>Client Password</label>
+                    <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Client Password</label>
                     <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" style={inputStyle} />
                   </div>
                 </>
               )}
 
-              {error && <p className="text-xs" style={{ color: "#FF4757" }}>{error}</p>}
+              {error && <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
 
               <button
                 type="submit"
@@ -286,7 +286,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 style={{
                   background: "rgba(255,59,59,0.15)",
                   border: "1px solid rgba(255,59,59,0.3)",
-                  color: "#FF3B3B",
+                  color: "var(--accent)",
                   opacity: loading || !name || (addMode === "connect" ? !selectedUserId : (!email || !password)) ? 0.5 : 1,
                 }}>
                 {loading ? "Creating..." : addMode === "connect" ? "Create & Connect Account" : "Create Client"}
@@ -302,15 +302,15 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Clients</h1>
-          <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Clients</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
             {clients.filter((c) => c.status === "active").length} active
-            {pendingUsers.length > 0 && <span style={{ color: "#FFA500" }}> · {pendingUsers.length} pending signup</span>}
+            {pendingUsers.length > 0 && <span style={{ color: "var(--warning)" }}> · {pendingUsers.length} pending signup</span>}
           </p>
         </div>
         <button onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "#FF3B3B" }}>
+          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
           <Plus size={14} /> Add Client
         </button>
       </div>
@@ -326,19 +326,19 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
             className="px-4 py-2.5 text-sm font-medium relative"
             style={{ color: tab === t.id ? "#F5F6FA" : "#8A93A6" }}>
             {t.label}
-            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF3B3B" }} />}
+            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
           </button>
         ))}
       </div>
 
       {/* PENDING SIGNUP TAB */}
       {tab === "pending" && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {["Client User", "Email", "Status", "Assign to Client", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
+                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -348,15 +348,15 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>
+                        style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
                         {(u.name || u.email)[0].toUpperCase()}
                       </div>
-                      <p className="text-sm font-medium" style={{ color: "#F5F6FA" }}>{u.name || "—"}</p>
+                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{u.name || "—"}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "#8A93A6" }}>{u.email}</td>
+                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>{u.email}</td>
                   <td className="px-6 py-4">
-                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: "rgba(255,165,0,0.1)", color: "#FFA500" }}>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: "rgba(255,165,0,0.1)", color: "var(--warning)" }}>
                       pending
                     </span>
                   </td>
@@ -364,22 +364,22 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                     {assigningUserId === u.id ? (
                       <div className="flex items-center gap-2">
                         <select value={assignClientId} onChange={(e) => setAssignClientId(e.target.value)} style={selectStyle}>
-                          <option value="" style={{ background: "#0B0E17" }}>Select a client...</option>
+                          <option value="" style={{ background: "var(--bg-surface)" }}>Select a client...</option>
                           {allClientOptions.filter((c) => c.status === "active").map((c) => (
-                            <option key={c.id} value={c.id} style={{ background: "#0B0E17" }}>{c.name}</option>
+                            <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
                           ))}
                         </select>
                         <button
                           onClick={() => handleAssignUser(u.id, assignClientId || null)}
                           disabled={!assignClientId}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "#3DFFA2", opacity: !assignClientId ? 0.5 : 1 }}>
+                          style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)", opacity: !assignClientId ? 0.5 : 1 }}>
                           Save
                         </button>
-                        <button onClick={() => { setAssigningUserId(null); setAssignClientId(""); }} className="text-xs px-2 py-1 rounded" style={{ color: "#8A93A6" }}>Cancel</button>
+                        <button onClick={() => { setAssigningUserId(null); setAssignClientId(""); }} className="text-xs px-2 py-1 rounded" style={{ color: "var(--text-secondary)" }}>Cancel</button>
                       </div>
                     ) : (
-                      <span className="text-xs" style={{ color: "#8A93A6" }}>Not assigned</span>
+                      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Not assigned</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -387,7 +387,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       <button
                         onClick={() => { setAssigningUserId(u.id); setAssignClientId(""); }}
                         className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                         <UserCheck size={12} />
                         Assign
                       </button>
@@ -396,7 +396,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 </tr>
               ))}
               {pendingUsers.length === 0 && (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                   No pending client signups
                 </td></tr>
               )}
@@ -407,12 +407,12 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
       {/* ACTIVE / ARCHIVED TABLE */}
       {(tab === "active" || tab === "archived") && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {["Client", "Clippers", "Clips", tab === "archived" ? "Archived" : "Created", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "#8A93A6" }}>{h}</th>
+                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -424,9 +424,9 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       <div className="flex items-center gap-2">
                         <input value={editName} onChange={(e) => setEditName(e.target.value)}
                           className="text-sm px-3 py-1.5 rounded-lg outline-none"
-                          style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F6FA" }} />
-                        <button onClick={() => handleRename(c.id)} className="text-xs px-2 py-1 rounded" style={{ background: "rgba(255,59,59,0.15)", color: "#FF3B3B" }}>Save</button>
-                        <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 rounded" style={{ color: "#8A93A6" }}>Cancel</button>
+                          style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.15)", color: "var(--text-primary)" }} />
+                        <button onClick={() => handleRename(c.id)} className="text-xs px-2 py-1 rounded" style={{ background: "rgba(255,59,59,0.15)", color: "var(--accent)" }}>Save</button>
+                        <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 rounded" style={{ color: "var(--text-secondary)" }}>Cancel</button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
@@ -441,7 +441,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                               style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
                           ) : (
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                              style={{ background: c.status === "archived" ? "rgba(255,255,255,0.05)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "#FF3B3B" }}>
+                              style={{ background: c.status === "archived" ? "var(--border-subtle)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "var(--accent)" }}>
                               {uploadingLogoId === c.id ? "..." : c.name[0]}
                             </div>
                           )}
@@ -456,9 +456,9 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c.users.length}</td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "#F5F6FA" }}>{c._count.clips}</td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "#8A93A6" }}>
+                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-primary)" }}>{c.users.length}</td>
+                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-primary)" }}>{c._count.clips}</td>
+                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>
                     {new Date(c.archivedAt ?? c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td className="px-6 py-4">
@@ -466,20 +466,20 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       {c.status === "active" && (
                         <Link href={`/agency/clients/${c.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6" }}>
+                          style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)" }}>
                           Edit
                         </Link>
                       )}
                       {c.status === "active" ? (
                         <button onClick={() => handleArchive(c.id, "archive")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "#5C6370" }}>
+                          style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--text-tertiary)" }}>
                           Archive
                         </button>
                       ) : (
                         <button onClick={() => handleArchive(c.id, "unarchive")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#3DFFA2" }}>
+                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
                           Restore
                         </button>
                       )}
@@ -488,7 +488,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 </tr>
               ))}
               {visible.length === 0 && (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                   {tab === "archived" ? "No archived clients" : "No clients yet — add your first client"}
                 </td></tr>
               )}

@@ -12,14 +12,14 @@ import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "@/components/sha
 
 // ─── Color Constants ──────────────────────────────────────────────────────────
 
-const WEEKLY_COLOR = "#3DFFA2";
-const ONGOING_COLOR = "#7B9FF9";
+const WEEKLY_COLOR = "var(--success)";
+const ONGOING_COLOR = "var(--accent)";
 
 const STATUS_META = {
   Strong: {
     label: "Strong",
     bg: "rgba(61,255,162,0.15)",
-    text: "#3DFFA2",
+    text: "var(--success)",
     border: "rgba(61,255,162,0.3)",
   },
   Normal: {
@@ -31,7 +31,7 @@ const STATUS_META = {
   NeedsAttention: {
     label: "Needs Attention",
     bg: "rgba(255,59,59,0.15)",
-    text: "#FF3B3B",
+    text: "var(--accent)",
     border: "rgba(255,59,59,0.3)",
   },
 } as const;
@@ -182,26 +182,26 @@ function wow(curr: number, prev: number | null | undefined, inverted = false): {
 
 function TrendIcon({ positive, neutral, size = 12 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
-  if (positive) return <TrendingUp size={size} color="#3DFFA2" />;
-  return <TrendingDown size={size} color="#FF3B3B" />;
+  if (positive) return <TrendingUp size={size} color="var(--success)" />;
+  return <TrendingDown size={size} color="var(--accent)" />;
 }
 
 function WowBadge({ curr, prev, inverted, grey }: {
   curr: number; prev: number | null | undefined; inverted?: boolean; grey?: boolean;
 }) {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
-  if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>First</span>;
-  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>First</span>;
+  if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First</span>;
+  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>First</span>;
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
     return (
-      <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+      <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
         <Minus size={11} />{`${sign}${fmtCurrency(delta)}`}
       </span>
     );
   }
-  const color = neutral ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B";
+  const color = neutral ? "#8A93A6" : positive ? "var(--success)" : "var(--accent)";
   return (
     <span className="text-xs flex items-center gap-1" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} />{pct}
@@ -257,7 +257,7 @@ function StatusBadge({ status, size = "sm" }: {
   return (
     <span
       className={`font-semibold rounded-lg inline-flex items-center ${size === "xs" ? "px-1.5 py-0.5 text-xs" : "px-2 py-0.5 text-xs"}`}
-      style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}`, fontFamily: "Space Grotesk, sans-serif" }}
+      style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}`, fontFamily: "var(--font-display)" }}
     >
       {meta.label}
     </span>
@@ -338,7 +338,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between"
-        style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.1)", color: displayValue ? "#F5F6FA" : "#4A5568" }}
+        style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: displayValue ? "#F5F6FA" : "#4A5568" }}
       >
         <span>{displayValue || `Pick ${label}…`}</span>
         <ChevronDown size={13} color="#8A93A6" />
@@ -347,13 +347,13 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
       {open && (
         <div
           className="absolute z-50 mt-1 rounded-xl p-3 shadow-xl"
-          style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)", minWidth: "260px" }}
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", minWidth: "260px" }}
         >
           <div className="flex items-center justify-between mb-3">
             <button type="button" onClick={prevMonth} className="p-1 rounded-lg hover:bg-white/5">
               <ChevronLeft size={14} color="#8A93A6" />
             </button>
-            <span className="text-xs font-semibold" style={{ color: "#F5F6FA" }}>{MONTHS[viewMonth]} {viewYear}</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{MONTHS[viewMonth]} {viewYear}</span>
             <button type="button" onClick={nextMonth} className="p-1 rounded-lg hover:bg-white/5">
               <ChevronRight size={14} color="#8A93A6" />
             </button>
@@ -376,8 +376,8 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
                       onClick={() => selectDay(day)}
                       className="w-8 h-8 rounded-lg text-xs font-medium transition-colors"
                       style={{
-                        background: isSelected(day) ? "#FF3B3B" : isToday(day) ? "rgba(255,59,59,0.12)" : isHL ? "rgba(123,159,249,0.1)" : "transparent",
-                        color: isSelected(day) ? "#fff" : isToday(day) ? "#FF3B3B" : isHL ? ONGOING_COLOR : "#F5F6FA",
+                        background: isSelected(day) ? "var(--accent)" : isToday(day) ? "rgba(255,59,59,0.12)" : isHL ? "var(--accent-muted)" : "transparent",
+                        color: isSelected(day) ? "#fff" : isToday(day) ? "var(--accent)" : isHL ? ONGOING_COLOR : "#F5F6FA",
                       }}
                     >
                       {day}
@@ -425,32 +425,32 @@ function NewClientModal({ onCreated, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-      <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+      <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>New Client</h2>
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>New Client</h2>
           <button onClick={onClose}><X size={16} color="#8A93A6" /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Client name</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Client name</label>
             <input
               autoFocus type="text" value={name} onChange={e => setName(e.target.value)}
               placeholder="e.g. Acme Corp"
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" }}
+              style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
             />
-            {error && <p className="text-xs mt-1.5" style={{ color: "#FF3B3B" }}>{error}</p>}
+            {error && <p className="text-xs mt-1.5" style={{ color: "var(--accent)" }}>{error}</p>}
           </div>
           <p className="text-xs" style={{ color: "#4A5568" }}>Login credentials can be added later from the Clients page.</p>
           <div className="flex gap-3 pt-1">
             <button
               type="submit" disabled={saving || !name.trim()}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: "#FF3B3B", color: "#fff", opacity: saving || !name.trim() ? 0.5 : 1 }}
+              style={{ background: "var(--accent)", color: "#fff", opacity: saving || !name.trim() ? 0.5 : 1 }}
             >
               {saving ? "Creating…" : "Create Client"}
             </button>
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
               Cancel
             </button>
           </div>
@@ -489,11 +489,11 @@ function ReportDonut({ report }: { report: Report }) {
     grad: DONUT_GRADIENTS[p] ?? (["#9CA3AF", "#4B5563"] as [string, string]),
     color: PLATFORM_COLORS[p] ?? "#8A93A6",
   }));
-  const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)", gradId: `ag-dg-${report.id}-empty`, grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string] }];
+  const emptySlice = [{ name: "empty", value: 1, color: "var(--border-subtle)", gradId: `ag-dg-${report.id}-empty`, grad: ["var(--border-subtle)", "var(--border-subtle)"] as [string, string] }];
 
   return (
-    <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
-      <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "#8A93A6" }}>Platform Breakdown</p>
+    <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-secondary)" }}>Platform Breakdown</p>
       <div className="flex items-center gap-5">
         <div className="relative flex-shrink-0" style={{ width: 110, height: 110 }}>
           <PieChart width={110} height={110}>
@@ -512,8 +512,8 @@ function ReportDonut({ report }: { report: Report }) {
             </Pie>
           </PieChart>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xs font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(total)}</span>
-            <span className="text-xs mt-0.5" style={{ color: "#8A93A6", fontSize: "0.65rem" }}>views</span>
+            <span className="text-xs font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmt(total)}</span>
+            <span className="text-xs mt-0.5" style={{ color: "var(--text-secondary)", fontSize: "0.65rem" }}>views</span>
           </div>
         </div>
         <div className="flex-1 space-y-2 min-w-0">
@@ -526,14 +526,14 @@ function ReportDonut({ report }: { report: Report }) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <PlatformIcon platform={p} size={11} />
-                    <span className="text-xs truncate" style={{ color: "#F5F6FA" }}>{PLATFORM_LABELS[p] ?? p}</span>
+                    <span className="text-xs truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>{fmt(val)}</span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(val)}</span>
                     <span className="text-xs font-semibold w-7 text-right" style={{ color }}>{pct}%</span>
                   </div>
                 </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                 </div>
               </div>
@@ -549,23 +549,23 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
   const approvalRate = report.clipsSubmitted > 0 ? (report.clipsApproved / report.clipsSubmitted) * 100 : null;
   const prevApprovalRate = prev && prev.clipsSubmitted > 0 ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
   const statCards = [
-    { icon: <Eye size={12} color="#3DFFA2" />, label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
-    { icon: <DollarSign size={12} color="#3DFFA2" />, label: "Paid Out", value: fmtCurrency(report.paidOut), curr: report.paidOut, prev: prev?.paidOut ?? null, lastWeek: prev ? fmtCurrency(prev.paidOut) : null },
-    { icon: <Target size={12} color="#FF3B3B" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
+    { icon: <Eye size={12} color="var(--success)" />, label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
+    { icon: <DollarSign size={12} color="var(--success)" />, label: "Paid Out", value: fmtCurrency(report.paidOut), curr: report.paidOut, prev: prev?.paidOut ?? null, lastWeek: prev ? fmtCurrency(prev.paidOut) : null },
+    { icon: <Target size={12} color="var(--accent)" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
     { icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: report.budgetRemaining ?? 0, prev: prev?.budgetRemaining ?? null, lastWeek: prev?.budgetRemaining != null ? fmtCurrency(prev.budgetRemaining) : null, grey: true },
-    { icon: <CheckCircle size={12} color="#3DFFA2" />, label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
-    { icon: <Scissors size={12} color="#FF3B3B" />, label: "Clips", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
+    { icon: <CheckCircle size={12} color="var(--success)" />, label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
+    { icon: <Scissors size={12} color="var(--accent)" />, label: "Clips", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
   ];
 
   return (
-    <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
-      <p className="text-xs font-medium mb-5" style={{ color: "#8A93A6" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
+    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <p className="text-xs font-medium mb-5" style={{ color: "var(--text-secondary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {statCards.map((c) => (
-          <div key={c.label} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
-            <div className="flex items-center gap-2 mb-2">{c.icon}<p className="text-xs font-medium leading-tight" style={{ color: "#8A93A6" }}>{c.label}</p></div>
-            <p className="text-xl font-bold mb-1 leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{c.value}</p>
-            {c.sublabel && <p className="text-xs mb-1.5" style={{ color: "#8A93A6" }}>{c.sublabel}</p>}
+          <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+            <div className="flex items-center gap-2 mb-2">{c.icon}<p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p></div>
+            <p className="text-xl font-bold mb-1 leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
+            {c.sublabel && <p className="text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
             {c.lastWeek && <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Last week: {c.lastWeek}</p>}
           </div>
@@ -575,29 +575,29 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
         <div className="space-y-3">
           {report.weeklySummary && (
-            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#8A93A6" }}>Weekly Summary</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.weeklySummary}</p>
+            <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-secondary)" }}>Weekly Summary</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             {report.whatsWorking && (
-              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#3DFFA2" }}>What&apos;s Working</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsWorking}</p>
+              <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.12)" }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--success)" }}>What&apos;s Working</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
               </div>
             )}
             {report.whatsNotWorking && (
-              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF3B3B" }}>What&apos;s Not Working</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.whatsNotWorking}</p>
+              <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.12)" }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
               </div>
             )}
           </div>
           {report.nextWeekFocus && (
-            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.15)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#FF8800" }}>Next Week&apos;s Focus</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{report.nextWeekFocus}</p>
+            <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.15)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
             </div>
           )}
         </div>
@@ -616,44 +616,44 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <StatusBadge status={report.status} />
-        <span className="text-sm" style={{ color: "#8A93A6" }}>
+        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
           {dayOfWeekName(report.date)} · {fmtDate(report.date)}
         </span>
       </div>
       {report.campaignName && (
-        <p className="text-base font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{report.campaignName}</p>
+        <p className="text-base font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{report.campaignName}</p>
       )}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: "Total Submissions", value: report.totalSubmissions, prev: prev?.totalSubmissions ?? null, color: "#F5F6FA" },
-          { label: "Approved", value: report.approved, prev: prev?.approved ?? null, color: "#3DFFA2" },
-          { label: "Pending", value: report.pending, prev: prev?.pending ?? null, color: "#8A93A6" },
-          { label: "Rejected", value: report.rejected, prev: prev?.rejected ?? null, color: "#FF3B3B" },
+          { label: "Total Submissions", value: report.totalSubmissions, prev: prev?.totalSubmissions ?? null, color: "var(--text-primary)" },
+          { label: "Approved", value: report.approved, prev: prev?.approved ?? null, color: "var(--success)" },
+          { label: "Pending", value: report.pending, prev: prev?.pending ?? null, color: "var(--text-secondary)" },
+          { label: "Rejected", value: report.rejected, prev: prev?.rejected ?? null, color: "var(--accent)" },
         ].map((c) => (
-          <div key={c.label} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
-            <p className="text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>{c.label}</p>
-            <p className="text-xl font-bold" style={{ color: c.color, fontFamily: "Space Grotesk, sans-serif" }}>{c.value}</p>
+          <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+            <p className="text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
+            <p className="text-xl font-bold" style={{ color: c.color, fontFamily: "var(--font-display)" }}>{c.value}</p>
             <WowBadge curr={c.value} prev={c.prev} />
           </div>
         ))}
       </div>
       {approvalRate !== null && (
-        <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
-          <p className="text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Approval Rate</p>
+        <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+          <p className="text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Approval Rate</p>
           <div className="flex items-center gap-2">
-            <p className="text-xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{approvalRate.toFixed(1)}%</p>
+            <p className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{approvalRate.toFixed(1)}%</p>
             {prevApprovalRate !== null && <WowBadge curr={approvalRate} prev={prevApprovalRate} />}
           </div>
         </div>
       )}
       {[
         { key: "mainTrend", label: "Main Trend in Approved Clips", value: report.mainTrend, color: ONGOING_COLOR },
-        { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "#8A93A6" },
-        { key: "mainOptimization", label: "Main Optimization", value: report.mainOptimization, color: "#FF8800" },
+        { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "var(--text-secondary)" },
+        { key: "mainOptimization", label: "Main Optimization", value: report.mainOptimization, color: "var(--warning)" },
       ].filter((s) => s.value).map((s) => (
-        <div key={s.key} className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" }}>
+        <div key={s.key} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
           <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: s.color }}>{s.label}</p>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#F5F6FA" }}>{s.value}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{s.value}</p>
         </div>
       ))}
     </div>
@@ -708,14 +708,14 @@ function WeeklyReportForm({
   }
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-red-500/40";
-  const inputStyle = { background: "#05070D", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" };
-  const labelStyle: React.CSSProperties = { color: "#8A93A6", fontSize: "0.75rem", fontWeight: 500, marginBottom: "4px", display: "block" };
+  const inputStyle = { background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)" };
+  const labelStyle: React.CSSProperties = { color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 500, marginBottom: "4px", display: "block" };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Reference panel */}
       {referenceOngoing.length > 0 && (
-        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid rgba(123,159,249,0.2)`, background: `rgba(123,159,249,0.04)` }}>
+        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid var(--accent-border)`, background: `var(--accent-muted)` }}>
           <button
             type="button"
             onClick={() => setRefOpen((o) => !o)}
@@ -732,18 +732,18 @@ function WeeklyReportForm({
           {refOpen && weekOngoing.length > 0 && (
             <div className="px-4 pb-4 space-y-3">
               {weekOngoing.map((r) => (
-                <div key={r.id} className="rounded-lg p-3" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div key={r.id} className="rounded-lg p-3" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-xs font-semibold" style={{ color: "#F5F6FA" }}>{dayOfWeekName(r.date)} · {fmtDate(r.date)}</span>
+                    <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{dayOfWeekName(r.date)} · {fmtDate(r.date)}</span>
                     <StatusBadge status={r.status} size="xs" />
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-2">
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>Submitted: <strong style={{ color: "#F5F6FA" }}>{r.totalSubmissions}</strong></span>
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>Approved: <strong style={{ color: "#3DFFA2" }}>{r.approved}</strong></span>
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>Rejected: <strong style={{ color: "#FF3B3B" }}>{r.rejected}</strong></span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Submitted: <strong style={{ color: "var(--text-primary)" }}>{r.totalSubmissions}</strong></span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Approved: <strong style={{ color: "var(--success)" }}>{r.approved}</strong></span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Rejected: <strong style={{ color: "var(--accent)" }}>{r.rejected}</strong></span>
                   </div>
-                  {r.mainTrend && <p className="text-xs" style={{ color: "#C8CDD8" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
-                  {r.mainOptimization && <p className="text-xs mt-1" style={{ color: "#C8CDD8" }}><span style={{ color: "#FF8800" }}>Optimization: </span>{r.mainOptimization}</p>}
+                  {r.mainTrend && <p className="text-xs" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
+                  {r.mainOptimization && <p className="text-xs mt-1" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)" }}>Optimization: </span>{r.mainOptimization}</p>}
                 </div>
               ))}
             </div>
@@ -755,7 +755,7 @@ function WeeklyReportForm({
       <div>
         <div className="flex items-center justify-between mb-1">
           <label style={labelStyle}>Client</label>
-          <button type="button" onClick={() => onNewClient(form)} className="flex items-center gap-1 text-xs" style={{ color: "#FF3B3B" }}>
+          <button type="button" onClick={() => onNewClient(form)} className="flex items-center gap-1 text-xs" style={{ color: "var(--accent)" }}>
             <UserPlus size={11} />New client
           </button>
         </div>
@@ -861,10 +861,10 @@ function WeeklyReportForm({
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#FF3B3B", color: "#fff", opacity: saving ? 0.6 : 1, boxShadow: saving ? "none" : "0 0 20px rgba(255,59,59,0.35)" }}>
+        <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "var(--accent)", color: "#fff", opacity: saving ? 0.6 : 1, boxShadow: saving ? "none" : "0 0 20px rgba(255,59,59,0.35)" }}>
           {saving ? "Saving…" : "Save Report"}
         </button>
-        <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
           Cancel
         </button>
       </div>
@@ -911,8 +911,8 @@ function OngoingReportForm({
   }
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
-  const inputStyle = { background: "#05070D", border: "1px solid rgba(255,255,255,0.1)", color: "#F5F6FA" };
-  const labelStyle: React.CSSProperties = { color: "#8A93A6", fontSize: "0.75rem", fontWeight: 500, marginBottom: "4px", display: "block" };
+  const inputStyle = { background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)" };
+  const labelStyle: React.CSSProperties = { color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 500, marginBottom: "4px", display: "block" };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -924,8 +924,8 @@ function OngoingReportForm({
         <CalendarPicker label="report date" value={form.date} onChange={(v) => set("date", v)} highlightDows={[1, 3]} />
         {showDayWarn && (
           <div className="flex items-center gap-1.5 mt-1.5">
-            <AlertTriangle size={12} color="#FF8800" />
-            <p className="text-xs" style={{ color: "#FF8800" }}>Ongoing reports are typically Monday or Wednesday — are you sure?</p>
+            <AlertTriangle size={12} color="var(--warning)" />
+            <p className="text-xs" style={{ color: "var(--warning)" }}>Ongoing reports are typically Monday or Wednesday — are you sure?</p>
           </div>
         )}
       </div>
@@ -965,8 +965,8 @@ function OngoingReportForm({
 
       {showSumWarn && (
         <div className="flex items-start gap-2 rounded-lg p-3" style={{ background: "rgba(255,136,0,0.08)", border: "1px solid rgba(255,136,0,0.2)" }}>
-          <AlertTriangle size={13} color="#FF8800" className="flex-shrink-0 mt-0.5" />
-          <p className="text-xs" style={{ color: "#FF8800" }}>
+          <AlertTriangle size={13} color="var(--warning)" className="flex-shrink-0 mt-0.5" />
+          <p className="text-xs" style={{ color: "var(--warning)" }}>
             Pending ({pend}) + Approved ({appr}) + Rejected ({rej}) = {pend + appr + rej}, but Total is {total}. Double-check the numbers.
           </p>
         </div>
@@ -974,8 +974,8 @@ function OngoingReportForm({
 
       {approvalRate !== null && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.12)" }}>
-          <CheckCircle size={12} color="#3DFFA2" />
-          <p className="text-xs" style={{ color: "#3DFFA2" }}>Approval rate: <strong>{approvalRate.toFixed(1)}%</strong></p>
+          <CheckCircle size={12} color="var(--success)" />
+          <p className="text-xs" style={{ color: "var(--success)" }}>Approval rate: <strong>{approvalRate.toFixed(1)}%</strong></p>
         </div>
       )}
 
@@ -1007,7 +1007,7 @@ function OngoingReportForm({
 
       {/* Status */}
       <div>
-        <label style={{ ...labelStyle, marginBottom: "8px" }}>Status <span style={{ color: "#FF3B3B" }}>*</span></label>
+        <label style={{ ...labelStyle, marginBottom: "8px" }}>Status <span style={{ color: "var(--accent)" }}>*</span></label>
         <div className="flex gap-2">
           {(["Strong", "Normal", "NeedsAttention"] as const).map((s) => {
             const meta = STATUS_META[s];
@@ -1017,7 +1017,7 @@ function OngoingReportForm({
                 key={s} type="button" onClick={() => set("status", s)}
                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
                 style={{
-                  background: selected ? meta.bg : "rgba(255,255,255,0.04)",
+                  background: selected ? meta.bg : "var(--border-subtle)",
                   color: selected ? meta.text : "#8A93A6",
                   border: `1px solid ${selected ? meta.border : "transparent"}`,
                 }}
@@ -1033,11 +1033,11 @@ function OngoingReportForm({
         <button
           type="submit" disabled={saving || !form.status}
           className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: ONGOING_COLOR, color: "#0B0E17", opacity: (saving || !form.status) ? 0.6 : 1 }}
+          style={{ background: ONGOING_COLOR, color: "var(--bg-surface)", opacity: (saving || !form.status) ? 0.6 : 1 }}
         >
           {saving ? "Saving…" : "Save Report"}
         </button>
-        <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
           Cancel
         </button>
       </div>
@@ -1427,11 +1427,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {showWeeklyFormModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(61,255,162,0.12)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.25)" }}>Weekly (F)</span>
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>{editingReport ? "Edit Report" : "New Weekly Report"}</h2>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingReport ? "Edit Report" : "New Weekly Report"}</h2>
               </div>
               <button onClick={() => { setShowWeeklyForm(false); setEditingReport(null); setPendingFormState(null); }}>
                 <X size={16} color="#8A93A6" />
@@ -1452,11 +1452,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {showOngoingFormModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(123,159,249,0.12)", color: ONGOING_COLOR, border: "1px solid rgba(123,159,249,0.25)" }}>Ongoing (M/W)</span>
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>{editingOngoing ? "Edit Report" : "New Ongoing Report"}</h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (M/W)</span>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingOngoing ? "Edit Report" : "New Ongoing Report"}</h2>
               </div>
               <button onClick={() => { setShowOngoingForm(false); setEditingOngoing(null); }}>
                 <X size={16} color="#8A93A6" />
@@ -1475,13 +1475,13 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {viewingOngoing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(123,159,249,0.12)", color: ONGOING_COLOR, border: "1px solid rgba(123,159,249,0.25)" }}>Ongoing (M/W)</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (M/W)</span>
                 </div>
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>{viewingOngoing.client.name}</h2>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{viewingOngoing.client.name}</h2>
               </div>
               <button onClick={() => setViewingOngoing(null)}><X size={16} color="#8A93A6" /></button>
             </div>
@@ -1492,11 +1492,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {previewReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-base font-semibold" style={{ color: "#F5F6FA" }}>{previewReport.client.name}</h2>
-                <p className="text-xs" style={{ color: "#8A93A6" }}>Client preview — {fmtWeek(previewReport.weekStartDate, previewReport.weekEndDate)}</p>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{previewReport.client.name}</h2>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Client preview — {fmtWeek(previewReport.weekStartDate, previewReport.weekEndDate)}</p>
               </div>
               <button onClick={() => setPreviewReport(null)}><X size={16} color="#8A93A6" /></button>
             </div>
@@ -1512,28 +1512,28 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-bold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Campaign Reporting</h1>
-              <p className="text-sm" style={{ color: "#8A93A6" }}>Weekly and ongoing reports by client.</p>
+              <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Campaign Reporting</h1>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Weekly and ongoing reports by client.</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setShowNewClient(true); setPendingFormState(null); }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(255,255,255,0.06)", color: "#F5F6FA" }}
+                style={{ background: "var(--border-subtle)", color: "var(--text-primary)" }}
               >
                 <UserPlus size={15} />New Client
               </button>
               <button
                 onClick={() => { setShowOngoingForm(true); setEditingOngoing(null); }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: `rgba(123,159,249,0.15)`, color: ONGOING_COLOR, border: `1px solid rgba(123,159,249,0.25)` }}
+                style={{ background: `var(--accent-muted)`, color: ONGOING_COLOR, border: `1px solid var(--accent-border)` }}
               >
                 <Plus size={15} />Ongoing (M/W)
               </button>
               <button
                 onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#FF3B3B", color: "#fff", boxShadow: "0 0 20px rgba(255,59,59,0.35)" }}
+                style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 0 20px rgba(255,59,59,0.35)" }}
               >
                 <Plus size={15} />Weekly (F)
               </button>
@@ -1548,8 +1548,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 onClick={() => setOverviewFilter(f)}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 style={{
-                  background: overviewFilter === f ? "rgba(255,59,59,0.12)" : "rgba(255,255,255,0.04)",
-                  color: overviewFilter === f ? "#FF3B3B" : "#8A93A6",
+                  background: overviewFilter === f ? "rgba(255,59,59,0.12)" : "var(--border-subtle)",
+                  color: overviewFilter === f ? "var(--accent)" : "#8A93A6",
                   border: `1px solid ${overviewFilter === f ? "rgba(255,59,59,0.25)" : "transparent"}`,
                 }}
               >
@@ -1560,9 +1560,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
           {/* Client cards grid */}
           {visibleClientCards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <BarChart2 size={36} style={{ color: "#FF3B3B", opacity: 0.4 }} className="mb-3" />
-              <p className="text-sm" style={{ color: "#8A93A6" }}>
+            <div className="flex flex-col items-center justify-center rounded-xl py-24" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <BarChart2 size={36} style={{ color: "var(--accent)", opacity: 0.4 }} className="mb-3" />
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {overviewFilter === "attention" ? "No clients need attention right now." : "No clients yet."}
               </p>
             </div>
@@ -1572,10 +1572,10 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 <button
                   key={client.id}
                   onClick={() => { setSelectedClientId(client.id); setClientTab("weekly"); setOngoingMonthFilter(""); }}
-                  className="text-left rounded-2xl p-5 transition-all group"
+                  className="text-left rounded-xl p-5 transition-all group"
                   style={{
-                    background: "#0B0E17",
-                    border: `1px solid ${latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,59,59,0.2)" : "rgba(255,255,255,0.07)"}`,
+                    background: "var(--bg-surface)",
+                    border: `1px solid ${latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,59,59,0.2)" : "var(--border-subtle)"}`,
                   }}
                 >
                   {/* Client name + status */}
@@ -1584,16 +1584,16 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       {client.logoUrl ? (
                         <img src={client.logoUrl} alt={client.name} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
-                          <span className="text-sm font-bold" style={{ color: "#8A93A6" }}>{client.name.charAt(0)}</span>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--border-subtle)" }}>
+                          <span className="text-sm font-bold" style={{ color: "var(--text-secondary)" }}>{client.name.charAt(0)}</span>
                         </div>
                       )}
-                      <p className="text-sm font-bold truncate" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{client.name}</p>
+                      <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{client.name}</p>
                     </div>
                     {latestOngoingStatus ? (
                       <StatusBadge status={latestOngoingStatus} size="xs" />
                     ) : (
-                      <span className="text-xs px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)", color: "#4A5568" }}>No status</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: "var(--border-subtle)", color: "#4A5568" }}>No status</span>
                     )}
                   </div>
 
@@ -1623,7 +1623,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   {missingFlags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {missingFlags.map((flag) => (
-                        <span key={flag} className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-lg" style={{ background: "rgba(255,136,0,0.1)", color: "#FF8800", border: "1px solid rgba(255,136,0,0.2)" }}>
+                        <span key={flag} className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-lg" style={{ background: "rgba(255,136,0,0.1)", color: "var(--warning)", border: "1px solid rgba(255,136,0,0.2)" }}>
                           <AlertTriangle size={10} />
                           {flag}
                         </span>
@@ -1644,21 +1644,21 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               <button
                 onClick={() => setSelectedClientId("all")}
                 className="flex items-center gap-1.5 text-sm"
-                style={{ color: "#8A93A6" }}
+                style={{ color: "var(--text-secondary)" }}
               >
                 <ArrowLeft size={14} />
                 All Clients
               </button>
               <span style={{ color: "#2A2E3A" }}>/</span>
-              <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{selectedClient?.name}</p>
+              <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{selectedClient?.name}</p>
             </div>
             <button
               onClick={handleCopyLink}
               disabled={copyingLink}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
-                background: linkCopied ? "rgba(61,255,162,0.12)" : "rgba(255,255,255,0.06)",
-                color: linkCopied ? "#3DFFA2" : "#8A93A6",
+                background: linkCopied ? "rgba(61,255,162,0.12)" : "var(--border-subtle)",
+                color: linkCopied ? "var(--success)" : "#8A93A6",
                 border: `1px solid ${linkCopied ? "rgba(61,255,162,0.3)" : "transparent"}`,
                 opacity: copyingLink ? 0.6 : 1,
               }}
@@ -1669,7 +1669,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="flex items-center gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
             <button
               onClick={() => setClientTab("weekly")}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
@@ -1686,9 +1686,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               onClick={() => setClientTab("ongoing")}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
-                background: clientTab === "ongoing" ? `rgba(123,159,249,0.12)` : "transparent",
+                background: clientTab === "ongoing" ? `var(--accent-muted)` : "transparent",
                 color: clientTab === "ongoing" ? ONGOING_COLOR : "#8A93A6",
-                border: clientTab === "ongoing" ? `1px solid rgba(123,159,249,0.25)` : "1px solid transparent",
+                border: clientTab === "ongoing" ? `1px solid var(--accent-border)` : "1px solid transparent",
               }}
             >
               <Activity size={13} />
@@ -1715,37 +1715,37 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               </div>
 
               {clientReports(selectedClientId).length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl py-16" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <BarChart2 size={30} style={{ color: WEEKLY_COLOR, opacity: 0.35 }} className="mb-3" />
-                  <p className="text-sm" style={{ color: "#8A93A6" }}>No weekly reports yet.</p>
+                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No weekly reports yet.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {groupByMonth(clientReports(selectedClientId)).map(({ key, label, reports: monthReports, totalViews: mViews, totalPaid: mPaid, publishedCount }) => {
                     const monthOpen = expandedMonths.has(key);
                     return (
-                      <div key={key} className="rounded-lg overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <div key={key} className="rounded-lg overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
                         <button className="w-full flex items-center gap-3 px-5 py-4 text-left" onClick={() => toggleMonth(key)}>
                           <div className="flex-shrink-0" style={{ color: WEEKLY_COLOR }}>
                             {monthOpen ? <FolderOpen size={18} /> : <Folder size={18} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{label}</p>
-                            <p className="text-xs" style={{ color: "#8A93A6" }}>
+                            <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{label}</p>
+                            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
                               {monthReports.length} {monthReports.length === 1 ? "report" : "reports"} · {publishedCount} published
                             </p>
                           </div>
                           <div className="hidden md:flex items-center gap-6 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Total views</p>
-                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(mViews)}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Total views</p>
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(mViews)}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Total paid</p>
-                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtCurrency(mPaid)}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Total paid</p>
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(mPaid)}</p>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: monthOpen ? "rotate(180deg)" : "none", color: "#8A93A6" }}>
+                          <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: monthOpen ? "rotate(180deg)" : "none", color: "var(--text-secondary)" }}>
                             <ChevronDown size={16} />
                           </div>
                         </button>
@@ -1756,32 +1756,32 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                               const prev = prevWeeklyReport(report);
                               const expanded = expandedIds.has(report.id);
                               return (
-                                <div key={report.id} className="rounded-lg overflow-hidden" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                <div key={report.id} className="rounded-lg overflow-hidden" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
                                   <div className="flex items-center gap-4 px-4 py-3">
                                     <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(61,255,162,0.15)" }} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                        <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</span>
+                                        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</span>
                                         {report.published ? (
-                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "#3DFFA2" }}>Published</span>
+                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)" }}>Published</span>
                                         ) : (
-                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>Draft</span>
+                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>Draft</span>
                                         )}
                                       </div>
                                       <div className="hidden md:flex items-center gap-4 mt-1">
-                                        <span className="text-xs" style={{ color: "#8A93A6" }}>Views: <strong style={{ color: "#F5F6FA" }}>{fmt(report.totalViews)}</strong></span>
-                                        <span className="text-xs" style={{ color: "#8A93A6" }}>Paid: <strong style={{ color: "#F5F6FA" }}>{fmtCurrency(report.paidOut)}</strong></span>
-                                        <span className="text-xs" style={{ color: "#8A93A6" }}>Clips: <strong style={{ color: "#F5F6FA" }}>{report.clipsApproved}/{report.clipsSubmitted}</strong></span>
+                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Views: <strong style={{ color: "var(--text-primary)" }}>{fmt(report.totalViews)}</strong></span>
+                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Paid: <strong style={{ color: "var(--text-primary)" }}>{fmtCurrency(report.paidOut)}</strong></span>
+                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Clips: <strong style={{ color: "var(--text-primary)" }}>{report.clipsApproved}/{report.clipsSubmitted}</strong></span>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <button onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                      <button onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
                                         Edit
                                       </button>
-                                      <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "#3DFFA2" : "#F5F6FA", background: report.published ? "rgba(61,255,162,0.1)" : "rgba(255,59,59,0.1)", border: `1px solid ${report.published ? "rgba(61,255,162,0.2)" : "rgba(255,59,59,0.2)"}` }}>
+                                      <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "var(--success)" : "#F5F6FA", background: report.published ? "rgba(61,255,162,0.1)" : "rgba(255,59,59,0.1)", border: `1px solid ${report.published ? "rgba(61,255,162,0.2)" : "rgba(255,59,59,0.2)"}` }}>
                                         {publishingId === report.id ? "…" : report.published ? "Published" : "Publish"}
                                       </button>
-                                      <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)", transform: expanded ? "rotate(180deg)" : "none" }}>
+                                      <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", transform: expanded ? "rotate(180deg)" : "none" }}>
                                         <ChevronDown size={13} />
                                       </button>
                                     </div>
@@ -1823,7 +1823,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                         value={ongoingMonthFilter}
                         onChange={(e) => setOngoingMonthFilter(e.target.value)}
                         className="rounded-lg px-2 py-1.5 text-xs outline-none"
-                        style={{ background: "#05070D", border: "1px solid rgba(123,159,249,0.2)", color: ongoingMonthFilter ? ONGOING_COLOR : "#8A93A6", appearance: "none" } as React.CSSProperties}
+                        style={{ background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: ongoingMonthFilter ? ONGOING_COLOR : "#8A93A6", appearance: "none" } as React.CSSProperties}
                       >
                         <option value="">All months</option>
                         {monthKeys.map((k) => {
@@ -1837,7 +1837,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   <button
                     onClick={() => { setShowOngoingForm(true); setEditingOngoing(null); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                    style={{ background: "rgba(123,159,249,0.1)", color: ONGOING_COLOR, border: "1px solid rgba(123,159,249,0.2)" }}
+                    style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}
                   >
                     <Plus size={12} />New Ongoing Report
                   </button>
@@ -1845,9 +1845,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               </div>
 
               {clientOngoing(selectedClientId).length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl py-16" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <Activity size={30} style={{ color: ONGOING_COLOR, opacity: 0.35 }} className="mb-3" />
-                  <p className="text-sm" style={{ color: "#8A93A6" }}>No ongoing reports yet.</p>
+                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No ongoing reports yet.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1860,54 +1860,54 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       const prevApprovalRate = prev && prev.totalSubmissions > 0 ? (prev.approved / prev.totalSubmissions) * 100 : null;
 
                       return (
-                        <div key={report.id} className="flex items-center gap-4 px-4 py-3 rounded-xl" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
-                          <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(123,159,249,0.2)" }} />
+                        <div key={report.id} className="flex items-center gap-4 px-4 py-3 rounded-xl" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtDate(report.date)}</span>
+                              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtDate(report.date)}</span>
                               <span className="text-xs font-medium" style={{ color: ONGOING_COLOR }}>{dayOfWeekName(report.date)}</span>
                               <StatusBadge status={report.status} size="xs" />
                             </div>
                             {report.campaignName && (
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>{report.campaignName}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{report.campaignName}</p>
                             )}
                           </div>
                           <div className="hidden md:flex items-center gap-5 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Submissions</p>
-                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.totalSubmissions}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Submissions</p>
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{report.totalSubmissions}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Approved</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{report.approved}</p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--success)" }}>{report.approved}</p>
                                 {prev && <WowBadge curr={report.approved} prev={prev.approved} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Approval</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Approval</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
                                 {prevApprovalRate != null && <WowBadge curr={approvalRate ?? 0} prev={prevApprovalRate} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Views Today</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Views Today</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsToday)}</p>
+                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
                                 {prev && <WowBadge curr={report.viewsToday} prev={prev.viewsToday} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "#8A93A6" }}>Views Total</p>
-                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsTotal)}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Views Total</p>
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <button onClick={() => setViewingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <button onClick={() => setViewingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
                               View
                             </button>
-                            <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
                               Edit
                             </button>
                           </div>

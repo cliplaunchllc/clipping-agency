@@ -88,17 +88,17 @@ function WowBadge({ curr, prev, inverted, grey }: {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
 
   if (firstWeek && !pct) return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "#8A93A6" }}>First week</span>
+    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>
   );
   if (firstWeek) return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(61,255,162,0.1)", color: "#3DFFA2" }}>First week</span>
+    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>First week</span>
   );
 
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
     return (
-      <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+      <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
         <Minus size={11} />{`${sign}${fmtCurrency(delta)}`}
       </span>
     );
@@ -120,17 +120,17 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
   const paidPct = total > 0 ? Math.round((paidOut / total) * 100) : 0;
 
   return (
-    <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+    <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <DollarSign size={13} color={ICON_COLOR} />
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8A93A6" }}>Budget Usage</span>
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Budget Usage</span>
         </div>
-        <span className="text-xs font-bold" style={{ color: "#FF3B3B" }}>{paidPct}% spent</span>
+        <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>{paidPct}% spent</span>
       </div>
 
       {/* Bar */}
-      <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="h-2.5 rounded-full overflow-hidden mb-3" style={{ background: "var(--border-subtle)" }}>
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{
@@ -144,12 +144,12 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
       {/* Labels */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs" style={{ color: "#8A93A6" }}>Paid out</p>
-          <p className="text-sm font-bold" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>{fmtCurrency(paidOut)}</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Paid out</p>
+          <p className="text-sm font-bold" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{fmtCurrency(paidOut)}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs" style={{ color: "#8A93A6" }}>Remaining</p>
-          <p className="text-sm font-bold" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>{fmtCurrency(budgetRemaining)}</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Remaining</p>
+          <p className="text-sm font-bold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmtCurrency(budgetRemaining)}</p>
         </div>
       </div>
     </div>
@@ -189,10 +189,10 @@ function DonutChart({ report }: { report: Report }) {
   if (total === 0) return null;
 
   return (
-    <div className="rounded-xl p-5" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl p-5" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-4">
         <BarChart2 size={13} color={ICON_COLOR} />
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8A93A6" }}>Platform Breakdown</p>
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Platform Breakdown</p>
       </div>
       <div className="flex items-center gap-5">
         <div className="relative flex-shrink-0" style={{ width: 120, height: 120 }}>
@@ -220,8 +220,8 @@ function DonutChart({ report }: { report: Report }) {
             </Pie>
           </PieChart>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-sm font-bold leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{fmt(total)}</span>
-            <span className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>views</span>
+            <span className="text-sm font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmt(total)}</span>
+            <span className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>views</span>
           </div>
         </div>
         <div className="flex-1 space-y-2.5 min-w-0">
@@ -234,14 +234,14 @@ function DonutChart({ report }: { report: Report }) {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <PlatformIcon platform={p} size={12} />
-                    <span className="text-xs font-medium truncate" style={{ color: "#F5F6FA" }}>{PLATFORM_LABELS[p] ?? p}</span>
+                    <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs" style={{ color: "#8A93A6" }}>{fmt(val)}</span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(val)}</span>
                     <span className="text-xs font-semibold w-8 text-right" style={{ color }}>{pct}%</span>
                   </div>
                 </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                 </div>
               </div>
@@ -270,14 +270,14 @@ function StatCard({
   return (
     <div
       className="rounded-xl p-4 transition-colors duration-200"
-      style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.06)" }}
     >
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <p className="text-xs font-medium leading-tight" style={{ color: "#8A93A6" }}>{label}</p>
+        <p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)" }}>{label}</p>
       </div>
-      <p className="text-xl font-bold mb-1 leading-none" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{value}</p>
-      {sublabel && <p className="text-xs mb-1.5" style={{ color: "#8A93A6" }}>{sublabel}</p>}
+      <p className="text-xl font-bold mb-1 leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{value}</p>
+      {sublabel && <p className="text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>{sublabel}</p>}
       <WowBadge curr={curr} prev={prev} inverted={inverted} grey={grey} />
     </div>
   );
@@ -312,9 +312,9 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               <Link2 size={13} color="#FF3B3B" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>Live Campaign Tracker</p>
-              <p className="text-xs mb-1" style={{ color: "#C8CDD8" }}>View all clips, live stats, platform breakdown & real-time performance</p>
-              <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{report.campaignLink}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>Live Campaign Tracker</p>
+              <p className="text-xs mb-1" style={{ color: "var(--text-primary)" }}>View all clips, live stats, platform breakdown & real-time performance</p>
+              <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{report.campaignLink}</p>
             </div>
           </div>
           <ExternalLink size={14} color="#FF3B3B" className="flex-shrink-0 ml-3 opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -350,41 +350,41 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
         <div className="space-y-3">
           {report.weeklySummary && (
-            <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <AlignLeft size={13} color="#8A93A6" />
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8A93A6", fontFamily: "Space Grotesk, sans-serif" }}>Weekly Overview</p>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>Weekly Overview</p>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#C8CDD8" }}>{report.weeklySummary}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {report.whatsWorking && (
-              <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
+              <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsUp size={13} color="#3DFFA2" />
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>What&apos;s Working</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>What&apos;s Working</p>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#C8CDD8" }}>{report.whatsWorking}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
               </div>
             )}
             {report.whatsNotWorking && (
-              <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.2)", boxShadow: "0 0 16px rgba(255,59,59,0.06)" }}>
+              <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.2)", boxShadow: "0 0 16px rgba(255,59,59,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsDown size={13} color="#FF3B3B" />
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>What&apos;s Not Working</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>What&apos;s Not Working</p>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#C8CDD8" }}>{report.whatsNotWorking}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
               </div>
             )}
           </div>
           {report.nextWeekFocus && (
-            <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
+            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <Rocket size={13} color="#FF8800" />
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF8800", fontFamily: "Space Grotesk, sans-serif" }}>Next Week&apos;s Focus</p>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF8800", fontFamily: "var(--font-display)" }}>Next Week&apos;s Focus</p>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#C8CDD8" }}>{report.nextWeekFocus}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
             </div>
           )}
         </div>
@@ -415,7 +415,7 @@ function CopyLinkButton() {
           : "linear-gradient(135deg, rgba(255,59,59,0.15) 0%, rgba(255,59,59,0.08) 100%)",
         border: `1px solid ${copied ? "rgba(61,255,162,0.35)" : "rgba(255,59,59,0.25)"}`,
         color: copied ? "#3DFFA2" : "#FF3B3B",
-        fontFamily: "Space Grotesk, sans-serif",
+        fontFamily: "var(--font-display)",
         transition: "all 0.2s ease",
         transform: copied ? "scale(0.97)" : "scale(1)",
       }}
@@ -453,12 +453,12 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#05070D", fontFamily: "Space Grotesk, sans-serif" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg-base)", fontFamily: "var(--font-display)" }}>
 
       {/* Header */}
       <div
         className="sticky top-0 z-10 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(5,7,13,0.92)", backdropFilter: "blur(16px)" }}
+        style={{ borderColor: "var(--border-subtle)", background: "rgba(5,7,13,0.92)", backdropFilter: "blur(16px)" }}
       >
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -474,8 +474,8 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-bold truncate" style={{ color: "#F5F6FA", letterSpacing: "-0.01em" }}>{clientName}</p>
-              <p className="text-xs" style={{ color: "#8A93A6" }}>Campaign Reports</p>
+              <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{clientName}</p>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Campaign Reports</p>
             </div>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -493,10 +493,10 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
         {reports.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center rounded-xl py-24"
-            style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <BarChart2 size={36} style={{ color: "#FF3B3B", opacity: 0.35 }} className="mb-3" />
-            <p className="text-sm" style={{ color: "#8A93A6" }}>No reports published yet.</p>
+            <BarChart2 size={36} style={{ color: "var(--accent)", opacity: 0.35 }} className="mb-3" />
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No reports published yet.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -510,8 +510,8 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                   key={report.id}
                   className="rounded-xl overflow-hidden"
                   style={{
-                    background: "#0B0E17",
-                    border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.06)"}`,
+                    background: "var(--bg-surface)",
+                    border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "var(--border-subtle)"}`,
                     transition: "border-color 0.2s ease",
                   }}
                 >
@@ -522,23 +522,23 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                     onClick={() => toggleExpand(report.id)}
                   >
                     <div>
-                      <p className="text-sm font-bold mb-1" style={{ color: "#F5F6FA", letterSpacing: "-0.01em" }}>
+                      <p className="text-sm font-bold mb-1" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
                         {fmtWeek(report.weekStartDate, report.weekEndDate)}
                       </p>
                       <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+                        <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
                           <Eye size={11} color={ICON_COLOR} />
                           {fmt(report.totalViews)} views
                         </span>
                         <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                        <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+                        <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
                           <DollarSign size={11} color={ICON_COLOR} />
                           {fmtCurrency(report.paidOut)} paid
                         </span>
                         {report.budgetRemaining != null && (
                           <>
                             <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                            <span className="text-xs flex items-center gap-1" style={{ color: "#8A93A6" }}>
+                            <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
                               <Wallet size={11} color={ICON_COLOR} />
                               {fmtCurrency(report.budgetRemaining)} left
                             </span>
@@ -549,7 +549,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                     <div
                       className="flex-shrink-0"
                       style={{
-                        color: "#8A93A6",
+                        color: "var(--text-secondary)",
                         transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
                         transition: "transform 0.25s ease",
                       }}

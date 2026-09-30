@@ -16,31 +16,28 @@ interface SavedAccount {
 }
 
 const roles: { id: Role; label: string; desc: string }[] = [
-  { id: "agency", label: "Agency", desc: "Manage clients, clippers & all analytics" },
+  { id: "agency",  label: "Agency",  desc: "Manage clients, clippers & all analytics" },
   { id: "clipper", label: "Clipper", desc: "Submit clips and track your performance" },
-  { id: "client", label: "Client", desc: "View your campaign results and reports" },
+  { id: "client",  label: "Client",  desc: "View your campaign results and reports" },
 ];
 
-const ROLE_COLORS: Record<Role, string> = {
-  agency: "#FF3B3B",
-  clipper: "#3DFFA2",
-  client: "#a78bfa",
+const ROLE_REDIRECT: Record<string, string> = {
+  agency: "/agency",
+  clipper: "/clipper",
+  client: "/client",
 };
-
-const ROLE_REDIRECT: Record<string, string> = { agency: "/agency", clipper: "/clipper", client: "/client" };
 
 function RocketLogo({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF3B3B" />
-      <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF6B6B" opacity="0.6" />
-      <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.95" />
-      <circle cx="12" cy="9" r="0.7" fill="#FF3B3B" />
-      <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="#CC2020" />
-      <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#AA1A1A" />
-      <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#AA1A1A" />
-      <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#FF8C00" opacity="0.9" />
-      <path d="M11.2 16.5C11.2 16.5 11.6 17.5 12 18.5C12.4 17.5 12.8 16.5 12.8 16.5H11.2Z" fill="#FFD700" opacity="0.8" />
+      <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="#FF5A5F" />
+      <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="#FF5A5F" opacity="0.5" />
+      <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.9" />
+      <circle cx="12" cy="9" r="0.7" fill="#FF5A5F" />
+      <path d="M8 12H16V15.5C16 16 14 16.5 12 16.5C10 16.5 8 16 8 15.5V12Z" fill="#DC2626" />
+      <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="#DC2626" />
+      <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="#DC2626" />
+      <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#F5B94A" opacity="0.9" />
     </svg>
   );
 }
@@ -60,6 +57,15 @@ function removeAccount(email: string) {
   const updated = getSavedAccounts().filter((a) => a.email !== email);
   localStorage.setItem("saved_accounts", JSON.stringify(updated));
 }
+
+/* Deterministic star positions — seeded so they don't change on re-render */
+const STARS = Array.from({ length: 36 }, (_, i) => {
+  const x = ((i * 97 + 13) % 100);
+  const y = ((i * 67 + 31) % 100);
+  const large = i % 7 === 0;
+  const opacity = 0.1 + (i % 5) * 0.06;
+  return { x, y, large, opacity };
+});
 
 export default function LoginPage() {
   const router = useRouter();
@@ -95,18 +101,11 @@ export default function LoginPage() {
     }
   }, [status, session, router]);
 
-  // One-tap login using stored device token
   async function handleTapAccount(account: SavedAccount) {
     setTappingEmail(account.email);
     setError("");
-
-    const result = await signIn("device-token", {
-      token: account.deviceToken,
-      redirect: false,
-    });
-
+    const result = await signIn("device-token", { token: account.deviceToken, redirect: false });
     if (result?.error) {
-      // Device token expired or invalid — fall back to password login
       setTappingEmail(null);
       setSelectedRole(account.role);
       setEmail(account.email);
@@ -114,8 +113,6 @@ export default function LoginPage() {
       setError("Session expired — please enter your password");
       return;
     }
-
-    // Refresh device token so it stays valid for another 30 days
     const tokenRes = await fetch("/api/auth/device-token", { method: "POST" });
     if (tokenRes.ok) {
       const { token } = await tokenRes.json();
@@ -128,7 +125,6 @@ export default function LoginPage() {
         deviceToken: token,
       });
     }
-
     router.push(ROLE_REDIRECT[account.role] || "/");
   }
 
@@ -151,143 +147,170 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     const result = await signIn("credentials", { email, password, redirect: false });
-
     if (result?.error) {
       setError("Invalid email or password");
       setLoading(false);
       return;
     }
-
-    // Get session info
     const res = await fetch("/api/auth/session");
     const sessionData = await res.json();
     const role = sessionData?.user?.role as Role;
     const name = sessionData?.user?.name ?? email;
-
-    // Generate a device token so future logins are one-tap
     const tokenRes = await fetch("/api/auth/device-token", { method: "POST" });
     if (tokenRes.ok) {
       const { token } = await tokenRes.json();
       saveAccount({ name, email, role, deviceToken: token });
     }
-
     router.push(ROLE_REDIRECT[role] || "/");
   }
 
   const roleInfo = roles.find((r) => r.id === selectedRole);
 
   if (status === "loading" || status === "authenticated") {
-    return <div className="min-h-screen" style={{ background: "#05070D" }} />;
+    return <div className="min-h-screen" style={{ background: "var(--bg-base)" }} />;
   }
 
+  /* ── shared input style ──────────────────────────────────────────── */
   const inputStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#F5F6FA",
-    borderRadius: 12,
-    padding: "12px 16px",
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
+    borderRadius: "var(--radius-sm)",
+    padding: "8px 12px",
     fontSize: 14,
     outline: "none",
     width: "100%",
+    height: 36,
+    fontFamily: "Inter, system-ui, sans-serif",
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(255,59,59,0.06) 0%, transparent 70%)" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(61,255,162,0.04) 0%, transparent 70%)" }} />
-        {[...Array(30)].map((_, i) => (
-          <div key={i} className="absolute rounded-full"
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "var(--bg-base)" }}
+    >
+      {/* ── Background: sparse stars + single red nebula haze ── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        {/* Red nebula — one, off-center, low opacity */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 480,
+            height: 480,
+            top: "20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "radial-gradient(circle, rgba(220,38,38,0.08) 0%, rgba(120,10,20,0.04) 50%, transparent 70%)",
+            filter: "blur(60px)",
+          }}
+        />
+        {/* Stars */}
+        {STARS.map((s, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full"
             style={{
-              width: Math.random() > 0.7 ? 2 : 1,
-              height: Math.random() > 0.7 ? 2 : 1,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              width: s.large ? 2 : 1,
+              height: s.large ? 2 : 1,
+              left: `${s.x}%`,
+              top: `${s.y}%`,
               background: "white",
-              opacity: Math.random() * 0.4 + 0.1,
-            }} />
+              opacity: s.opacity,
+            }}
+          />
         ))}
       </div>
 
-      <div className="relative w-full max-w-md px-4">
+      <div className="relative w-full max-w-sm px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 overflow-hidden"
-            style={agencyLogo ? { border: "1px solid rgba(255,255,255,0.1)" } : { background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)" }}>
-            {agencyLogo ? <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" /> : <RocketLogo size={28} />}
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 overflow-hidden"
+            style={
+              agencyLogo
+                ? { border: "1px solid var(--border-default)", background: "var(--bg-surface)" }
+                : { background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }
+            }
+          >
+            {agencyLogo
+              ? <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
+              : <RocketLogo size={26} />}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+          <h1
+            className="text-xl font-semibold tracking-tight"
+            style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+          >
             ClipLaunch
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#8A93A6" }}>
-            {step === "accounts" ? "Select your account to continue" :
-             step === "role" ? "Select your account type to continue" :
-             `Signing in as ${roleInfo?.label}`}
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+            {step === "accounts" ? "Select an account to continue" :
+             step === "role"     ? "Choose your account type" :
+             `Sign in as ${roleInfo?.label}`}
           </p>
         </div>
 
-        {/* Saved Accounts */}
+        {/* ── Saved Accounts ───────────────────────────────────────── */}
         {step === "accounts" && (
-          <div className="space-y-2.5">
+          <div className="space-y-1.5">
             {savedAccounts.map((account) => {
-              const color = ROLE_COLORS[account.role];
               const isTapping = tappingEmail === account.email;
               return (
                 <button
                   key={account.email}
                   onClick={() => !tappingEmail && handleTapAccount(account)}
                   disabled={!!tappingEmail}
-                  className="w-full text-left rounded-2xl p-4 transition-all relative group"
+                  className="w-full text-left rounded-lg p-3 transition-colors relative group"
                   style={{
-                    background: "#0B0E17",
-                    border: `1px solid ${isTapping ? color + "55" : "rgba(255,255,255,0.08)"}`,
-                    boxShadow: isTapping ? `0 0 20px ${color}20` : "none",
-                    cursor: tappingEmail ? "default" : "pointer",
-                    opacity: tappingEmail && !isTapping ? 0.5 : 1,
+                    background: isTapping ? "var(--bg-hover)" : "var(--bg-surface)",
+                    border: `1px solid ${isTapping ? "var(--accent-border)" : "var(--border-default)"}`,
+                    boxShadow: "var(--shadow-inset-top)",
+                    opacity: tappingEmail && !isTapping ? 0.45 : 1,
                   }}
                   onMouseEnter={(e) => {
                     if (tappingEmail) return;
-                    (e.currentTarget as HTMLElement).style.border = `1px solid ${color}55`;
-                    (e.currentTarget as HTMLElement).style.boxShadow = `0 0 16px ${color}18`;
+                    (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)";
                   }}
                   onMouseLeave={(e) => {
                     if (tappingEmail) return;
-                    (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.08)";
-                    (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                    (e.currentTarget as HTMLElement).style.background = "var(--bg-surface)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: `${color}18`, color }}>
+                    <div
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      style={{ background: "var(--accent-muted)", color: "var(--accent)" }}
+                    >
                       {isTapping ? (
-                        <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+                        <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.2" />
                           <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         </svg>
                       ) : (account.name || account.email)[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#F5F6FA" }}>
-                        {isTapping ? "Signing in..." : account.name}
+                      <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                        {isTapping ? "Signing in…" : account.name}
                       </p>
-                      <p className="text-xs truncate" style={{ color: "#8A93A6" }}>{account.email}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>{account.email}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full capitalize"
-                        style={{ background: `${color}18`, color }}>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded capitalize"
+                        style={{ background: "var(--bg-active)", color: "var(--text-secondary)", fontSize: 11 }}
+                      >
                         {account.role}
                       </span>
                       {!tappingEmail && (
                         <button
                           onClick={(e) => handleRemoveSavedAccount(e, account.email)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-white/5"
-                          style={{ color: "#8A93A6" }}
-                          title="Remove">
-                          <X size={13} />
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/5"
+                          style={{ color: "var(--text-tertiary)" }}
+                          aria-label="Remove account"
+                        >
+                          <X size={12} />
                         </button>
                       )}
                     </div>
@@ -297,8 +320,10 @@ export default function LoginPage() {
             })}
 
             {error && (
-              <div className="text-xs px-4 py-3 rounded-xl"
-                style={{ background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.2)" }}>
+              <div
+                className="text-xs px-3 py-2 rounded-md flex items-center gap-2"
+                style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid var(--accent-border)" }}
+              >
                 {error}
               </div>
             )}
@@ -306,132 +331,183 @@ export default function LoginPage() {
             <button
               onClick={() => setStep("role")}
               disabled={!!tappingEmail}
-              className="w-full text-left rounded-2xl p-4 transition-all mt-1"
-              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.06)", opacity: tappingEmail ? 0.4 : 1 }}
-              onMouseEnter={(e) => !tappingEmail && ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)")}
+              className="w-full text-left rounded-lg p-3 transition-colors mt-0.5"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--border-subtle)",
+                opacity: tappingEmail ? 0.4 : 1,
+              }}
+              onMouseEnter={(e) => !tappingEmail && ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div
+                  className="w-8 h-8 rounded-md flex items-center justify-center"
+                  style={{ background: "var(--bg-active)", border: "1px solid var(--border-subtle)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </div>
-                <p className="text-sm" style={{ color: "#8A93A6" }}>Use a different account</p>
+                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Use a different account</p>
               </div>
             </button>
           </div>
         )}
 
-        {/* Role selector */}
+        {/* ── Role selector ─────────────────────────────────────────── */}
         {step === "role" && (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {savedAccounts.length > 0 && (
-              <button onClick={() => setStep("accounts")}
-                className="flex items-center gap-1.5 text-xs mb-2 transition-colors"
-                style={{ color: "#8A93A6" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#F5F6FA")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#8A93A6")}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <button
+                onClick={() => setStep("accounts")}
+                className="flex items-center gap-1.5 text-xs mb-4 transition-colors"
+                style={{ color: "var(--text-tertiary)" }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-primary)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)")}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 18l-6-6 6-6" />
                 </svg>
                 Back
               </button>
             )}
             {roles.map((role) => (
-              <button key={role.id} onClick={() => handleRoleSelect(role.id)}
-                className="w-full text-left rounded-2xl p-5 transition-all"
-                style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}
+              <button
+                key={role.id}
+                onClick={() => handleRoleSelect(role.id)}
+                className="w-full text-left rounded-lg p-4 transition-colors"
+                style={{
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-default)",
+                  boxShadow: "var(--shadow-inset-top)",
+                }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,59,59,0.4)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px rgba(255,59,59,0.1)";
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.08)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                }}>
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg-surface)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-sm" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{role.label}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>{role.desc}</p>
+                    <p className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>{role.label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{role.desc}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </div>
               </button>
             ))}
-            <p className="text-center text-xs pt-1" style={{ color: "#8A93A6" }}>
+            <p className="text-center text-xs pt-2" style={{ color: "var(--text-tertiary)" }}>
               New clipper?{" "}
-              <Link href="/signup" style={{ color: "#3DFFA2" }}>Create an account</Link>
+              <Link href="/signup" style={{ color: "var(--success)" }}>Create an account</Link>
             </p>
           </div>
         )}
 
-        {/* Password login (first time or after token expiry) */}
+        {/* ── Password login ─────────────────────────────────────────── */}
         {step === "login" && (
-          <div className="rounded-2xl p-8" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div
+            className="rounded-xl p-6"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+              boxShadow: "var(--shadow-inset-top)",
+            }}
+          >
             <button
               onClick={() => { setStep(savedAccounts.length > 0 ? "accounts" : "role"); setError(""); setPassword(""); }}
-              className="flex items-center gap-1.5 text-xs mb-6 transition-colors"
-              style={{ color: "#8A93A6" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#F5F6FA")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#8A93A6")}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              className="flex items-center gap-1.5 text-xs mb-5 transition-colors"
+              style={{ color: "var(--text-tertiary)" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-primary)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)")}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
               Back
             </button>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-6"
-              style={{ background: `${ROLE_COLORS[selectedRole!]}18`, border: `1px solid ${ROLE_COLORS[selectedRole!]}33` }}>
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: ROLE_COLORS[selectedRole!] }} />
-              <span className="text-xs font-medium" style={{ color: ROLE_COLORS[selectedRole!] }}>{roleInfo?.label}</span>
-            </div>
+            {selectedRole && (
+              <div
+                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md mb-5"
+                style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                <span className="text-xs font-medium capitalize" style={{ color: "var(--accent)" }}>{selectedRole}</span>
+              </div>
+            )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Email address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                  autoFocus={!email} style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "rgba(255,59,59,0.5)")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-                  placeholder="you@example.com" />
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoFocus={!email}
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
+                  placeholder="you@example.com"
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#8A93A6" }}>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                  autoFocus={!!email} style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "rgba(255,59,59,0.5)")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-                  placeholder="••••••••" />
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoFocus={!!email}
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
+                  placeholder="••••••••"
+                />
               </div>
 
               {error && (
-                <div className="text-xs px-4 py-3 rounded-xl"
-                  style={{ background: "rgba(255,71,87,0.1)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.2)" }}>
+                <div
+                  className="text-xs px-3 py-2 rounded-md flex items-center gap-2"
+                  style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid var(--accent-border)" }}
+                >
                   {error}
                 </div>
               )}
 
-              <button type="submit" disabled={loading}
-                className="w-full py-3 rounded-xl text-sm font-semibold transition-all mt-2"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2 rounded-md text-sm font-medium transition-colors mt-1"
                 style={{
-                  background: loading ? "rgba(255,59,59,0.1)" : "rgba(255,59,59,0.85)",
-                  color: "#FFFFFF",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                  boxShadow: loading ? "none" : "0 0 24px rgba(255,59,59,0.3)",
-                }}>
-                {loading ? "Signing in..." : "Sign in"}
+                  background: loading ? "var(--bg-active)" : "var(--accent-solid)",
+                  color: "var(--text-on-accent)",
+                  boxShadow: loading ? "none" : "var(--shadow-inset-top)",
+                }}
+                onMouseEnter={(e) => !loading && ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
+                onMouseLeave={(e) => !loading && ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
+              >
+                {loading ? "Signing in…" : "Sign in"}
               </button>
             </form>
 
             {(selectedRole === "clipper" || selectedRole === "client") && (
-              <p className="text-center text-xs mt-5" style={{ color: "#8A93A6" }}>
+              <p className="text-center text-xs mt-5" style={{ color: "var(--text-tertiary)" }}>
                 New {roleInfo?.label.toLowerCase()}?{" "}
-                <Link href={selectedRole === "client" ? "/signup?role=client" : "/signup"} style={{ color: "#3DFFA2" }}>
+                <Link
+                  href={selectedRole === "client" ? "/signup?role=client" : "/signup"}
+                  style={{ color: "var(--success)" }}
+                >
                   Create an account
                 </Link>
               </p>
