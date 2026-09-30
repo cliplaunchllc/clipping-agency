@@ -1055,6 +1055,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
   const [showOngoingForm, setShowOngoingForm] = useState(false);
   const [editingOngoing, setEditingOngoing] = useState<OngoingReport | null>(null);
   const [viewingOngoing, setViewingOngoing] = useState<OngoingReport | null>(null);
+  const [ongoingMonthFilter, setOngoingMonthFilter] = useState<string>("");
 
   // Shared state
   const [showNewClient, setShowNewClient] = useState(false);
@@ -1549,7 +1550,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               {visibleClientCards.map(({ client, latestOngoingStatus, lastWeeklyDate, lastOngoingDate, missingFlags }) => (
                 <button
                   key={client.id}
-                  onClick={() => { setSelectedClientId(client.id); setClientTab("weekly"); }}
+                  onClick={() => { setSelectedClientId(client.id); setClientTab("weekly"); setOngoingMonthFilter(""); }}
                   className="text-left rounded-2xl p-5 transition-all group"
                   style={{
                     background: "#0B0E17",
@@ -1797,13 +1798,35 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: ONGOING_COLOR }} />
                   Ongoing Reports (M/W)
                 </p>
-                <button
-                  onClick={() => { setShowOngoingForm(true); setEditingOngoing(null); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: "rgba(123,159,249,0.1)", color: ONGOING_COLOR, border: "1px solid rgba(123,159,249,0.2)" }}
-                >
-                  <Plus size={12} />New Ongoing Report
-                </button>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const allOngoing = clientOngoing(selectedClientId).sort((a, b) => b.date.localeCompare(a.date));
+                    const monthKeys = Array.from(new Set(allOngoing.map((r) => r.date.slice(0, 7)))).sort((a, b) => b.localeCompare(a));
+                    if (monthKeys.length <= 1) return null;
+                    return (
+                      <select
+                        value={ongoingMonthFilter}
+                        onChange={(e) => setOngoingMonthFilter(e.target.value)}
+                        className="rounded-lg px-2 py-1.5 text-xs outline-none"
+                        style={{ background: "#05070D", border: "1px solid rgba(123,159,249,0.2)", color: ongoingMonthFilter ? ONGOING_COLOR : "#8A93A6", appearance: "none" } as React.CSSProperties}
+                      >
+                        <option value="">All months</option>
+                        {monthKeys.map((k) => {
+                          const [y, m] = k.split("-").map(Number);
+                          const label = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+                          return <option key={k} value={k}>{label}</option>;
+                        })}
+                      </select>
+                    );
+                  })()}
+                  <button
+                    onClick={() => { setShowOngoingForm(true); setEditingOngoing(null); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ background: "rgba(123,159,249,0.1)", color: ONGOING_COLOR, border: "1px solid rgba(123,159,249,0.2)" }}
+                  >
+                    <Plus size={12} />New Ongoing Report
+                  </button>
+                </div>
               </div>
 
               {clientOngoing(selectedClientId).length === 0 ? (
@@ -1814,6 +1837,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               ) : (
                 <div className="space-y-2">
                   {clientOngoing(selectedClientId)
+                    .filter((r) => !ongoingMonthFilter || r.date.startsWith(ongoingMonthFilter))
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .map((report) => {
                       const prev = prevOngoingReport(report);
