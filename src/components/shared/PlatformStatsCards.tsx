@@ -41,7 +41,7 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
   const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)", gradId: "dg-empty", grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string] }];
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-5">
         {icon}
         <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
@@ -133,14 +133,14 @@ export function PlatformBreakdownTable({ viewsByPlatform, clipsByPlatform }: Pro
 
   if (platforms.length === 0) {
     return (
-      <div className="rounded-2xl p-8 text-center" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="rounded-xl p-8 text-center" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
         <p className="text-sm" style={{ color: "#8A93A6" }}>No platform data in this period</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <table className="w-full">
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>

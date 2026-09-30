@@ -318,7 +318,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               </div>
 
               {/* Stats bar */}
-              <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <div className="grid grid-cols-6">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
@@ -362,7 +362,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               </div>
 
               {/* Views chart */}
-              <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <h2 className="text-base font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Views Over Time</h2>
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={240}>
@@ -425,7 +425,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 const totalPct = totalTarget > 0 ? Math.min(100, Math.round((totalActual / totalTarget) * 100)) : 0;
                 const totalColor = totalPct >= 100 ? "#3DFFA2" : totalPct >= 60 ? "#FF9500" : "#FF3B3B";
                 return (
-                  <div className="rounded-2xl p-6 mb-6 fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="rounded-xl p-6 mb-6 fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                     <div className="flex items-center justify-between mb-1">
                       <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                         Deal Target — {periodLabel}
@@ -489,7 +489,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
               {/* Clippers + Top Clips */}
               <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="rounded-2xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Accounts</h2>
                   {(() => {
                     const allAccounts = client.clippers.flatMap((cl) => cl.subAccounts);
@@ -533,7 +533,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   })()}
                 </div>
 
-                <div className="rounded-2xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <TrendingUp size={13} color="#FF3B3B" />
@@ -585,7 +585,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 { label: "Active Clippers", value: client.clippers.length.toString() },
                 { label: "Started", value: new Date(client.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div key={item.label} className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <p className="text-xs mb-2" style={{ color: "#8A93A6" }}>{item.label}</p>
                   <p className="text-2xl font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{item.value}</p>
                 </div>
@@ -602,7 +602,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   <span style={{ color: "#FF3B3B", fontWeight: 600 }}>Live Tracker</span> — your agency may share a live tracker link here where you can watch top clips, individual clip stats, and real-time performance update as they happen.
                 </p>
               </div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
               {client.links.length === 0 ? (
                 <p className="px-6 py-12 text-center text-sm" style={{ color: "#8A93A6" }}>No links added yet</p>
               ) : (
@@ -627,7 +627,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
           {activeTab === "onboarding" && (
             <div className="space-y-4">
               {steps.length > 0 && (
-                <div className="rounded-2xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="rounded-xl p-5" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs" style={{ color: "#8A93A6" }}>Progress — {completedSteps} of {steps.length} complete</span>
                     <span className="text-xs font-medium" style={{ color: "#3DFFA2" }}>{onboardingPct}%</span>
@@ -679,7 +679,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
           {/* ── CLIPS ─── */}
           {activeTab === "clips" && (
-            <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>

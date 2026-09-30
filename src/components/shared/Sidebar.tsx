@@ -65,13 +65,14 @@ export default function Sidebar({ role, userName }: SidebarProps) {
       className="w-60 flex flex-col h-screen fixed left-0 top-0 z-40"
       style={{
         background: "#0B0E17",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
+        borderRight: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "4px 0 24px rgba(0,0,0,0.4), 1px 0 0 rgba(255,59,59,0.04)",
       }}
     >
       {/* Logo */}
       <div className="px-6 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
-          style={agencyLogo ? {} : { background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)" }}>
+        <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+          style={agencyLogo ? {} : { background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", boxShadow: "0 0 12px rgba(255,59,59,0.2)" }}>
           {agencyLogo ? (
             <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
           ) : (
@@ -102,11 +103,12 @@ export default function Sidebar({ role, userName }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all"
               style={{
                 color: isActive ? roleColors[role] : "#8A93A6",
-                background: isActive ? `${roleColors[role]}14` : "transparent",
-                fontWeight: isActive ? 500 : 400,
+                background: isActive ? `${roleColors[role]}18` : "transparent",
+                fontWeight: isActive ? 600 : 400,
+                boxShadow: isActive ? `0 0 14px ${roleColors[role]}25, inset 0 0 0 1px ${roleColors[role]}22` : "none",
               }}
             >
               <Icon size={16} />

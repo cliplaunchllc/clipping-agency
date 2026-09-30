@@ -286,7 +286,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
       {showLiveLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-2xl p-8 w-full max-w-sm fade-in" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="rounded-xl p-8 w-full max-w-sm fade-in" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
@@ -446,7 +446,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             </div>
 
             {/* ── Stats bar ───────────────────────────────────────────── */}
-            <div className="rounded-2xl mb-2 overflow-hidden fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl mb-2 overflow-hidden fade-up" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
               <div className="grid grid-cols-6">
                 {statItems.map((item, i) => {
                   const Icon = item.icon;
@@ -479,7 +479,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             </div>
 
             {/* ── Views chart ─────────────────────────────────────────── */}
-            <div className="rounded-2xl p-6 mb-6 mt-5 fade-up delay-1" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6 mb-6 mt-5 fade-up delay-1" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
                 Views Over Time{selectedClient ? ` · ${selectedClient.name}` : ""}
               </h2>
@@ -564,7 +564,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
                 : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
               return (
-                <div className="rounded-2xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                       <TrendingUp size={14} color="#3DFFA2" />
@@ -645,7 +645,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
             {/* Active Clippers */}
             {activeClippersDisplay.length > 0 && (
-              <div className="rounded-2xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <UserCheck size={14} color="#3DFFA2" />
@@ -682,7 +682,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
             {/* ── Top Clippers + Top Clips ────────────────────────────── */}
             <div className="grid grid-cols-2 gap-6 mb-6 fade-up delay-4">
-              <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp size={14} color="#3DFFA2" />
@@ -707,7 +707,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 </div>
               </div>
 
-              <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp size={14} color="#FF3B3B" />
@@ -749,7 +749,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             <div className="space-y-6">
               {/* ── Clipper Page Breakout ───────────────────────────────── */}
               {clipperBreakout.length > 0 && (
-                <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                   <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                     <div className="flex items-center gap-2">
                       <BarChart2 size={14} color="#FF3B3B" />
@@ -860,7 +860,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
                   : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
                 return (
-                  <div className="rounded-2xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="rounded-xl p-6 mb-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-2">
                         <TrendingUp size={14} color="#3DFFA2" />
@@ -986,7 +986,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   </button>
                 )}
               </div>
-              <div className="rounded-2xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 8px 32px rgba(0,0,0,0.5)" }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>

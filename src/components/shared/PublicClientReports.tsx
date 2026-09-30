@@ -120,7 +120,7 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
   const paidPct = total > 0 ? Math.round((paidOut / total) * 100) : 0;
 
   return (
-    <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <DollarSign size={13} color={ICON_COLOR} />
@@ -189,7 +189,7 @@ function DonutChart({ report }: { report: Report }) {
   if (total === 0) return null;
 
   return (
-    <div className="rounded-2xl p-5" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="rounded-xl p-5" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-4">
         <BarChart2 size={13} color={ICON_COLOR} />
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8A93A6" }}>Platform Breakdown</p>
@@ -350,7 +350,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
         <div className="space-y-3">
           {report.weeklySummary && (
-            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <AlignLeft size={13} color="#8A93A6" />
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8A93A6", fontFamily: "Space Grotesk, sans-serif" }}>Weekly Overview</p>
@@ -360,7 +360,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {report.whatsWorking && (
-              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.15)" }}>
+              <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsUp size={13} color="#3DFFA2" />
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#3DFFA2", fontFamily: "Space Grotesk, sans-serif" }}>What&apos;s Working</p>
@@ -369,7 +369,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               </div>
             )}
             {report.whatsNotWorking && (
-              <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.15)" }}>
+              <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,59,59,0.2)", boxShadow: "0 0 16px rgba(255,59,59,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsDown size={13} color="#FF3B3B" />
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF3B3B", fontFamily: "Space Grotesk, sans-serif" }}>What&apos;s Not Working</p>
@@ -379,7 +379,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
             )}
           </div>
           {report.nextWeekFocus && (
-            <div className="rounded-xl p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.18)" }}>
+            <div className="rounded-lg p-4" style={{ background: "#05070D", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <Rocket size={13} color="#FF8800" />
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF8800", fontFamily: "Space Grotesk, sans-serif" }}>Next Week&apos;s Focus</p>
@@ -492,7 +492,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
       <div className="max-w-4xl mx-auto px-6 py-8">
         {reports.length === 0 ? (
           <div
-            className="flex flex-col items-center justify-center rounded-2xl py-24"
+            className="flex flex-col items-center justify-center rounded-xl py-24"
             style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}
           >
             <BarChart2 size={36} style={{ color: "#FF3B3B", opacity: 0.35 }} className="mb-3" />
@@ -508,7 +508,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
               return (
                 <div
                   key={report.id}
-                  className="rounded-2xl overflow-hidden"
+                  className="rounded-xl overflow-hidden"
                   style={{
                     background: "#0B0E17",
                     border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.06)"}`,
