@@ -38,6 +38,7 @@ export default async function ClientPage() {
     name: client.name,
     status: client.status,
     campaignType: client.campaignType as "manual" | "cpm",
+    contractUrl: client.contractUrl ?? null,
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,

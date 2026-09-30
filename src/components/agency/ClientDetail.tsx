@@ -13,6 +13,7 @@ interface ClientData {
   name: string;
   status: string;
   campaignType: "manual" | "cpm";
+  contractUrl: string | null;
   dealLengthDays: number | null;
   dealStartDate: string | null;
   dealEndDate: string | null;
@@ -55,6 +56,9 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [dealSaving, setDealSaving] = useState(false);
   const [campaignType, setCampaignType] = useState<"manual" | "cpm">(initial.campaignType);
   const [savingType, setSavingType] = useState(false);
+  const [contractUrl, setContractUrl] = useState(initial.contractUrl ?? "");
+  const [savingContract, setSavingContract] = useState(false);
+  const [contractSaved, setContractSaved] = useState(false);
 
   // Links state
   const [links, setLinks] = useState<Link[]>(initial.links);
@@ -78,6 +82,17 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     });
     if (res.ok) setCampaignType(type);
     setSavingType(false);
+  }
+
+  async function saveContractUrl() {
+    setSavingContract(true);
+    const res = await fetch(`/api/agency/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contractUrl }),
+    });
+    if (res.ok) { setContractSaved(true); setTimeout(() => setContractSaved(false), 2500); }
+    setSavingContract(false);
   }
 
   async function saveDeal() {
@@ -303,6 +318,31 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                   ))}
                 </div>
               </div>
+
+              {/* Contract URL (CPM only) */}
+              {campaignType === "cpm" && (
+                <div className="rounded-xl p-4 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: "#F5F6FA" }}>Signed Agreement</p>
+                  <p className="text-xs mb-3" style={{ color: "#8A93A6" }}>Link to the signed contract — visible to the client on their dashboard.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={contractUrl}
+                      onChange={(e) => setContractUrl(e.target.value)}
+                      placeholder="https://..."
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button
+                      onClick={saveContractUrl}
+                      disabled={savingContract}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                      style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: contractSaved ? "#3DFFA2" : "#FF3B3B" }}
+                    >
+                      {contractSaved ? <><Check size={12} /> Saved</> : savingContract ? "Saving…" : <><Save size={12} /> Save</>}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Formula summary */}
               {client.pageCount && client.clipsPerDay && client.dealLengthDays && (

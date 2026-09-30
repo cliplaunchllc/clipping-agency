@@ -106,6 +106,7 @@ model Client {
   archivedAt     DateTime?
   shareToken     String?      @unique
   campaignType   CampaignType @default(manual)
+  contractUrl    String?
   createdAt      DateTime     @default(now())
 
   users            User[]

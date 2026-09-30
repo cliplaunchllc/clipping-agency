@@ -89,6 +89,7 @@ interface OngoingReport {
 interface ClientData {
   id: string; name: string; status: string;
   campaignType: "manual" | "cpm";
+  contractUrl: string | null;
   logoUrl: string | null;
   dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
   pageCount: number | null; clipsPerDay: number | null;
@@ -101,7 +102,7 @@ interface ClientData {
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
 
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips" | "platform-stats" | "reports">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips" | "platform-stats" | "reports" | "contract">("overview");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
     if (!client.ongoingReports?.length) return new Set();
@@ -225,10 +226,14 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
   const tabs = [
     { id: "overview", label: "Overview" },
-    ...(client.campaignType === "cpm" ? [{ id: "reports", label: "Campaign Reports" }] : []),
+    ...(client.campaignType === "cpm" ? [
+      { id: "reports", label: "Campaign Reports" },
+      { id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
+      { id: "contract", label: "Contract" },
+    ] : []),
     { id: "deal", label: "Deal Terms" },
     { id: "links", label: `Links (${client.links.length})` },
-    { id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
+    ...(!( client.campaignType === "cpm") ? [{ id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` }] : []),
     { id: "clips", label: "Clips" },
     { id: "platform-stats", label: "Platform Stats" },
   ] as const;
@@ -746,6 +751,57 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ── CONTRACT (CPM only) ─── */}
+          {activeTab === "contract" && client.campaignType === "cpm" && (
+            <div className="max-w-2xl">
+              {client.contractUrl ? (
+                <div className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(123,159,249,0.15)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 8px 32px rgba(0,0,0,0.5)" }}>
+                  {/* Header */}
+                  <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(123,159,249,0.1)", border: "1px solid rgba(123,159,249,0.2)" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B9FF9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Signed Agreement</p>
+                        <p className="text-xs" style={{ color: "#8A93A6" }}>Your executed campaign contract</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Body */}
+                  <div className="px-6 py-6 flex flex-col items-start gap-4">
+                    <div className="w-full rounded-lg px-4 py-3 flex items-center gap-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                      </svg>
+                      <p className="text-xs truncate flex-1" style={{ color: "#8A93A6" }}>{client.contractUrl}</p>
+                    </div>
+                    <a
+                      href={client.contractUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                      style={{ background: "rgba(123,159,249,0.12)", border: "1px solid rgba(123,159,249,0.25)", color: "#7B9FF9", boxShadow: "0 0 18px rgba(123,159,249,0.12)" }}
+                    >
+                      <ExternalLink size={14} />
+                      Open Signed Agreement
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B9FF9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3, marginBottom: 16 }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <p className="text-base font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>No contract on file yet</p>
+                  <p className="text-sm" style={{ color: "#8A93A6" }}>Your signed agreement will appear here once shared.</p>
+                </div>
+              )}
             </div>
           )}
 
