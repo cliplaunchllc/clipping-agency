@@ -26,6 +26,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     id: client.id,
     name: client.name,
     status: client.status,
+    campaignType: client.campaignType as "manual" | "cpm",
     dealLengthDays: client.dealLengthDays,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,
     dealEndDate: client.dealEndDate?.toISOString() ?? null,

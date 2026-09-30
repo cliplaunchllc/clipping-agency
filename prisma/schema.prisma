@@ -36,6 +36,11 @@ enum OngoingStatus {
   NeedsAttention
 }
 
+enum CampaignType {
+  manual
+  cpm
+}
+
 model User {
   id                String     @id @default(cuid())
   email             String     @unique
@@ -100,6 +105,7 @@ model Client {
   clipsPerDay    Int?
   archivedAt     DateTime?
   shareToken     String?      @unique
+  campaignType   CampaignType @default(manual)
   createdAt      DateTime     @default(now())
 
   users            User[]

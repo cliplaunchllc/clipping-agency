@@ -12,6 +12,7 @@ interface ClientData {
   id: string;
   name: string;
   status: string;
+  campaignType: "manual" | "cpm";
   dealLengthDays: number | null;
   dealStartDate: string | null;
   dealEndDate: string | null;
@@ -52,6 +53,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     clipsPerDay: initial.clipsPerDay?.toString() ?? "",
   });
   const [dealSaving, setDealSaving] = useState(false);
+  const [campaignType, setCampaignType] = useState<"manual" | "cpm">(initial.campaignType);
+  const [savingType, setSavingType] = useState(false);
 
   // Links state
   const [links, setLinks] = useState<Link[]>(initial.links);
@@ -65,6 +68,17 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [newStepDesc, setNewStepDesc] = useState("");
   const [newStepLink, setNewStepLink] = useState("");
   const [stepSaving, setStepSaving] = useState(false);
+
+  async function toggleCampaignType(type: "manual" | "cpm") {
+    setSavingType(true);
+    const res = await fetch(`/api/agency/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignType: type }),
+    });
+    if (res.ok) setCampaignType(type);
+    setSavingType(false);
+  }
 
   async function saveDeal() {
     setDealSaving(true);
@@ -265,6 +279,31 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             </>
           ) : (
             <>
+              {/* Campaign type */}
+              <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div>
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>Campaign Type</p>
+                  <p className="text-xs" style={{ color: "#8A93A6" }}>CPM clients see the Ongoing Reports tab on their dashboard.</p>
+                </div>
+                <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {(["manual", "cpm"] as const).map((t) => (
+                    <button
+                      key={t}
+                      disabled={savingType}
+                      onClick={() => toggleCampaignType(t)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={{
+                        background: campaignType === t ? (t === "cpm" ? "rgba(123,159,249,0.15)" : "rgba(255,255,255,0.06)") : "transparent",
+                        color: campaignType === t ? (t === "cpm" ? "#7B9FF9" : "#F5F6FA") : "#8A93A6",
+                        border: campaignType === t ? `1px solid ${t === "cpm" ? "rgba(123,159,249,0.3)" : "rgba(255,255,255,0.12)"}` : "1px solid transparent",
+                      }}
+                    >
+                      {t === "cpm" ? "CPM Based" : "Manual"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Formula summary */}
               {client.pageCount && client.clipsPerDay && client.dealLengthDays && (
                 <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#8A93A6" }}>

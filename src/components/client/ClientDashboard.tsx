@@ -6,7 +6,8 @@ import TopClipsChart from "@/components/shared/TopClipsChart";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink, Check,
-  TrendingUp, TrendingDown, RotateCw,
+  TrendingUp, TrendingDown, RotateCw, Activity, ChevronDown, ChevronRight,
+  CheckCircle2, AlertTriangle, Minus,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -79,21 +80,34 @@ interface SubAccount { id: string; platform: string; handle: string; profileUrl:
 interface Clipper { id: string; name: string | null; clipCount: number; totalViews: number; subAccounts: SubAccount[]; }
 interface Link { id: string; label: string; url: string; }
 interface OnboardingStep { id: string; title: string; description: string | null; linkUrl: string | null; order: number; completed: boolean; }
+interface OngoingReport {
+  id: string; date: string; totalSubmissions: number; pending: number;
+  approved: number; rejected: number; mainTrend: string | null;
+  clipperFeedback: string | null; mainOptimization: string | null; status: string;
+}
 
 interface ClientData {
   id: string; name: string; status: string;
+  campaignType: "manual" | "cpm";
   logoUrl: string | null;
   dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
   pageCount: number | null; clipsPerDay: number | null;
   createdAt: string;
   clips: Clip[]; clippers: Clipper[];
   links: Link[]; onboardingSteps: OnboardingStep[];
+  ongoingReports: OngoingReport[];
 }
 
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
 
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips" | "platform-stats">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "links" | "onboarding" | "clips" | "platform-stats" | "reports">("overview");
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
+    if (!client.ongoingReports?.length) return new Set();
+    const latest = client.ongoingReports[0].date.slice(0, 7);
+    return new Set([latest]);
+  });
   const [clips, setClips] = useState<Clip[]>(client.clips);
   const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
@@ -211,6 +225,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
   const tabs = [
     { id: "overview", label: "Overview" },
+    ...(client.campaignType === "cpm" ? [{ id: "reports", label: "Campaign Reports" }] : []),
     { id: "deal", label: "Deal Terms" },
     { id: "links", label: `Links (${client.links.length})` },
     { id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
@@ -743,6 +758,236 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               <PlatformBreakdownTable viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
             </div>
           )}
+
+          {/* ── CAMPAIGN REPORTS (CPM) ───────────────────────────────── */}
+          {activeTab === "reports" && client.campaignType === "cpm" && (() => {
+            const ONGOING_COLOR = "#7B9FF9";
+            const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+            const STATUS_META: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
+              Strong: { label: "Strong", bg: "rgba(61,255,162,0.1)", text: "#3DFFA2", icon: <CheckCircle2 size={11} /> },
+              Normal: { label: "Normal", bg: "rgba(123,159,249,0.1)", text: "#7B9FF9", icon: <Minus size={11} /> },
+              NeedsAttention: { label: "Needs Attention", bg: "rgba(255,136,0,0.12)", text: "#FF8800", icon: <AlertTriangle size={11} /> },
+            };
+
+            // Group by month
+            const monthMap = new Map<string, OngoingReport[]>();
+            for (const r of reports) {
+              const key = r.date.slice(0, 7);
+              if (!monthMap.has(key)) monthMap.set(key, []);
+              monthMap.get(key)!.push(r);
+            }
+            const months = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+
+            function toggleMonth(k: string) {
+              setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+            }
+
+            function fmtMonthLabel(key: string) {
+              const [y, m] = key.split("-").map(Number);
+              return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+            }
+
+            function dayName(dateStr: string) {
+              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
+            }
+
+            function fmtDay(dateStr: string) {
+              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            }
+
+            if (reports.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center rounded-2xl py-24" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <Activity size={36} style={{ color: ONGOING_COLOR, opacity: 0.3 }} className="mb-4" />
+                  <p className="text-base font-semibold mb-1" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>No reports yet</p>
+                  <p className="text-sm" style={{ color: "#8A93A6" }}>Your campaign reports will appear here.</p>
+                </div>
+              );
+            }
+
+            // Summary stats across all reports
+            const totalApproved = reports.reduce((s, r) => s + r.approved, 0);
+            const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
+            const overallRate = totalSubmissions > 0 ? Math.round((totalApproved / totalSubmissions) * 100) : 0;
+            const strongCount = reports.filter((r) => r.status === "Strong").length;
+            const attentionCount = reports.filter((r) => r.status === "NeedsAttention").length;
+
+            return (
+              <div className="space-y-6">
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total Reports", value: reports.length.toString(), sub: "all time", color: ONGOING_COLOR },
+                    { label: "Clips Approved", value: totalApproved.toLocaleString(), sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "#3DFFA2" },
+                    { label: "Approval Rate", value: `${overallRate}%`, sub: "overall", color: overallRate >= 60 ? "#3DFFA2" : overallRate >= 40 ? ONGOING_COLOR : "#FF8800" },
+                    { label: "Strong Sessions", value: strongCount.toString(), sub: attentionCount > 0 ? `${attentionCount} need attention` : "all clear", color: attentionCount > 0 ? "#FF8800" : "#3DFFA2" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl p-4" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 4px 20px rgba(0,0,0,0.4)" }}>
+                      <p className="text-xs mb-2" style={{ color: "#8A93A6" }}>{s.label}</p>
+                      <p className="text-2xl font-bold mb-0.5" style={{ color: s.color, fontFamily: "Space Grotesk, sans-serif" }}>{s.value}</p>
+                      <p className="text-xs" style={{ color: "#5C6370" }}>{s.sub}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Month groups */}
+                <div className="space-y-3">
+                  {months.map((monthKey) => {
+                    const monthReports = monthMap.get(monthKey)!;
+                    const isOpen = expandedMonths.has(monthKey);
+                    const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
+                    const mSubmitted = monthReports.reduce((s, r) => s + r.totalSubmissions, 0);
+                    const mRate = mSubmitted > 0 ? Math.round((mApproved / mSubmitted) * 100) : 0;
+                    const mStrong = monthReports.filter((r) => r.status === "Strong").length;
+                    const mAttention = monthReports.filter((r) => r.status === "NeedsAttention").length;
+
+                    return (
+                      <div key={monthKey} className="rounded-xl overflow-hidden" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.03), 0 4px 24px rgba(0,0,0,0.4)" }}>
+                        {/* Month header */}
+                        <button
+                          className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+                          onClick={() => toggleMonth(monthKey)}
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(123,159,249,0.1)", border: "1px solid rgba(123,159,249,0.15)" }}>
+                            <Activity size={15} style={{ color: ONGOING_COLOR }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>{fmtMonthLabel(monthKey)}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "#8A93A6" }}>
+                              {monthReports.length} report{monthReports.length !== 1 ? "s" : ""}
+                              {mStrong > 0 && <span className="ml-2" style={{ color: "#3DFFA2" }}>· {mStrong} strong</span>}
+                              {mAttention > 0 && <span className="ml-2" style={{ color: "#FF8800" }}>· {mAttention} need attention</span>}
+                            </p>
+                          </div>
+                          <div className="hidden md:flex items-center gap-6 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>Submitted</p>
+                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{mSubmitted.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
+                              <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{mApproved.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>Rate</p>
+                              <p className="text-sm font-semibold" style={{ color: mRate >= 60 ? "#3DFFA2" : mRate >= 40 ? ONGOING_COLOR : "#FF8800" }}>{mRate}%</p>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 ml-2 transition-transform duration-200" style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "#8A93A6" }}>
+                            <ChevronDown size={16} />
+                          </div>
+                        </button>
+
+                        {/* Report rows */}
+                        {isOpen && (
+                          <div className="px-3 pb-3 space-y-2">
+                            {monthReports.map((report) => {
+                              const isExpanded = expandedReportId === report.id;
+                              const rate = report.totalSubmissions > 0 ? Math.round((report.approved / report.totalSubmissions) * 100) : null;
+                              const meta = STATUS_META[report.status] ?? STATUS_META.Normal;
+
+                              return (
+                                <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: "#05070D", border: `1px solid ${isExpanded ? "rgba(123,159,249,0.2)" : "rgba(255,255,255,0.05)"}`, transition: "border-color 0.15s" }}>
+                                  {/* Row header */}
+                                  <button
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.015] transition-colors"
+                                    onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                  >
+                                    {/* Left accent */}
+                                    <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: `${ONGOING_COLOR}40` }} />
+
+                                    {/* Date + day */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmtDay(report.date)}</span>
+                                        <span className="text-xs font-medium px-1.5 py-0.5 rounded" style={{ background: "rgba(123,159,249,0.08)", color: ONGOING_COLOR }}>{dayName(report.date)}</span>
+                                        <span className="flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.text }}>
+                                          {meta.icon}<span>{meta.label}</span>
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                      <div className="text-right">
+                                        <p className="text-xs" style={{ color: "#8A93A6" }}>Submitted</p>
+                                        <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{report.totalSubmissions}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs" style={{ color: "#8A93A6" }}>Approved</p>
+                                        <p className="text-sm font-semibold" style={{ color: "#3DFFA2" }}>{report.approved}</p>
+                                      </div>
+                                      {rate !== null && (
+                                        <div className="text-right">
+                                          <p className="text-xs" style={{ color: "#8A93A6" }}>Rate</p>
+                                          <p className="text-sm font-semibold" style={{ color: rate >= 60 ? "#3DFFA2" : rate >= 40 ? ONGOING_COLOR : "#FF8800" }}>{rate}%</p>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex-shrink-0 ml-2 transition-transform duration-200" style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "#8A93A6" }}>
+                                      <ChevronRight size={14} />
+                                    </div>
+                                  </button>
+
+                                  {/* Expanded detail */}
+                                  {isExpanded && (
+                                    <div className="px-5 pb-5 pt-1 space-y-4">
+                                      {/* Numbers row (mobile fallback) */}
+                                      <div className="sm:hidden grid grid-cols-3 gap-2">
+                                        {[
+                                          { label: "Submitted", value: report.totalSubmissions, color: "#F5F6FA" },
+                                          { label: "Approved", value: report.approved, color: "#3DFFA2" },
+                                          { label: "Pending", value: report.pending, color: ONGOING_COLOR },
+                                        ].map((s) => (
+                                          <div key={s.label} className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                            <p className="text-xs mb-1" style={{ color: "#8A93A6" }}>{s.label}</p>
+                                            <p className="text-lg font-bold" style={{ color: s.color, fontFamily: "Space Grotesk, sans-serif" }}>{s.value}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Full numbers */}
+                                      <div className="hidden sm:grid grid-cols-4 gap-3">
+                                        {[
+                                          { label: "Submitted", value: report.totalSubmissions, color: "#F5F6FA" },
+                                          { label: "Pending", value: report.pending, color: ONGOING_COLOR },
+                                          { label: "Approved", value: report.approved, color: "#3DFFA2" },
+                                          { label: "Rejected", value: report.rejected, color: "#FF3B3B" },
+                                        ].map((s) => (
+                                          <div key={s.label} className="rounded-lg p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                            <p className="text-xs mb-1.5" style={{ color: "#8A93A6" }}>{s.label}</p>
+                                            <p className="text-2xl font-bold" style={{ color: s.color, fontFamily: "Space Grotesk, sans-serif" }}>{s.value}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Narrative insights */}
+                                      {[
+                                        { key: "mainTrend", label: "Main Trend", value: report.mainTrend, color: ONGOING_COLOR, accent: "rgba(123,159,249,0.06)" },
+                                        { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, color: "#FF8800", accent: "rgba(255,136,0,0.06)" },
+                                        { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "#8A93A6", accent: "rgba(255,255,255,0.03)" },
+                                      ].filter((s) => s.value).map((s) => (
+                                        <div key={s.key} className="rounded-xl p-4" style={{ background: s.accent, border: "1px solid rgba(255,255,255,0.06)" }}>
+                                          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: s.color }}>{s.label}</p>
+                                          <p className="text-sm leading-relaxed" style={{ color: "#C8CDD8" }}>{s.value}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </main>
     </div>

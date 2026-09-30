@@ -27,6 +27,7 @@ export default async function ClientPage() {
       },
       links: { orderBy: { createdAt: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
+      ongoingReports: { orderBy: { date: "desc" } },
     },
   });
 
@@ -36,6 +37,7 @@ export default async function ClientPage() {
     id: client.id,
     name: client.name,
     status: client.status,
+    campaignType: client.campaignType as "manual" | "cpm",
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,
@@ -63,6 +65,18 @@ export default async function ClientPage() {
       title: c.title ?? null,
       thumbnailUrl: c.thumbnailUrl ?? null,
     })),
+    ongoingReports: client.ongoingReports.map((r) => ({
+      id: r.id,
+      date: r.date.toISOString().slice(0, 10),
+      totalSubmissions: r.totalSubmissions,
+      pending: r.pending,
+      approved: r.approved,
+      rejected: r.rejected,
+      mainTrend: r.mainTrend ?? null,
+      clipperFeedback: r.clipperFeedback ?? null,
+      mainOptimization: r.mainOptimization ?? null,
+      status: r.status as string,
+    })),
     clippers: client.users.map((u) => ({
       id: u.id,
       name: u.name ?? u.email,
@@ -81,7 +95,7 @@ export default async function ClientPage() {
 
   return (
     <ClientDashboard
-      client={serialized}
+      client={serialized as Parameters<typeof ClientDashboard>[0]["client"]}
       userName={session.user.name ?? "Client"}
     />
   );
