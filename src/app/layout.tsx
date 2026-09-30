@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body style={{ background: "#05070D", color: "#F5F6FA" }}>
+      <body style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
         <SpaceBackground />
         <SessionProvider>
           {children}

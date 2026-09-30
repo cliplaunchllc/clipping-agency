@@ -74,9 +74,9 @@ export default async function CampaignReportingPage() {
   }));
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
       <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
-      <main className="flex-1 overflow-y-auto ml-60">
+      <main className="flex-1 overflow-y-auto ml-56">
         <CampaignReporting
           clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null }))}
           initialReports={serializedReports}

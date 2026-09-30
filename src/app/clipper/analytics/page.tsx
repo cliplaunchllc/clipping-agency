@@ -37,9 +37,9 @@ export default async function ClipperAnalyticsPage() {
   }));
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
       <Sidebar role="clipper" userName={session.user.name ?? "Clipper"} />
-      <main className="flex-1 overflow-y-auto ml-60">
+      <main className="flex-1 overflow-y-auto ml-56">
         <ClipperAnalytics submissions={serialized} />
       </main>
     </div>

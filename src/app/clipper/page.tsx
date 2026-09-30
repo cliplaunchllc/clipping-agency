@@ -27,19 +27,19 @@ export default async function ClipperPage() {
   // No client assigned yet — show waiting state
   if (!sessionClientId) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <div className="text-center max-w-md px-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
-            style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-6"
+            style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--success) 20%, transparent)" }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="#3DFFA2" strokeWidth="1.5"/>
-              <path d="M12 7v5l3 3" stroke="#3DFFA2" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#3DD68C" strokeWidth="1.5"/>
+              <path d="M12 7v5l3 3" stroke="#3DD68C" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-3" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+          <h1 className="text-2xl font-bold mb-3" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             Waiting for Assignment
           </h1>
-          <p className="text-sm leading-relaxed" style={{ color: "#8A93A6" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
             Your account is active. The agency will assign you to a client campaign shortly — check back soon.
           </p>
         </div>
@@ -60,11 +60,11 @@ export default async function ClipperPage() {
   const primaryClient = clients.find((c) => c.id === sessionClientId);
   if (primaryClient?.status === "archived" && clients.filter((c) => c.status === "active").length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#05070D" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <div className="text-center max-w-sm px-6">
           <div className="text-4xl mb-4">⚠️</div>
-          <h1 className="text-xl font-bold mb-2" style={{ color: "#F5F6FA" }}>Campaign Paused</h1>
-          <p className="text-sm" style={{ color: "#8A93A6" }}>
+          <h1 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Campaign Paused</h1>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
             {primaryClient.name}&apos;s campaign is currently inactive. Contact your agency for more info.
           </p>
         </div>

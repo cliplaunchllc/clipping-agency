@@ -45,9 +45,9 @@ export default async function AgencyClippersPage() {
   const serializedClients = clients.map((c) => ({ id: c.id, name: c.name, status: c.status }));
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#05070D" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
       <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
-      <main className="flex-1 overflow-y-auto ml-60">
+      <main className="flex-1 overflow-y-auto ml-56">
         <div className="max-w-5xl mx-auto px-8 py-8">
           <ClipperManagement initialClippers={serializedClippers} allClients={serializedClients} />
         </div>
