@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Plus, X, Archive, ArchiveRestore, Edit2, Eye, Camera, UserCheck, Link2, Check } from "lucide-react";
+import { Plus, X, Archive, ArchiveRestore, Edit2, Eye, Camera, UserCheck, Link2, Check, Trash2 } from "lucide-react";
 
 interface Client {
   id: string;
@@ -78,6 +78,9 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
   const [assignClientId, setAssignClientId] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   async function handleCopyLink(clientId: string) {
     const res = await fetch(`/api/agency/clients/${clientId}/share-token`, { method: "POST" });
@@ -190,6 +193,17 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     }
   }
 
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    const res = await fetch(`/api/agency/clients/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      setDeleteTarget(null);
+      setDeleteConfirmName("");
+    }
+    setDeleting(false);
+  }
+
   async function handleAssignUser(userId: string, clientId: string | null) {
     const res = await fetch("/api/agency/clients/assign-user", {
       method: "POST",
@@ -292,6 +306,56 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 {loading ? "Creating..." : addMode === "connect" ? "Create & Connect Account" : "Create Client"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
+          <div className="rounded-xl p-7 w-full max-w-sm" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,59,59,0.3)" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)" }}>
+              <Trash2 size={18} style={{ color: "var(--accent)" }} />
+            </div>
+            <h2 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+              Delete {deleteTarget.name}?
+            </h2>
+            <p className="text-sm mb-5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              This permanently deletes the client and all their data — clips, reports, links, and onboarding steps. This cannot be undone.
+            </p>
+            <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)" }}>
+              Type <span className="font-mono font-medium" style={{ color: "var(--text-primary)" }}>{deleteTarget.name}</span> to confirm
+            </p>
+            <input
+              autoFocus
+              type="text"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && deleteConfirmName === deleteTarget.name) handleDelete(deleteTarget.id); }}
+              placeholder={deleteTarget.name}
+              className="w-full text-sm px-3 py-2.5 rounded-lg outline-none mb-4"
+              style={{ background: "var(--bg-hover)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDelete(deleteTarget.id)}
+                disabled={deleteConfirmName !== deleteTarget.name || deleting}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-opacity"
+                style={{
+                  background: "rgba(255,59,59,0.18)",
+                  border: "1px solid rgba(255,59,59,0.35)",
+                  color: "var(--accent)",
+                  opacity: deleteConfirmName !== deleteTarget.name || deleting ? 0.4 : 1,
+                }}>
+                {deleting ? "Deleting…" : "Delete permanently"}
+              </button>
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmName(""); }}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium"
+                style={{ background: "var(--bg-hover)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -483,6 +547,16 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                           Restore
                         </button>
                       )}
+                      <button
+                        onClick={() => { setDeleteTarget(c); setDeleteConfirmName(""); }}
+                        className="p-1.5 rounded-lg transition-opacity"
+                        title="Delete client"
+                        style={{ background: "transparent", border: "1px solid transparent", color: "var(--text-tertiary)" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,59,59,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,59,59,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </td>
                 </tr>

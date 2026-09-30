@@ -2,6 +2,22 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+
+  // Delete children without cascade first, then delete the client
+  // (CampaignReport, OngoingReport, ClientLink, ClientOnboardingStep all have onDelete: Cascade)
+  // Clip and User.clientId do not.
+  await prisma.clip.deleteMany({ where: { clientId: id } });
+  await prisma.user.updateMany({ where: { clientId: id }, data: { clientId: null } });
+  await prisma.client.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
