@@ -115,7 +115,7 @@ const cardElevated: React.CSSProperties = {
 };
 
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "deal" | "onboarding" | "reports" | "contract">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "contract">("overview");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
     if (!client.ongoingReports?.length) return new Set();
@@ -183,15 +183,13 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     { label: "Clips",    value: filteredClips.length.toString(), icon: BarChart2, change: pct(filteredClips.length, prevClipCount) },
   ];
 
-  type TabId = "overview" | "reports" | "onboarding" | "contract" | "deal";
+  type TabId = "overview" | "onboarding" | "contract";
   const tabs: { id: TabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     ...(client.campaignType === "cpm" ? [
-      { id: "reports"    as TabId, label: "Reports" },
       { id: "onboarding" as TabId, label: steps.length > 0 ? `Onboarding · ${onboardingPct}%` : "Onboarding" },
       { id: "contract"   as TabId, label: "Contract" },
     ] : []),
-    { id: "deal", label: "Deal Terms" },
   ];
 
   const tooltipStyle = {
@@ -291,9 +289,9 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
           {activeTab === "overview" && (
             <>
               {client.campaignType === "cpm" ? (
-                <div className="space-y-4">
+                <>
                   {/* Campaign Tracker card */}
-                  <div style={card} className="p-5">
+                  <div style={card} className="p-5 mb-4">
                     <div className="flex items-start gap-3">
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -338,84 +336,234 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     </div>
                   </div>
 
-                  {/* Recent Activity feed */}
+                  {/* Campaign Reports — merged into overview */}
                   {(() => {
                     const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
-                    const recent = reports.slice(0, 5);
-                    if (recent.length === 0) return null;
 
-                    function fmtDay(dateStr: string) {
-                      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    function fmtMonthLabel(key: string) {
+                      const [y, m] = key.split("-").map(Number);
+                      return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
                     }
                     function dayName(dateStr: string) {
                       return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
                     }
+                    function fmtDay(dateStr: string) {
+                      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    }
+                    function toggleMonth(k: string) {
+                      setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+                    }
+
+                    if (reports.length === 0) {
+                      return (
+                        <div
+                          className="flex flex-col items-center justify-center rounded-xl py-16"
+                          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+                        >
+                          <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
+                          <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No reports yet</p>
+                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your campaign reports will appear here.</p>
+                        </div>
+                      );
+                    }
+
+                    const monthMap = new Map<string, OngoingReport[]>();
+                    for (const r of reports) {
+                      const key = r.date.slice(0, 7);
+                      if (!monthMap.has(key)) monthMap.set(key, []);
+                      monthMap.get(key)!.push(r);
+                    }
+                    const months = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+
+                    const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
+                    const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
 
                     return (
-                      <div style={{ ...card, overflow: "hidden", padding: 0 }}>
-                        <div
-                          className="flex items-center justify-between px-5 py-3.5"
-                          style={{ borderBottom: "1px solid var(--border-subtle)" }}
-                        >
-                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Recent Activity</p>
-                          <button
-                            onClick={() => setActiveTab("reports")}
-                            className="text-xs font-medium transition-colors"
-                            style={{ color: "var(--accent)" }}
-                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.7")}
-                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
-                          >
-                            View all →
-                          </button>
+                      <div className="space-y-4">
+                        {/* Summary cards */}
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { label: "Total Reports",  value: reports.length.toString(),        sub: "all time",      color: "var(--text-primary)" },
+                            { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
+                            { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)" },
+                          ].map((s) => (
+                            <div key={s.label} style={card} className="p-4">
+                              <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                                {s.label}
+                              </p>
+                              <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
+                                {s.value}
+                              </p>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
+                            </div>
+                          ))}
                         </div>
-                        <div>
-                          {recent.map((report, idx) => {
-                            const prevReport = reports[idx + 1] ?? null;
-                            const viewsTodayChange = prevReport && prevReport.viewsToday > 0
-                              ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                              : null;
-                            const changeColor = viewsTodayChange === null
-                              ? "var(--text-tertiary)"
-                              : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+
+                        {/* Views chart */}
+                        {reports.length > 1 && (() => {
+                          const cpmChartData = reports
+                            .slice()
+                            .sort((a, b) => a.date.localeCompare(b.date))
+                            .map((r) => ({ date: r.date.slice(0, 10), views: r.viewsToday }));
+                          return (
+                            <div style={card} className="p-5">
+                              <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                                Daily Views Over Time
+                              </p>
+                              <ResponsiveContainer width="100%" height={200}>
+                                <AreaChart data={cpmChartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                                  <defs>
+                                    <linearGradient id="cpmViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.6} />
+                                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                                  <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
+                                    tickFormatter={(v: string) => fmtDate(v)} />
+                                  <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
+                                    tickFormatter={(v: number) => fmt(v)} width={44} />
+                                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--text-primary)" }} />
+                                  <Area name="Views" type="linear" dataKey="views"
+                                    stroke="var(--accent)" strokeWidth={1.5}
+                                    fill="url(#cpmViewsGrad)" dot={false}
+                                    activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }}
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                              <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                                Manual (report data) · Live tracking automated via campaign link
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Month groups */}
+                        <div className="space-y-2">
+                          {months.map((monthKey) => {
+                            const monthReports = monthMap.get(monthKey)!;
+                            const isOpen = expandedMonths.has(monthKey);
+                            const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
 
                             return (
-                              <div
-                                key={report.id}
-                                className="flex items-center gap-4 px-5 py-3 table-row-hover"
-                                style={{ borderTop: idx > 0 ? "1px solid var(--border-subtle)" : "none" }}
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                                      {fmtDay(report.date)}
-                                    </span>
-                                    <span
-                                      className="text-xs px-1.5 py-0.5 rounded"
-                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}
-                                    >
-                                      {dayName(report.date)}
-                                    </span>
+                              <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
+                                <button
+                                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
+                                  style={{ background: "transparent" }}
+                                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                  onClick={() => toggleMonth(monthKey)}
+                                >
+                                  <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                    <Activity size={13} style={{ color: "var(--accent)" }} />
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-6 flex-shrink-0">
-                                  <div className="text-right">
-                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtMonthLabel(monthKey)}</p>
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{monthReports.length} report{monthReports.length !== 1 ? "s" : ""}</p>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
-                                    <div className="flex items-center justify-end gap-1.5">
-                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                                        {fmt(report.viewsToday)}
-                                      </p>
-                                      {viewsTodayChange !== null && (
-                                        <span className="text-xs font-medium" style={{ color: changeColor }}>
-                                          {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
-                                        </span>
-                                      )}
+                                  <div className="hidden md:flex items-center gap-6 flex-shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
                                     </div>
                                   </div>
-                                </div>
+                                  <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                    style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}>
+                                    <ChevronDown size={15} />
+                                  </div>
+                                </button>
+
+                                {isOpen && (
+                                  <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                    {monthReports.map((report) => {
+                                      const isExpanded = expandedReportId === report.id;
+                                      const globalIdx = reports.indexOf(report);
+                                      const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
+                                      const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                                        ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
+                                        : null;
+                                      const changeColor = viewsTodayChange === null
+                                        ? "var(--text-tertiary)"
+                                        : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+
+                                      return (
+                                        <div key={report.id} className="rounded-lg overflow-hidden"
+                                          style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
+                                          <button
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                            style={{ background: "transparent" }}
+                                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                            onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                          >
+                                            <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
+                                                <span className="text-xs px-1.5 py-0.5 rounded"
+                                                  style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
+                                              </div>
+                                            </div>
+                                            <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                              <div className="text-right">
+                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
+                                                <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                  <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                                  {viewsTodayChange !== null && (
+                                                    <span className="text-xs font-medium" style={{ color: changeColor }}>
+                                                      {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
+                                                <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                                              </div>
+                                            </div>
+                                            <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                              style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                              <ChevronRight size={13} />
+                                            </div>
+                                          </button>
+
+                                          {isExpanded && (
+                                            <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                {[
+                                                  { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
+                                                  { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
+                                                  { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
+                                                  { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
+                                                ].map((s) => (
+                                                  <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                    <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
+                                                    <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              {[
+                                                { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
+                                                { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
+                                                { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
+                                              ].filter((s) => s.value).map((s) => (
+                                                <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -423,7 +571,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       </div>
                     );
                   })()}
-                </div>
+                </>
               ) : (
                 /* Non-CPM Overview */
                 <>
@@ -565,32 +713,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 </>
               )}
             </>
-          )}
-
-          {/* ── DEAL TERMS ───────────────────────────────────────────── */}
-          {activeTab === "deal" && (
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Deal Length", value: client.dealLengthDays ? `${client.dealLengthDays} days` : "—" },
-                { label: "Pages", value: client.pageCount?.toString() ?? "—" },
-                { label: "Clips / Day", value: client.clipsPerDay?.toString() ?? "—" },
-                { label: "Total Clips", value: client.clips.length.toString() },
-                { label: "Active Clippers", value: client.clippers.length.toString() },
-                { label: "Started", value: new Date(client.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) },
-              ].map((item) => (
-                <div key={item.label} style={card} className="p-5">
-                  <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                    {item.label}
-                  </p>
-                  <p
-                    className="text-2xl font-semibold tabular-nums"
-                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-                  >
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
           )}
 
           {/* ── ONBOARDING ───────────────────────────────────────────── */}
@@ -750,303 +872,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
             </div>
           )}
 
-          {/* ── CAMPAIGN REPORTS (CPM) ────────────────────────────────── */}
-          {activeTab === "reports" && client.campaignType === "cpm" && (() => {
-            const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
-
-            const monthMap = new Map<string, OngoingReport[]>();
-            for (const r of reports) {
-              const key = r.date.slice(0, 7);
-              if (!monthMap.has(key)) monthMap.set(key, []);
-              monthMap.get(key)!.push(r);
-            }
-            const months = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
-
-            function toggleMonth(k: string) {
-              setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
-            }
-            function fmtMonthLabel(key: string) {
-              const [y, m] = key.split("-").map(Number);
-              return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-            }
-            function dayName(dateStr: string) {
-              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
-            }
-            function fmtDay(dateStr: string) {
-              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-            }
-
-            if (reports.length === 0) {
-              return (
-                <div
-                  className="flex flex-col items-center justify-center rounded-xl py-20"
-                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
-                >
-                  <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
-                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No reports yet</p>
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your campaign reports will appear here.</p>
-                </div>
-              );
-            }
-
-            const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
-            const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
-
-            return (
-              <div className="space-y-4">
-                {/* Summary cards */}
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Total Reports",   value: reports.length.toString(),              sub: "all time",                            color: "var(--text-primary)" },
-                    { label: "Clips Approved",  value: totalApproved.toLocaleString(),         sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
-                    { label: "Total Views",     value: fmt(reports[0]?.viewsTotal ?? 0),       sub: "running total",                       color: "var(--accent)" },
-                  ].map((s) => (
-                    <div key={s.label} style={card} className="p-4">
-                      <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                        {s.label}
-                      </p>
-                      <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
-                        {s.value}
-                      </p>
-                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Views chart — manual report data */}
-                {reports.length > 1 && (() => {
-                  const chartData = reports
-                    .slice()
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((r) => ({ date: r.date.slice(0, 10), views: r.viewsToday }));
-                  return (
-                    <div style={card} className="p-5 mb-4">
-                      <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                        Daily Views Over Time
-                      </p>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                          <defs>
-                            <linearGradient id="cpmViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.6} />
-                              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                          <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                            tickFormatter={(v: string) => fmtDate(v)} />
-                          <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                            tickFormatter={(v: number) => fmt(v)} width={44} />
-                          <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "var(--text-tertiary)" }} itemStyle={{ color: "var(--text-primary)" }} />
-                          <Area name="Views" type="linear" dataKey="views"
-                            stroke="var(--accent)" strokeWidth={1.5}
-                            fill="url(#cpmViewsGrad)"
-                            dot={false}
-                            activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
-                        Manual (report data) · Live tracking automated via campaign link
-                      </p>
-                    </div>
-                  );
-                })()}
-                {/* Month groups */}
-                <div className="space-y-2">
-                  {months.map((monthKey) => {
-                    const monthReports = monthMap.get(monthKey)!;
-                    const isOpen = expandedMonths.has(monthKey);
-                    const mApproved  = monthReports.reduce((s, r) => s + r.approved, 0);
-
-                    return (
-                      <div
-                        key={monthKey}
-                        style={{ ...card, overflow: "hidden", padding: 0 }}
-                      >
-                        {/* Month header */}
-                        <button
-                          className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
-                          style={{ background: "transparent" }}
-                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                          onClick={() => toggleMonth(monthKey)}
-                        >
-                          <div
-                            className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                            style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
-                          >
-                            <Activity size={13} style={{ color: "var(--accent)" }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                              {fmtMonthLabel(monthKey)}
-                            </p>
-                            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                              {monthReports.length} report{monthReports.length !== 1 ? "s" : ""}
-                            </p>
-                          </div>
-                          <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                              <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div
-                            className="flex-shrink-0 ml-2 transition-transform duration-200"
-                            style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}
-                          >
-                            <ChevronDown size={15} />
-                          </div>
-                        </button>
-
-                        {/* Report rows */}
-                        {isOpen && (
-                          <div
-                            className="px-3 pb-3 space-y-1.5 pt-1"
-                            style={{ borderTop: "1px solid var(--border-subtle)" }}
-                          >
-                            {monthReports.map((report) => {
-                              const isExpanded = expandedReportId === report.id;
-                              const globalIdx = reports.indexOf(report);
-                              const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
-                              const viewsTodayChange = prevReport && prevReport.viewsToday > 0
-                                ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                : null;
-                              const changeColor = viewsTodayChange === null
-                                ? "var(--text-tertiary)"
-                                : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
-
-                              return (
-                                <div
-                                  key={report.id}
-                                  className="rounded-lg overflow-hidden"
-                                  style={{
-                                    background: "var(--bg-base)",
-                                    border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`,
-                                    transition: "border-color 120ms ease",
-                                  }}
-                                >
-                                  {/* Row header */}
-                                  <button
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                    style={{ background: "transparent" }}
-                                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                    onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
-                                  >
-                                    {/* Left accent bar */}
-                                    <div
-                                      className="w-0.5 self-stretch flex-shrink-0 rounded-full"
-                                      style={{ background: "var(--accent-border)" }}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                                          {fmtDay(report.date)}
-                                        </span>
-                                        <span
-                                          className="text-xs px-1.5 py-0.5 rounded"
-                                          style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}
-                                        >
-                                          {dayName(report.date)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                      <div className="text-right">
-                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
-                                        <div className="flex items-center justify-end gap-1.5">
-                                          <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                                            {fmt(report.viewsToday)}
-                                          </p>
-                                          {viewsTodayChange !== null && (
-                                            <span className="text-xs font-medium" style={{ color: changeColor }}>
-                                              {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
-                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                                          {fmt(report.viewsTotal)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div
-                                      className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                      style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}
-                                    >
-                                      <ChevronRight size={13} />
-                                    </div>
-                                  </button>
-
-                                  {/* Expanded detail */}
-                                  {isExpanded && (
-                                    <div
-                                      className="px-5 pb-5 pt-3 space-y-3"
-                                      style={{ borderTop: "1px solid var(--border-subtle)" }}
-                                    >
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                        {[
-                                          { label: "Approved",      value: report.approved.toString(),    color: "var(--success)" },
-                                          { label: "Views Today",   value: fmt(report.viewsToday),        color: "var(--accent)" },
-                                          { label: "Views Total",   value: fmt(report.viewsTotal),        color: "var(--text-primary)" },
-                                          { label: "Views Change",  value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
-                                        ].map((s) => (
-                                          <div
-                                            key={s.label}
-                                            className="rounded-lg p-3"
-                                            style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}
-                                          >
-                                            <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                            <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
-                                              {s.value}
-                                            </p>
-                                          </div>
-                                        ))}
-                                      </div>
-
-                                      {[
-                                        { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
-                                        { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
-                                        { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
-                                      ].filter((s) => s.value).map((s) => (
-                                        <div
-                                          key={s.key}
-                                          className="rounded-lg p-4"
-                                          style={{ background: s.bg, border: `1px solid ${s.border}` }}
-                                        >
-                                          <p
-                                            className="text-xs font-semibold uppercase tracking-widest mb-2"
-                                            style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}
-                                          >
-                                            {s.label}
-                                          </p>
-                                          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
-                                            {s.value}
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
         </div>
       </main>
     </div>
