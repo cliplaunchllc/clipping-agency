@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   const {
     clientId, date, campaignName,
     totalSubmissions, pending, approved, rejected,
+    viewsTotal, viewsToday,
     mainTrend, clipperFeedback, mainOptimization, status,
   } = body;
 
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
       pending: pending ?? 0,
       approved: approved ?? 0,
       rejected: rejected ?? 0,
+      viewsTotal: viewsTotal ?? 0,
+      viewsToday: viewsToday ?? 0,
       mainTrend: mainTrend || null,
       clipperFeedback: clipperFeedback || null,
       mainOptimization: mainOptimization || null,

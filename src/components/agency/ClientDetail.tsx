@@ -14,6 +14,7 @@ interface ClientData {
   status: string;
   campaignType: "manual" | "cpm";
   contractUrl: string | null;
+  campaignTrackerUrl: string | null;
   dealLengthDays: number | null;
   dealStartDate: string | null;
   dealEndDate: string | null;
@@ -59,6 +60,9 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [contractUrl, setContractUrl] = useState(initial.contractUrl ?? "");
   const [savingContract, setSavingContract] = useState(false);
   const [contractSaved, setContractSaved] = useState(false);
+  const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
+  const [savingTracker, setSavingTracker] = useState(false);
+  const [trackerSaved, setTrackerSaved] = useState(false);
 
   // Links state
   const [links, setLinks] = useState<Link[]>(initial.links);
@@ -82,6 +86,17 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     });
     if (res.ok) setCampaignType(type);
     setSavingType(false);
+  }
+
+  async function saveTrackerUrl() {
+    setSavingTracker(true);
+    const res = await fetch(`/api/agency/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignTrackerUrl: trackerUrl }),
+    });
+    if (res.ok) { setTrackerSaved(true); setTimeout(() => setTrackerSaved(false), 2500); }
+    setSavingTracker(false);
   }
 
   async function saveContractUrl() {
@@ -229,6 +244,29 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       {/* DEAL TERMS */}
       {activeTab === "deal" && (
         <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+
+          {/* Campaign Tracker URL — always visible */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#F5F6FA" }}>Campaign Tracker URL</p>
+            <p className="text-xs mb-3" style={{ color: "#8A93A6" }}>The live tracking link shared with the client on their dashboard overview.</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={trackerUrl}
+                onChange={(e) => setTrackerUrl(e.target.value)}
+                placeholder="https://..."
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                onClick={saveTrackerUrl}
+                disabled={savingTracker}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                style={{ background: trackerSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${trackerSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: trackerSaved ? "#3DFFA2" : "#FF3B3B" }}
+              >
+                {trackerSaved ? <><Check size={12} /> Saved</> : savingTracker ? "Saving…" : <><Save size={12} /> Save</>}
+              </button>
+            </div>
+          </div>
 
           {/* Campaign type — always visible */}
           <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>

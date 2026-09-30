@@ -105,9 +105,10 @@ model Client {
   clipsPerDay    Int?
   archivedAt     DateTime?
   shareToken     String?      @unique
-  campaignType   CampaignType @default(manual)
-  contractUrl    String?
-  createdAt      DateTime     @default(now())
+  campaignType        CampaignType @default(manual)
+  campaignTrackerUrl  String?
+  contractUrl         String?
+  createdAt           DateTime     @default(now())
 
   users            User[]
   clips            Clip[]
@@ -209,6 +210,8 @@ model OngoingReport {
   clipperFeedback  String?
   mainOptimization String?
   status           OngoingStatus @default(Normal)
+  viewsTotal       Int           @default(0)
+  viewsToday       Int           @default(0)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

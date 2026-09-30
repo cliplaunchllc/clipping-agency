@@ -35,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.clipsPerDay !== undefined) data.clipsPerDay = body.clipsPerDay === "" ? null : Number(body.clipsPerDay);
   if (body.campaignType !== undefined) data.campaignType = body.campaignType;
   if (body.contractUrl !== undefined) data.contractUrl = body.contractUrl || null;
+  if (body.campaignTrackerUrl !== undefined) data.campaignTrackerUrl = body.campaignTrackerUrl || null;
 
   const client = await prisma.client.update({ where: { id }, data });
   return NextResponse.json(client);

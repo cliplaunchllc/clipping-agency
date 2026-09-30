@@ -37,6 +37,7 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
     status: client.status,
     campaignType: client.campaignType as "manual" | "cpm",
     contractUrl: client.contractUrl ?? null,
+    campaignTrackerUrl: client.campaignTrackerUrl ?? null,
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,
@@ -75,6 +76,8 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
       clipperFeedback: r.clipperFeedback ?? null,
       mainOptimization: r.mainOptimization ?? null,
       status: r.status as string,
+      viewsTotal: r.viewsTotal,
+      viewsToday: r.viewsToday,
     })),
     clippers: client.users.map((u) => ({
       id: u.id,

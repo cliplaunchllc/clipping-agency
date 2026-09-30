@@ -24,6 +24,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const {
     date, campaignName,
     totalSubmissions, pending, approved, rejected,
+    viewsTotal, viewsToday,
     mainTrend, clipperFeedback, mainOptimization, status,
   } = body;
 
@@ -36,6 +37,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(pending !== undefined && { pending }),
       ...(approved !== undefined && { approved }),
       ...(rejected !== undefined && { rejected }),
+      ...(viewsTotal !== undefined && { viewsTotal }),
+      ...(viewsToday !== undefined && { viewsToday }),
       ...(mainTrend !== undefined && { mainTrend: mainTrend || null }),
       ...(clipperFeedback !== undefined && { clipperFeedback: clipperFeedback || null }),
       ...(mainOptimization !== undefined && { mainOptimization: mainOptimization || null }),

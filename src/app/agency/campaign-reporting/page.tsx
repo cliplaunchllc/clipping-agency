@@ -67,6 +67,8 @@ export default async function CampaignReportingPage() {
     clipperFeedback: r.clipperFeedback,
     mainOptimization: r.mainOptimization,
     status: r.status as "Strong" | "Normal" | "NeedsAttention",
+    viewsTotal: r.viewsTotal,
+    viewsToday: r.viewsToday,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   }));

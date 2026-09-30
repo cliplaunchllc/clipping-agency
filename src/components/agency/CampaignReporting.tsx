@@ -85,6 +85,8 @@ interface OngoingReport {
   clipperFeedback: string | null;
   mainOptimization: string | null;
   status: "Strong" | "Normal" | "NeedsAttention";
+  viewsTotal: number;
+  viewsToday: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +120,8 @@ interface OngoingFormState {
   pending: string;
   approved: string;
   rejected: string;
+  viewsTotal: string;
+  viewsToday: string;
   mainTrend: string;
   clipperFeedback: string;
   mainOptimization: string;
@@ -873,6 +877,7 @@ function WeeklyReportForm({
 const EMPTY_ONGOING: OngoingFormState = {
   clientId: "", date: "", campaignName: "",
   totalSubmissions: "", pending: "", approved: "", rejected: "",
+  viewsTotal: "", viewsToday: "",
   mainTrend: "", clipperFeedback: "", mainOptimization: "", status: "",
 };
 
@@ -973,6 +978,18 @@ function OngoingReportForm({
           <p className="text-xs" style={{ color: "#3DFFA2" }}>Approval rate: <strong>{approvalRate.toFixed(1)}%</strong></p>
         </div>
       )}
+
+      {/* Views numbers */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label style={labelStyle}>Views Total (cumulative)</label>
+          <input type="number" min={0} value={form.viewsTotal} onChange={(e) => set("viewsTotal", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Views Today (from approved clips)</label>
+          <input type="number" min={0} value={form.viewsToday} onChange={(e) => set("viewsToday", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+        </div>
+      </div>
 
       {/* Text sections */}
       <div>
@@ -1206,6 +1223,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       pending: r.pending.toString(),
       approved: r.approved.toString(),
       rejected: r.rejected.toString(),
+      viewsTotal: r.viewsTotal.toString(),
+      viewsToday: r.viewsToday.toString(),
       mainTrend: r.mainTrend ?? "",
       clipperFeedback: r.clipperFeedback ?? "",
       mainOptimization: r.mainOptimization ?? "",
@@ -1231,6 +1250,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       pending: parseInt(form.pending || "0", 10),
       approved: parseInt(form.approved || "0", 10),
       rejected: parseInt(form.rejected || "0", 10),
+      viewsTotal: parseInt(form.viewsTotal || "0", 10),
+      viewsToday: parseInt(form.viewsToday || "0", 10),
       mainTrend: form.mainTrend || null,
       clipperFeedback: form.clipperFeedback || null,
       mainOptimization: form.mainOptimization || null,
@@ -1869,6 +1890,17 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                 <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
                                 {prevApprovalRate != null && <WowBadge curr={approvalRate ?? 0} prev={prevApprovalRate} />}
                               </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>Views Today</p>
+                              <div className="flex items-center justify-end gap-1">
+                                <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsToday)}</p>
+                                {prev && <WowBadge curr={report.viewsToday} prev={prev.viewsToday} />}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs" style={{ color: "#8A93A6" }}>Views Total</p>
+                              <p className="text-sm font-semibold" style={{ color: "#F5F6FA" }}>{fmt(report.viewsTotal)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
