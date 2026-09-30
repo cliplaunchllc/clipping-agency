@@ -7,7 +7,7 @@ import {
   UserPlus, DollarSign, Target, Wallet, CheckCircle, Scissors,
   Folder, FolderOpen, AlertTriangle, ArrowLeft, Activity, Calendar,
 } from "lucide-react";
-import { PieChart, Pie, Cell } from "recharts";
+import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "@/components/shared/PlatformIcon";
 
 // ─── Color Constants ──────────────────────────────────────────────────────────
@@ -80,7 +80,6 @@ interface OngoingReport {
   totalSubmissions: number;
   pending: number;
   approved: number;
-  rejected: number;
   mainTrend: string | null;
   clipperFeedback: string | null;
   mainOptimization: string | null;
@@ -119,7 +118,6 @@ interface OngoingFormState {
   totalSubmissions: string;
   pending: string;
   approved: string;
-  rejected: string;
   viewsTotal: string;
   viewsToday: string;
   mainTrend: string;
@@ -609,9 +607,6 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
 // ─── Ongoing Report Detail ────────────────────────────────────────────────────
 
 function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: OngoingReport | null }) {
-  const approvalRate = report.totalSubmissions > 0 ? (report.approved / report.totalSubmissions) * 100 : null;
-  const prevApprovalRate = prev && prev.totalSubmissions > 0 ? (prev.approved / prev.totalSubmissions) * 100 : null;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -628,7 +623,6 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
           { label: "Total Submissions", value: report.totalSubmissions, prev: prev?.totalSubmissions ?? null, color: "var(--text-primary)" },
           { label: "Approved", value: report.approved, prev: prev?.approved ?? null, color: "var(--success)" },
           { label: "Pending", value: report.pending, prev: prev?.pending ?? null, color: "var(--text-secondary)" },
-          { label: "Rejected", value: report.rejected, prev: prev?.rejected ?? null, color: "var(--accent)" },
         ].map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
             <p className="text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
@@ -637,15 +631,6 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
           </div>
         ))}
       </div>
-      {approvalRate !== null && (
-        <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-          <p className="text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Approval Rate</p>
-          <div className="flex items-center gap-2">
-            <p className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{approvalRate.toFixed(1)}%</p>
-            {prevApprovalRate !== null && <WowBadge curr={approvalRate} prev={prevApprovalRate} />}
-          </div>
-        </div>
-      )}
       {[
         { key: "mainTrend", label: "Main Trend in Approved Clips", value: report.mainTrend, color: ONGOING_COLOR },
         { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "var(--text-secondary)" },
@@ -740,7 +725,6 @@ function WeeklyReportForm({
                   <div className="grid grid-cols-3 gap-2 mb-2">
                     <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Submitted: <strong style={{ color: "var(--text-primary)" }}>{r.totalSubmissions}</strong></span>
                     <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Approved: <strong style={{ color: "var(--success)" }}>{r.approved}</strong></span>
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Rejected: <strong style={{ color: "var(--accent)" }}>{r.rejected}</strong></span>
                   </div>
                   {r.mainTrend && <p className="text-xs" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
                   {r.mainOptimization && <p className="text-xs mt-1" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)" }}>Optimization: </span>{r.mainOptimization}</p>}
@@ -876,7 +860,7 @@ function WeeklyReportForm({
 
 const EMPTY_ONGOING: OngoingFormState = {
   clientId: "", date: "", campaignName: "",
-  totalSubmissions: "", pending: "", approved: "", rejected: "",
+  totalSubmissions: "", pending: "", approved: "",
   viewsTotal: "", viewsToday: "",
   mainTrend: "", clipperFeedback: "", mainOptimization: "", status: "",
 };
@@ -899,10 +883,8 @@ function OngoingReportForm({
   const total = parseInt(form.totalSubmissions || "0", 10);
   const pend = parseInt(form.pending || "0", 10);
   const appr = parseInt(form.approved || "0", 10);
-  const rej = parseInt(form.rejected || "0", 10);
-  const showSumWarn = total > 0 && pend + appr + rej !== total;
+  const showSumWarn = total > 0 && pend + appr !== total;
   const showDayWarn = form.date.length > 0 && !isMonOrWed(form.date);
-  const approvalRate = total > 0 ? (appr / total) * 100 : null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -948,7 +930,7 @@ function OngoingReportForm({
         <label style={labelStyle}>Total Submissions</label>
         <input type="number" min={0} value={form.totalSubmissions} onChange={(e) => set("totalSubmissions", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label style={labelStyle}>Pending</label>
           <input type="number" min={0} value={form.pending} onChange={(e) => set("pending", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
@@ -957,25 +939,14 @@ function OngoingReportForm({
           <label style={labelStyle}>Approved</label>
           <input type="number" min={0} value={form.approved} onChange={(e) => set("approved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
-        <div>
-          <label style={labelStyle}>Rejected</label>
-          <input type="number" min={0} value={form.rejected} onChange={(e) => set("rejected", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
       </div>
 
       {showSumWarn && (
         <div className="flex items-start gap-2 rounded-lg p-3" style={{ background: "rgba(255,136,0,0.08)", border: "1px solid rgba(255,136,0,0.2)" }}>
           <AlertTriangle size={13} color="var(--warning)" className="flex-shrink-0 mt-0.5" />
           <p className="text-xs" style={{ color: "var(--warning)" }}>
-            Pending ({pend}) + Approved ({appr}) + Rejected ({rej}) = {pend + appr + rej}, but Total is {total}. Double-check the numbers.
+            Pending ({pend}) + Approved ({appr}) = {pend + appr}, but Total is {total}. Double-check the numbers.
           </p>
-        </div>
-      )}
-
-      {approvalRate !== null && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.12)" }}>
-          <CheckCircle size={12} color="var(--success)" />
-          <p className="text-xs" style={{ color: "var(--success)" }}>Approval rate: <strong>{approvalRate.toFixed(1)}%</strong></p>
         </div>
       )}
 
@@ -1222,7 +1193,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       totalSubmissions: r.totalSubmissions.toString(),
       pending: r.pending.toString(),
       approved: r.approved.toString(),
-      rejected: r.rejected.toString(),
       viewsTotal: r.viewsTotal.toString(),
       viewsToday: r.viewsToday.toString(),
       mainTrend: r.mainTrend ?? "",
@@ -1249,7 +1219,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       totalSubmissions: parseInt(form.totalSubmissions || "0", 10),
       pending: parseInt(form.pending || "0", 10),
       approved: parseInt(form.approved || "0", 10),
-      rejected: parseInt(form.rejected || "0", 10),
       viewsTotal: parseInt(form.viewsTotal || "0", 10),
       viewsToday: parseInt(form.viewsToday || "0", 10),
       mainTrend: form.mainTrend || null,
@@ -1714,6 +1683,41 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 </button>
               </div>
 
+              {/* Views chart — manual report data */}
+              {clientReports(selectedClientId).length > 1 && (() => {
+                const chartData = clientReports(selectedClientId)
+                  .slice()
+                  .sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate))
+                  .map((r) => ({
+                    date: r.weekEndDate.slice(0, 10),
+                    views: r.totalViews,
+                  }));
+                return (
+                  <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}>
+                    <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <defs>
+                          <linearGradient id="weeklyViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3DD68C" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#3DD68C" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                          tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
+                        <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                          tickFormatter={(v: number) => fmt(v)} width={46} />
+                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#3DD68C" }} />
+                        <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                    <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                      Manual (weekly reports) · Live tracking available via campaign link
+                    </p>
+                  </div>
+                );
+              })()}
               {clientReports(selectedClientId).length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <BarChart2 size={30} style={{ color: WEEKLY_COLOR, opacity: 0.35 }} className="mb-3" />
@@ -1844,6 +1848,41 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 </div>
               </div>
 
+              {/* Views chart — manual report data */}
+              {clientOngoing(selectedClientId).length > 1 && (() => {
+                const chartData = clientOngoing(selectedClientId)
+                  .slice()
+                  .sort((a, b) => a.date.localeCompare(b.date))
+                  .map((r) => ({
+                    date: r.date.slice(0, 10),
+                    views: r.viewsToday,
+                  }));
+                return (
+                  <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}>
+                    <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Daily Views Over Time</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <defs>
+                          <linearGradient id="ongoingViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#DC2626" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#DC2626" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                          tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
+                        <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                          tickFormatter={(v: number) => fmt(v)} width={46} />
+                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#DC2626" }} />
+                        <Area type="monotone" dataKey="views" stroke="#DC2626" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#DC2626", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#DC2626", strokeWidth: 0 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                    <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                      Manual (ongoing reports) · Live tracking available via campaign link
+                    </p>
+                  </div>
+                );
+              })()}
               {clientOngoing(selectedClientId).length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <Activity size={30} style={{ color: ONGOING_COLOR, opacity: 0.35 }} className="mb-3" />

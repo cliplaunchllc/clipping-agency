@@ -791,16 +791,15 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
             const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
             const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
-            const overallRate      = totalSubmissions > 0 ? Math.round((totalApproved / totalSubmissions) * 100) : 0;
 
             return (
               <div className="space-y-4">
                 {/* Summary cards */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Total Reports",   value: reports.length.toString(),             sub: "all time",                            color: "var(--text-primary)" },
-                    { label: "Clips Approved",  value: totalApproved.toLocaleString(),        sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
-                    { label: "Approval Rate",   value: `${overallRate}%`,                     sub: "overall",                             color: overallRate >= 60 ? "var(--success)" : overallRate >= 40 ? "var(--accent)" : "var(--warning)" },
+                    { label: "Total Reports",   value: reports.length.toString(),              sub: "all time",                            color: "var(--text-primary)" },
+                    { label: "Clips Approved",  value: totalApproved.toLocaleString(),         sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
+                    { label: "Total Views",     value: fmt(reports[0]?.viewsTotal ?? 0),       sub: "running total",                       color: "var(--accent)" },
                   ].map((s) => (
                     <div key={s.label} style={card} className="p-4">
                       <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
@@ -814,14 +813,51 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   ))}
                 </div>
 
+                {/* Views chart — manual report data */}
+                {reports.length > 1 && (() => {
+                  const chartData = reports
+                    .slice()
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((r) => ({ date: r.date.slice(0, 10), views: r.viewsToday }));
+                  return (
+                    <div style={card} className="p-5 mb-4">
+                      <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                        Daily Views Over Time
+                      </p>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                          <defs>
+                            <linearGradient id="cpmViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.6} />
+                              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                          <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
+                            tickFormatter={(v: string) => fmtDate(v)} />
+                          <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
+                            tickFormatter={(v: number) => fmt(v)} width={44} />
+                          <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "var(--text-tertiary)" }} itemStyle={{ color: "var(--text-primary)" }} />
+                          <Area name="Views" type="linear" dataKey="views"
+                            stroke="var(--accent)" strokeWidth={1.5}
+                            fill="url(#cpmViewsGrad)"
+                            dot={false}
+                            activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                      <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                        Manual (report data) · Live tracking automated via campaign link
+                      </p>
+                    </div>
+                  );
+                })()}
                 {/* Month groups */}
                 <div className="space-y-2">
                   {months.map((monthKey) => {
                     const monthReports = monthMap.get(monthKey)!;
                     const isOpen = expandedMonths.has(monthKey);
                     const mApproved  = monthReports.reduce((s, r) => s + r.approved, 0);
-                    const mSubmitted = monthReports.reduce((s, r) => s + r.totalSubmissions, 0);
-                    const mRate = mSubmitted > 0 ? Math.round((mApproved / mSubmitted) * 100) : 0;
 
                     return (
                       <div
@@ -855,15 +891,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
                               <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Rate</p>
-                              <p
-                                className="text-sm font-semibold tabular-nums"
-                                style={{ color: mRate >= 60 ? "var(--success)" : mRate >= 40 ? "var(--accent)" : "var(--warning)" }}
-                              >
-                                {mRate}%
-                              </p>
-                            </div>
                           </div>
                           <div
                             className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -881,9 +908,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           >
                             {monthReports.map((report) => {
                               const isExpanded = expandedReportId === report.id;
-                              const rate = report.totalSubmissions > 0
-                                ? Math.round((report.approved / report.totalSubmissions) * 100)
-                                : null;
                               const globalIdx = reports.indexOf(report);
                               const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
                               const viewsTodayChange = prevReport && prevReport.viewsToday > 0
@@ -934,17 +958,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
                                         <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
                                       </div>
-                                      {rate !== null && (
-                                        <div className="text-right">
-                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Rate</p>
-                                          <p
-                                            className="text-sm font-semibold tabular-nums"
-                                            style={{ color: rate >= 60 ? "var(--success)" : rate >= 40 ? "var(--accent)" : "var(--warning)" }}
-                                          >
-                                            {rate}%
-                                          </p>
-                                        </div>
-                                      )}
                                       <div className="text-right">
                                         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
                                         <div className="flex items-center justify-end gap-1.5">
@@ -981,10 +994,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                     >
                                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {[
-                                          { label: "Approved",      value: report.approved.toString(),                                   color: "var(--success)" },
-                                          { label: "Views Today",   value: fmt(report.viewsToday),                                       color: "var(--accent)" },
-                                          { label: "Views Total",   value: fmt(report.viewsTotal),                                       color: "var(--text-primary)" },
-                                          { label: "Approval Rate", value: rate !== null ? `${rate}%` : "—",                            color: rate !== null && rate >= 60 ? "var(--success)" : "var(--text-primary)" },
+                                          { label: "Approved",      value: report.approved.toString(),    color: "var(--success)" },
+                                          { label: "Views Today",   value: fmt(report.viewsToday),        color: "var(--accent)" },
+                                          { label: "Views Total",   value: fmt(report.viewsTotal),        color: "var(--text-primary)" },
+                                          { label: "Views Change",  value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
                                         ].map((s) => (
                                           <div
                                             key={s.label}
