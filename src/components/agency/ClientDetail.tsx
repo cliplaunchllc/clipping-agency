@@ -229,6 +229,57 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       {/* DEAL TERMS */}
       {activeTab === "deal" && (
         <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+
+          {/* Campaign type — always visible */}
+          <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>Campaign Type</p>
+              <p className="text-xs" style={{ color: "#8A93A6" }}>CPM clients see the Ongoing Reports tab on their dashboard.</p>
+            </div>
+            <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)" }}>
+              {(["manual", "cpm"] as const).map((t) => (
+                <button
+                  key={t}
+                  disabled={savingType}
+                  onClick={() => toggleCampaignType(t)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: campaignType === t ? (t === "cpm" ? "rgba(123,159,249,0.15)" : "rgba(255,255,255,0.06)") : "transparent",
+                    color: campaignType === t ? (t === "cpm" ? "#7B9FF9" : "#F5F6FA") : "#8A93A6",
+                    border: campaignType === t ? `1px solid ${t === "cpm" ? "rgba(123,159,249,0.3)" : "rgba(255,255,255,0.12)"}` : "1px solid transparent",
+                  }}
+                >
+                  {t === "cpm" ? "CPM Based" : "Manual"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Contract URL (CPM only) — always visible when CPM */}
+          {campaignType === "cpm" && (
+            <div className="rounded-xl p-4 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <p className="text-xs font-semibold mb-1" style={{ color: "#F5F6FA" }}>Signed Agreement</p>
+              <p className="text-xs mb-3" style={{ color: "#8A93A6" }}>Link to the signed contract — visible to the client on their dashboard.</p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={contractUrl}
+                  onChange={(e) => setContractUrl(e.target.value)}
+                  placeholder="https://..."
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={saveContractUrl}
+                  disabled={savingContract}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                  style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: contractSaved ? "#3DFFA2" : "#FF3B3B" }}
+                >
+                  {contractSaved ? <><Check size={12} /> Saved</> : savingContract ? "Saving…" : <><Save size={12} /> Save</>}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>Deal Terms</h2>
             {dealEdit ? (
@@ -294,56 +345,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             </>
           ) : (
             <>
-              {/* Campaign type */}
-              <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <div>
-                  <p className="text-xs font-semibold mb-0.5" style={{ color: "#F5F6FA" }}>Campaign Type</p>
-                  <p className="text-xs" style={{ color: "#8A93A6" }}>CPM clients see the Ongoing Reports tab on their dashboard.</p>
-                </div>
-                <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "#05070D", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  {(["manual", "cpm"] as const).map((t) => (
-                    <button
-                      key={t}
-                      disabled={savingType}
-                      onClick={() => toggleCampaignType(t)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                      style={{
-                        background: campaignType === t ? (t === "cpm" ? "rgba(123,159,249,0.15)" : "rgba(255,255,255,0.06)") : "transparent",
-                        color: campaignType === t ? (t === "cpm" ? "#7B9FF9" : "#F5F6FA") : "#8A93A6",
-                        border: campaignType === t ? `1px solid ${t === "cpm" ? "rgba(123,159,249,0.3)" : "rgba(255,255,255,0.12)"}` : "1px solid transparent",
-                      }}
-                    >
-                      {t === "cpm" ? "CPM Based" : "Manual"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Contract URL (CPM only) */}
-              {campaignType === "cpm" && (
-                <div className="rounded-xl p-4 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="text-xs font-semibold mb-1" style={{ color: "#F5F6FA" }}>Signed Agreement</p>
-                  <p className="text-xs mb-3" style={{ color: "#8A93A6" }}>Link to the signed contract — visible to the client on their dashboard.</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={contractUrl}
-                      onChange={(e) => setContractUrl(e.target.value)}
-                      placeholder="https://..."
-                      style={{ ...inputStyle, flex: 1 }}
-                    />
-                    <button
-                      onClick={saveContractUrl}
-                      disabled={savingContract}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                      style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: contractSaved ? "#3DFFA2" : "#FF3B3B" }}
-                    >
-                      {contractSaved ? <><Check size={12} /> Saved</> : savingContract ? "Saving…" : <><Save size={12} /> Save</>}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Formula summary */}
               {client.pageCount && client.clipsPerDay && client.dealLengthDays && (
                 <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#8A93A6" }}>
