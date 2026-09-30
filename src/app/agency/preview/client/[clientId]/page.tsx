@@ -25,6 +25,7 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
       },
       links: { orderBy: { createdAt: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
+      ongoingReports: { orderBy: { date: "desc" } },
     },
   });
 
@@ -34,6 +35,8 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
     id: client.id,
     name: client.name,
     status: client.status,
+    campaignType: client.campaignType as "manual" | "cpm",
+    contractUrl: client.contractUrl ?? null,
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,
@@ -60,6 +63,18 @@ export default async function PreviewClientPage({ params }: { params: Promise<{ 
       clipperName: c.clipper.user.name ?? c.clipper.user.email,
       title: c.title ?? null,
       thumbnailUrl: c.thumbnailUrl ?? null,
+    })),
+    ongoingReports: client.ongoingReports.map((r) => ({
+      id: r.id,
+      date: r.date.toISOString().slice(0, 10),
+      totalSubmissions: r.totalSubmissions,
+      pending: r.pending,
+      approved: r.approved,
+      rejected: r.rejected,
+      mainTrend: r.mainTrend ?? null,
+      clipperFeedback: r.clipperFeedback ?? null,
+      mainOptimization: r.mainOptimization ?? null,
+      status: r.status as string,
     })),
     clippers: client.users.map((u) => ({
       id: u.id,

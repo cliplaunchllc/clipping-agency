@@ -224,19 +224,20 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "#FF3B3B", change: pct(filteredClips.length, prevClipCount) },
   ];
 
-  const tabs = [
+  type TabId = "overview" | "reports" | "onboarding" | "contract" | "deal" | "links" | "clips" | "platform-stats";
+  const tabs: { id: TabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     ...(client.campaignType === "cpm" ? [
-      { id: "reports", label: "Campaign Reports" },
-      { id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
-      { id: "contract", label: "Contract" },
+      { id: "reports" as TabId, label: "Campaign Reports" },
+      { id: "onboarding" as TabId, label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` },
+      { id: "contract" as TabId, label: "Contract" },
     ] : []),
     { id: "deal", label: "Deal Terms" },
     { id: "links", label: `Links (${client.links.length})` },
-    ...(!( client.campaignType === "cpm") ? [{ id: "onboarding", label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` }] : []),
+    ...(client.campaignType !== "cpm" ? [{ id: "onboarding" as TabId, label: `Onboarding${steps.length > 0 ? ` ${onboardingPct}%` : ""}` }] : []),
     { id: "clips", label: "Clips" },
     { id: "platform-stats", label: "Platform Stats" },
-  ] as const;
+  ];
 
   const tooltipStyle = {
     contentStyle: { background: "#0B0E17", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
