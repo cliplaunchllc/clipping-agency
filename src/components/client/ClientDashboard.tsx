@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import {
-  Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink, Check,
+  Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink,
   TrendingUp, TrendingDown, Activity, ChevronDown, ChevronRight, CalendarDays,
 } from "lucide-react";
 import {
@@ -152,8 +152,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
-  const [steps, setSteps] = useState<OnboardingStep[]>(client.onboardingSteps);
-  const [togglingStep, setTogglingStep] = useState<string | null>(null);
 
   const [rangeStart, rangeEnd] = getRange(timePeriod, customStart, customEnd);
   const filteredClips = inRange(clips, rangeStart, rangeEnd);
@@ -185,21 +183,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
   }));
 
-  const completedSteps = steps.filter((s) => s.completed).length;
-  const onboardingPct = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
-
-  async function toggleStep(stepId: string, completed: boolean) {
-    if (previewMode) return;
-    setTogglingStep(stepId);
-    const res = await fetch(`/api/agency/clients/${client.id}/onboarding`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId, completed }),
-    });
-    if (res.ok) setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, completed } : s));
-    setTogglingStep(null);
-  }
-
   const statItems = [
     { label: "Views",    value: fmt(currViews),    icon: Eye,         change: pct(currViews,    prevViews)    },
     { label: "Likes",    value: fmt(currLikes),    icon: Heart,       change: pct(currLikes,    prevLikes)    },
@@ -211,9 +194,9 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
   type TabId = "overview" | "onboarding" | "contract";
   const tabs: { id: TabId; label: string }[] = [
-    { id: "overview", label: "Overview" },
+    { id: "overview",   label: "Overview" },
     ...(client.campaignType === "cpm" ? [
-      { id: "onboarding" as TabId, label: steps.length > 0 ? `Onboarding · ${onboardingPct}%` : "Onboarding" },
+      { id: "onboarding" as TabId, label: "Onboarding" },
       { id: "contract"   as TabId, label: "Contract" },
     ] : []),
   ];
@@ -971,90 +954,98 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
           {/* ── ONBOARDING ───────────────────────────────────────────── */}
           {activeTab === "onboarding" && (
-            <div className="space-y-3">
-              {steps.length > 0 && (
-                <div style={card} className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                      {completedSteps} of {steps.length} complete
-                    </span>
-                    <span className="text-xs font-medium tabular-nums" style={{ color: "var(--success)" }}>
-                      {onboardingPct}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full" style={{ background: "var(--bg-hover)" }}>
-                    <div
-                      className="h-1.5 rounded-full bar-fill"
-                      style={{ width: `${onboardingPct}%`, background: "var(--success)" }}
-                    />
-                  </div>
+            <>
+              <style>{`
+                @keyframes obFadeUp {
+                  from { opacity: 0; transform: translateY(14px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes obLineDraw {
+                  from { transform: scaleY(0); }
+                  to   { transform: scaleY(1); }
+                }
+                @keyframes obDotPop {
+                  0%   { opacity: 0; transform: scale(0.4); }
+                  70%  { transform: scale(1.15); }
+                  100% { opacity: 1; transform: scale(1); }
+                }
+                .ob-step { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-dot  { animation: obDotPop 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-line { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
+                .ob-header { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+              `}</style>
+
+              <div className="max-w-lg">
+                {/* Header */}
+                <div className="ob-header mb-10" style={{ animationDelay: "0ms" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.1em" }}>
+                    Getting Started
+                  </p>
+                  <h2 className="text-xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                    Welcome to ClipLaunch
+                  </h2>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    Complete the steps below to get your campaign live and running.
+                  </p>
                 </div>
-              )}
-              <div className="space-y-1.5">
-                {steps.map((step) => (
+
+                {/* Steps */}
+                {[
+                  {
+                    number: "01",
+                    title: "Complete your onboarding on the welcome page",
+                    description: "Head to the welcome page and fill out the onboarding form with your campaign details, goals, and preferences. This sets everything up on our end.",
+                  },
+                  {
+                    number: "02",
+                    title: "Approve the ClipLaunch rules brief",
+                    description: "After submitting your onboarding form, our team will send over a rules brief outlining campaign guidelines. Review and sign off to officially kick things off.",
+                  },
+                ].map((step, i) => (
                   <div
-                    key={step.id}
-                    className="flex items-start gap-3 p-4 rounded-xl transition-colors"
-                    style={{
-                      background: "var(--bg-surface)",
-                      border: `1px solid ${step.completed ? "rgba(61,214,140,0.2)" : "var(--border-default)"}`,
-                    }}
+                    key={step.number}
+                    className="ob-step flex gap-5"
+                    style={{ animationDelay: `${80 + i * 130}ms` }}
                   >
-                    <button
-                      onClick={() => toggleStep(step.id, !step.completed)}
-                      disabled={togglingStep === step.id || previewMode}
-                      className="mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors check-circle"
-                      title={step.completed ? "Mark incomplete" : "Mark complete"}
-                      style={{
-                        background: step.completed ? "var(--success-bg)" : "var(--bg-hover)",
-                        border: `1.5px solid ${step.completed ? "var(--success)" : "var(--border-strong)"}`,
-                        cursor: previewMode ? "default" : "pointer",
-                        opacity: togglingStep === step.id ? 0.5 : 1,
-                        borderRadius: 4,
-                      }}
-                    >
-                      {step.completed && <Check size={10} style={{ color: "var(--success)" }} strokeWidth={2.5} />}
-                    </button>
-                    <div className="flex-1">
-                      <p
-                        className="text-sm font-medium"
+                    {/* Left rail */}
+                    <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
+                      <div
+                        className="ob-dot w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
                         style={{
-                          color: step.completed ? "var(--text-tertiary)" : "var(--text-primary)",
-                          textDecoration: step.completed ? "line-through" : "none",
+                          background: "var(--accent-muted)",
+                          border: "1px solid var(--accent-border)",
+                          animationDelay: `${100 + i * 130}ms`,
                         }}
                       >
+                        <span className="text-xs font-bold tabular-nums" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>
+                          {step.number}
+                        </span>
+                      </div>
+                      {i < 1 && (
+                        <div
+                          className="ob-line flex-1 w-px mt-1"
+                          style={{
+                            background: "linear-gradient(to bottom, var(--accent-border), transparent)",
+                            minHeight: 32,
+                            animationDelay: `${200 + i * 130}ms`,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className={i < 1 ? "pb-8" : ""}>
+                      <p className="text-sm font-semibold mb-1.5 leading-snug" style={{ color: "var(--text-primary)" }}>
                         {step.title}
                       </p>
-                      {step.description && (
-                        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                          {step.description}
-                        </p>
-                      )}
-                      {step.linkUrl && (
-                        <a
-                          href={step.linkUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs mt-2 px-2.5 py-1 rounded-md font-medium transition-colors"
-                          style={{
-                            background: "var(--accent-muted)",
-                            border: "1px solid var(--accent-border)",
-                            color: "var(--accent)",
-                          }}
-                        >
-                          <ExternalLink size={10} /> Open Link
-                        </a>
-                      )}
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        {step.description}
+                      </p>
                     </div>
                   </div>
                 ))}
-                {steps.length === 0 && (
-                  <div className="text-center py-16">
-                    <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No onboarding steps yet</p>
-                  </div>
-                )}
               </div>
-            </div>
+            </>
           )}
 
           {/* ── CONTRACT ─────────────────────────────────────────────── */}
