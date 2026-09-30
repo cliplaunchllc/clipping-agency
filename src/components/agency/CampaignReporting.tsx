@@ -938,12 +938,6 @@ function OngoingReportForm({
         </select>
       </div>
 
-      {/* Campaign name */}
-      <div>
-        <label style={labelStyle}>Campaign Name</label>
-        <input type="text" value={form.campaignName} onChange={(e) => set("campaignName", e.target.value)} placeholder="e.g. Q4 Launch Campaign" className={inputCls} style={inputStyle} />
-      </div>
-
       {/* Submission numbers */}
       <div>
         <label style={labelStyle}>Total Submissions</label>
@@ -1224,14 +1218,14 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
     const lastOngoing = ongoingReports
       .filter((r) => r.clientId === clientId)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
-    return { ...EMPTY_ONGOING, clientId, date: isoDate(new Date()), campaignName: lastOngoing?.campaignName ?? "" };
+    return { ...EMPTY_ONGOING, clientId, date: isoDate(new Date()) };
   }
 
   function ongoingFormToPayload(form: OngoingFormState) {
     return {
       clientId: form.clientId,
       date: form.date,
-      campaignName: form.campaignName,
+      campaignName: clients.find((c) => c.id === form.clientId)?.name ?? "",
       totalSubmissions: parseInt(form.totalSubmissions || "0", 10),
       pending: parseInt(form.pending || "0", 10),
       approved: parseInt(form.approved || "0", 10),
