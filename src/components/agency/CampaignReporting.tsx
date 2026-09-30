@@ -1753,18 +1753,12 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                         <span className="text-xs" style={{ color: "#8A93A6" }}>Clips: <strong style={{ color: "#F5F6FA" }}>{report.clipsApproved}/{report.clipsSubmitted}</strong></span>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      <button title="Preview" onClick={() => setPreviewReport(report)} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                                        <Eye size={13} />
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <button onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                        Edit
                                       </button>
-                                      <button title={report.published ? "Unpublish" : "Publish"} onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="p-1.5 rounded-lg" style={{ color: report.published ? "#3DFFA2" : "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                                        {report.published ? <EyeOff size={13} /> : <Eye size={13} />}
-                                      </button>
-                                      <button title="Edit" onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                                        <Edit2 size={13} />
-                                      </button>
-                                      <button title="Delete" onClick={() => handleWeeklyDelete(report.id)} disabled={deletingId === report.id} className="p-1.5 rounded-lg" style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)" }}>
-                                        <Trash2 size={13} />
+                                      <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "#3DFFA2" : "#F5F6FA", background: report.published ? "rgba(61,255,162,0.1)" : "rgba(255,59,59,0.1)", border: `1px solid ${report.published ? "rgba(61,255,162,0.2)" : "rgba(255,59,59,0.2)"}` }}>
+                                        {publishingId === report.id ? "…" : report.published ? "Published" : "Publish"}
                                       </button>
                                       <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)", transform: expanded ? "rotate(180deg)" : "none" }}>
                                         <ChevronDown size={13} />
@@ -1877,15 +1871,12 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <button title="View" onClick={() => setViewingOngoing(report)} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                              <Eye size={13} />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button onClick={() => setViewingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                              View
                             </button>
-                            <button title="Edit" onClick={() => { setEditingOngoing(report); }} className="p-1.5 rounded-lg" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.04)" }}>
-                              <Edit2 size={13} />
-                            </button>
-                            <button title="Delete" onClick={() => handleOngoingDelete(report.id)} disabled={deletingId === report.id} className="p-1.5 rounded-lg" style={{ color: "#FF3B3B", background: "rgba(255,59,59,0.08)" }}>
-                              <Trash2 size={13} />
+                            <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "#8A93A6", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                              Edit
                             </button>
                           </div>
                         </div>

@@ -464,32 +464,24 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       {c.status === "active" && (
-                        <>
-                          <Link href={`/agency/clients/${c.id}?edit=1`} title="Manage client"
-                            className="text-xs px-2.5 py-1 rounded-lg inline-flex items-center"
-                            style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "#FF3B3B" }}>
-                            Manage
-                          </Link>
-                          <Link href={`/agency/preview/client/${c.id}`} title="View as client"
-                            className="p-1.5 rounded-lg hover:bg-white/5 inline-flex">
-                            <Eye size={13} color="#8A93A6" />
-                          </Link>
-                          <button onClick={() => handleCopyLink(c.id)} title="Copy shareable analytics link"
-                            className="p-1.5 rounded-lg hover:bg-white/5">
-                            {copiedId === c.id
-                              ? <Check size={13} color="#3DFFA2" />
-                              : <Link2 size={13} color="#8A93A6" />}
-                          </button>
-                          <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} title="Rename"
-                            className="p-1.5 rounded-lg hover:bg-white/5"><Edit2 size={13} color="#8A93A6" /></button>
-                        </>
+                        <Link href={`/agency/clients/${c.id}`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
+                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#8A93A6" }}>
+                          Edit
+                        </Link>
                       )}
                       {c.status === "active" ? (
-                        <button onClick={() => handleArchive(c.id, "archive")} title="Archive client"
-                          className="p-1.5 rounded-lg hover:bg-white/5"><Archive size={13} color="#FF4757" /></button>
+                        <button onClick={() => handleArchive(c.id, "archive")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "#5C6370" }}>
+                          Archive
+                        </button>
                       ) : (
-                        <button onClick={() => handleArchive(c.id, "unarchive")} title="Unarchive client"
-                          className="p-1.5 rounded-lg hover:bg-white/5"><ArchiveRestore size={13} color="#3DFFA2" /></button>
+                        <button onClick={() => handleArchive(c.id, "unarchive")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "#3DFFA2" }}>
+                          Restore
+                        </button>
                       )}
                     </div>
                   </td>
