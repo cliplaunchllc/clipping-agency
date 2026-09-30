@@ -25,7 +25,7 @@ const STATUS_META = {
   Normal: {
     label: "Normal",
     bg: "rgba(138,147,166,0.1)",
-    text: "#8A93A6",
+    text: "var(--text-tertiary)",
     border: "rgba(138,147,166,0.2)",
   },
   NeedsAttention: {
@@ -191,7 +191,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
 }) {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
   if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First</span>;
-  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>First</span>;
+  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First</span>;
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
@@ -201,7 +201,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
       </span>
     );
   }
-  const color = neutral ? "#8A93A6" : positive ? "var(--success)" : "var(--accent)";
+  const color = neutral ? "var(--text-tertiary)" : positive ? "var(--success)" : "var(--accent)";
   return (
     <span className="text-xs flex items-center gap-1" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} />{pct}
@@ -338,7 +338,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between"
-        style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: displayValue ? "#F5F6FA" : "#4A5568" }}
+        style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: displayValue ? "var(--text-primary)" : "var(--text-tertiary)" }}
       >
         <span>{displayValue || `Pick ${label}…`}</span>
         <ChevronDown size={13} color="#8A93A6" />
@@ -361,7 +361,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
           <div className="grid grid-cols-7 mb-1">
             {DAYS.map((d, i) => (
               <div key={d} className="text-center text-xs py-1" style={{
-                color: highlightDows?.includes(i) ? ONGOING_COLOR : "#4A5568"
+                color: highlightDows?.includes(i) ? ONGOING_COLOR : "var(--text-tertiary)"
               }}>{d}</div>
             ))}
           </div>
@@ -377,7 +377,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
                       className="w-8 h-8 rounded-lg text-xs font-medium transition-colors"
                       style={{
                         background: isSelected(day) ? "var(--accent)" : isToday(day) ? "rgba(255,59,59,0.12)" : isHL ? "var(--accent-muted)" : "transparent",
-                        color: isSelected(day) ? "#fff" : isToday(day) ? "var(--accent)" : isHL ? ONGOING_COLOR : "#F5F6FA",
+                        color: isSelected(day) ? "var(--text-on-accent)" : isToday(day) ? "var(--accent)" : isHL ? ONGOING_COLOR : "var(--text-primary)",
                       }}
                     >
                       {day}
@@ -425,7 +425,7 @@ function NewClientModal({ onCreated, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-      <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>New Client</h2>
           <button onClick={onClose}><X size={16} color="#8A93A6" /></button>
@@ -441,12 +441,12 @@ function NewClientModal({ onCreated, onClose }: {
             />
             {error && <p className="text-xs mt-1.5" style={{ color: "var(--accent)" }}>{error}</p>}
           </div>
-          <p className="text-xs" style={{ color: "#4A5568" }}>Login credentials can be added later from the Clients page.</p>
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Login credentials can be added later from the Clients page.</p>
           <div className="flex gap-3 pt-1">
             <button
               type="submit" disabled={saving || !name.trim()}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "#fff", opacity: saving || !name.trim() ? 0.5 : 1 }}
+              style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: saving || !name.trim() ? 0.5 : 1 }}
             >
               {saving ? "Creating…" : "Create Client"}
             </button>
@@ -487,7 +487,7 @@ function ReportDonut({ report }: { report: Report }) {
     name: p, value: platformData[p],
     gradId: `ag-dg-${report.id}-${p}`,
     grad: DONUT_GRADIENTS[p] ?? (["#9CA3AF", "#4B5563"] as [string, string]),
-    color: PLATFORM_COLORS[p] ?? "#8A93A6",
+    color: PLATFORM_COLORS[p] ?? "var(--text-tertiary)",
   }));
   const emptySlice = [{ name: "empty", value: 1, color: "var(--border-subtle)", gradId: `ag-dg-${report.id}-empty`, grad: ["var(--border-subtle)", "var(--border-subtle)"] as [string, string] }];
 
@@ -520,7 +520,7 @@ function ReportDonut({ report }: { report: Report }) {
           {platforms.map((p) => {
             const val = platformData[p];
             const pct = Math.round((val / total) * 100);
-            const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+            const color = PLATFORM_COLORS[p] ?? "var(--text-tertiary)";
             return (
               <div key={p}>
                 <div className="flex items-center justify-between mb-0.5">
@@ -558,7 +558,7 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
   ];
 
   return (
-    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
       <p className="text-xs font-medium mb-5" style={{ color: "var(--text-secondary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {statCards.map((c) => (
@@ -567,7 +567,7 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
             <p className="text-xl font-bold mb-1 leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
             {c.sublabel && <p className="text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
-            {c.lastWeek && <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Last week: {c.lastWeek}</p>}
+            {c.lastWeek && <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Last week: {c.lastWeek}</p>}
           </div>
         ))}
       </div>
@@ -856,12 +856,12 @@ function WeeklyReportForm({
         <div>
           <label style={labelStyle}>Campaign link (optional)</label>
           <input type="url" value={form.campaignLink} onChange={(e) => set("campaignLink", e.target.value)} placeholder="https://…" className={inputCls} style={inputStyle} />
-          <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Shown as a clickable link at the top of the client report.</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Shown as a clickable link at the top of the client report.</p>
         </div>
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "var(--accent)", color: "#fff", opacity: saving ? 0.6 : 1, boxShadow: saving ? "none" : "0 0 20px rgba(255,59,59,0.35)" }}>
+        <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: saving ? 0.6 : 1, boxShadow: "var(--shadow-inset-top)" }}>
           {saving ? "Saving…" : "Save Report"}
         </button>
         <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg text-sm" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
@@ -1018,7 +1018,7 @@ function OngoingReportForm({
                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
                 style={{
                   background: selected ? meta.bg : "var(--border-subtle)",
-                  color: selected ? meta.text : "#8A93A6",
+                  color: selected ? meta.text : "var(--text-tertiary)",
                   border: `1px solid ${selected ? meta.border : "transparent"}`,
                 }}
               >
@@ -1427,7 +1427,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {showWeeklyFormModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(61,255,162,0.12)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.25)" }}>Weekly (F)</span>
@@ -1452,7 +1452,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {showOngoingFormModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (M/W)</span>
@@ -1475,7 +1475,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {viewingOngoing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
@@ -1492,7 +1492,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
       {previewReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{previewReport.client.name}</h2>
@@ -1533,7 +1533,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               <button
                 onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 0 20px rgba(255,59,59,0.35)" }}
+                style={{ background: "var(--accent)", color: "var(--text-on-accent)", boxShadow: "var(--shadow-inset-top)" }}
               >
                 <Plus size={15} />Weekly (F)
               </button>
@@ -1549,7 +1549,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 style={{
                   background: overviewFilter === f ? "rgba(255,59,59,0.12)" : "var(--border-subtle)",
-                  color: overviewFilter === f ? "var(--accent)" : "#8A93A6",
+                  color: overviewFilter === f ? "var(--accent)" : "var(--text-tertiary)",
                   border: `1px solid ${overviewFilter === f ? "rgba(255,59,59,0.25)" : "transparent"}`,
                 }}
               >
@@ -1575,7 +1575,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   className="text-left rounded-xl p-5 transition-all group"
                   style={{
                     background: "var(--bg-surface)",
-                    border: `1px solid ${latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,59,59,0.2)" : "var(--border-subtle)"}`,
+                    border: `1px solid ${latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "var(--border-subtle)"}`,
                   }}
                 >
                   {/* Client name + status */}
@@ -1593,27 +1593,27 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                     {latestOngoingStatus ? (
                       <StatusBadge status={latestOngoingStatus} size="xs" />
                     ) : (
-                      <span className="text-xs px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: "var(--border-subtle)", color: "#4A5568" }}>No status</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: "var(--border-subtle)", color: "var(--text-tertiary)" }}>No status</span>
                     )}
                   </div>
 
                   {/* Dates */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "#4A5568" }}>
+                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: WEEKLY_COLOR }} />
                         Last Weekly
                       </p>
-                      <p className="text-xs font-medium" style={{ color: lastWeeklyDate ? "#F5F6FA" : "#4A5568" }}>
+                      <p className="text-xs font-medium" style={{ color: lastWeeklyDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
                         {lastWeeklyDate ? fmtDate(lastWeeklyDate) : "—"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "#4A5568" }}>
+                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: ONGOING_COLOR }} />
                         Last Ongoing
                       </p>
-                      <p className="text-xs font-medium" style={{ color: lastOngoingDate ? "#F5F6FA" : "#4A5568" }}>
+                      <p className="text-xs font-medium" style={{ color: lastOngoingDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
                         {lastOngoingDate ? fmtDate(lastOngoingDate) : "—"}
                       </p>
                     </div>
@@ -1649,7 +1649,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 <ArrowLeft size={14} />
                 All Clients
               </button>
-              <span style={{ color: "#2A2E3A" }}>/</span>
+              <span style={{ color: "var(--border-default)" }}>/</span>
               <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{selectedClient?.name}</p>
             </div>
             <button
@@ -1658,7 +1658,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
                 background: linkCopied ? "rgba(61,255,162,0.12)" : "var(--border-subtle)",
-                color: linkCopied ? "var(--success)" : "#8A93A6",
+                color: linkCopied ? "var(--success)" : "var(--text-tertiary)",
                 border: `1px solid ${linkCopied ? "rgba(61,255,162,0.3)" : "transparent"}`,
                 opacity: copyingLink ? 0.6 : 1,
               }}
@@ -1675,7 +1675,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
                 background: clientTab === "weekly" ? `rgba(61,255,162,0.12)` : "transparent",
-                color: clientTab === "weekly" ? WEEKLY_COLOR : "#8A93A6",
+                color: clientTab === "weekly" ? WEEKLY_COLOR : "var(--text-tertiary)",
                 border: clientTab === "weekly" ? `1px solid rgba(61,255,162,0.25)` : "1px solid transparent",
               }}
             >
@@ -1687,7 +1687,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
                 background: clientTab === "ongoing" ? `var(--accent-muted)` : "transparent",
-                color: clientTab === "ongoing" ? ONGOING_COLOR : "#8A93A6",
+                color: clientTab === "ongoing" ? ONGOING_COLOR : "var(--text-tertiary)",
                 border: clientTab === "ongoing" ? `1px solid var(--accent-border)` : "1px solid transparent",
               }}
             >
@@ -1708,7 +1708,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 <button
                   onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: "rgba(61,255,162,0.1)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.2)" }}
+                  style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.2)" }}
                 >
                   <Plus size={12} />New Weekly Report
                 </button>
@@ -1775,10 +1775,10 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <button onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                      <button onClick={() => { setEditingReport(report); setPendingFormState(null); }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid var(--border-default)" }}>
                                         Edit
                                       </button>
-                                      <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "var(--success)" : "#F5F6FA", background: report.published ? "rgba(61,255,162,0.1)" : "rgba(255,59,59,0.1)", border: `1px solid ${report.published ? "rgba(61,255,162,0.2)" : "rgba(255,59,59,0.2)"}` }}>
+                                      <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "var(--success)" : "var(--text-primary)", background: report.published ? "color-mix(in srgb, var(--success) 10%, transparent)" : "var(--accent-muted)", border: `1px solid ${report.published ? "color-mix(in srgb, var(--success) 20%, transparent)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}` }}>
                                         {publishingId === report.id ? "…" : report.published ? "Published" : "Publish"}
                                       </button>
                                       <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", transform: expanded ? "rotate(180deg)" : "none" }}>
@@ -1823,7 +1823,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                         value={ongoingMonthFilter}
                         onChange={(e) => setOngoingMonthFilter(e.target.value)}
                         className="rounded-lg px-2 py-1.5 text-xs outline-none"
-                        style={{ background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: ongoingMonthFilter ? ONGOING_COLOR : "#8A93A6", appearance: "none" } as React.CSSProperties}
+                        style={{ background: "var(--bg-base)", border: "1px solid var(--accent-border)", color: ongoingMonthFilter ? ONGOING_COLOR : "var(--text-tertiary)", appearance: "none" } as React.CSSProperties}
                       >
                         <option value="">All months</option>
                         {monthKeys.map((k) => {
@@ -1904,10 +1904,10 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <button onClick={() => setViewingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <button onClick={() => setViewingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid var(--border-default)" }}>
                               View
                             </button>
-                            <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid var(--border-default)" }}>
                               Edit
                             </button>
                           </div>

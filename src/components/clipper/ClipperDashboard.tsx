@@ -298,7 +298,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             Viewing as <span style={{ color: "var(--text-primary)" }}>{userName}</span>
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,59,59,0.1)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.2)" }}>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.2)" }}>
             Preview
           </span>
         </div>
@@ -334,7 +334,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
               {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
                 <button key={p} onClick={() => setTimePeriod(p)}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors tab-btn"
-                  style={{ background: timePeriod === p ? "rgba(61,255,162,0.2)" : "transparent", color: timePeriod === p ? "var(--success)" : "#8A93A6" }}>
+                  style={{ background: timePeriod === p ? "color-mix(in srgb, var(--success) 20%, transparent)" : "transparent", color: timePeriod === p ? "var(--success)" : "var(--text-tertiary)" }}>
                   {p === "all" ? "All" : p === "1d" ? "Day" : p === "7d" ? "Week" : p === "mtd" ? "MTD" : "Custom"}
                 </button>
               ))}
@@ -360,7 +360,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             ] as const).map((tab) => (
               <button key={tab.id} onClick={() => setActiveClipperTab(tab.id)}
                 className="px-4 py-2.5 text-sm font-medium relative"
-                style={{ color: activeClipperTab === tab.id ? "#F5F6FA" : "#8A93A6" }}>
+                style={{ color: activeClipperTab === tab.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
                 {tab.label}
                 {activeClipperTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--success)" }} />}
               </button>
@@ -379,7 +379,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
               { label: "Clips", value: filteredClips.length.toString(), icon: BarChart2, color: "var(--accent)", change: pctChange(filteredClips.length, prevClipCount) },
             ];
             return (
-              <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
                 <div className="grid grid-cols-6">
                   {statItems.map((item, i) => {
                     const Icon = item.icon;
@@ -411,7 +411,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           })()}
 
           {/* Views chart */}
-          <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</h2>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
@@ -424,8 +424,8 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: string) => fmtDate(v)} />
-                  <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
+                  <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: string) => fmtDate(v)} />
+                  <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
                   <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 12 }} labelStyle={{ color: "var(--text-secondary)" }} itemStyle={{ color: "var(--accent)" }} />
                   {timePeriod !== "all" && (
                     <Area name="Prev Period" type="linear" dataKey="prevViews" stroke="rgba(255,255,255,0.18)"
@@ -468,7 +468,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             const pct = monthlyTarget ? Math.min(100, Math.round((mtdTotal / monthlyTarget) * 100)) : null;
             const progressColor = pct !== null ? (pct >= 100 ? "var(--success)" : pct >= 60 ? "var(--warning)" : "var(--accent)") : "var(--accent)";
             return (
-              <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <BarChart2 size={14} color="var(--accent)" />
@@ -512,7 +512,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                 <div className="grid grid-cols-3 gap-3">
                   {BREAKOUT_PLATFORMS.map((p) => {
                     const count = byPlatform[p] ?? 0;
-                    const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+                    const color = PLATFORM_COLORS[p] ?? "var(--text-tertiary)";
                     const platPct = platformTarget ? Math.min(100, Math.round((count / platformTarget) * 100)) : (mtdTotal > 0 ? Math.round((count / mtdTotal) * 100) : 0);
                     return (
                       <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
@@ -545,13 +545,13 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {/* Accounts + Submit */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* My Accounts */}
-            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>My Accounts</h2>
                 {!previewMode && (
                   <button onClick={() => setShowAddSub(true)}
                     className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg"
-                    style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "var(--success)" }}>
+                    style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", border: "1px solid rgba(61,255,162,0.2)", color: "var(--success)" }}>
                     <Plus size={11} /> Add
                   </button>
                 )}
@@ -605,7 +605,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                       ) : (
                         <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>@{s.handle}</p>
                       )}
-                      <p className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "#8A93A6" }}>{PLATFORM_LABELS[s.platform]}</p>
+                      <p className="text-xs" style={{ color: PLATFORM_COLORS[s.platform] ?? "var(--text-tertiary)" }}>{PLATFORM_LABELS[s.platform]}</p>
                     </div>
                     <button onClick={() => handleDeleteSub(s.id)} className="flex-shrink-0 p-1 rounded hover:bg-white/5">
                       <Trash2 size={12} color="var(--danger)" />
@@ -619,7 +619,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             </div>
 
             {/* Submit a Clip */}
-            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Submit a Clip</h2>
               {previewMode ? (
                 <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Clip submission is only available when logged in as the clipper.</p>
@@ -669,13 +669,13 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
           {/* My Clips + Leaderboard */}
           <div className="grid grid-cols-2 gap-6">
             {/* My Clips */}
-            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>My Clips</h2>
                 {!previewMode && clips.length > 0 && (
                   <button onClick={handleRefreshAll} disabled={refreshingAll} title="Refresh all stats"
                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                    style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
+                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
                     <RotateCw size={11} className={refreshingAll ? "animate-spin" : ""} />
                     {refreshingAll ? "Refreshing..." : "Refresh All"}
                   </button>
@@ -699,7 +699,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                       {!previewMode && (
                         <button onClick={() => handleRefresh(c.id)} disabled={refreshing === c.id} title="Refresh stats"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
-                          style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)" }}>
+                          style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
                           <RotateCw size={10} className={refreshing === c.id ? "animate-spin" : ""} />
                           {refreshing === c.id ? "" : "Sync"}
                         </button>
@@ -719,7 +719,7 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
             </div>
 
             {/* Leaderboard */}
-            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Trophy size={14} color="var(--warning)" />
@@ -732,14 +732,14 @@ export default function ClipperDashboard({ userName, clientName, clients, defaul
                   const isMe = entry.name === userName;
                   return (
                     <div key={entry.id} className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span className="text-xs w-5 text-right flex-shrink-0" style={{ color: i === 0 ? "var(--warning)" : "#8A93A6" }}>
+                      <span className="text-xs w-5 text-right flex-shrink-0" style={{ color: i === 0 ? "var(--warning)" : "var(--text-tertiary)" }}>
                         {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}
                       </span>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: isMe ? "rgba(61,255,162,0.2)" : "var(--border-subtle)", color: isMe ? "var(--success)" : "#F5F6FA" }}>
+                        style={{ background: isMe ? "color-mix(in srgb, var(--success) 20%, transparent)" : "var(--border-subtle)", color: isMe ? "var(--success)" : "var(--text-primary)" }}>
                         {(entry.name || "?")[0]}
                       </div>
-                      <span className="text-sm flex-1 font-medium" style={{ color: isMe ? "var(--success)" : "#F5F6FA" }}>
+                      <span className="text-sm flex-1 font-medium" style={{ color: isMe ? "var(--success)" : "var(--text-primary)" }}>
                         {entry.name}{isMe ? " (you)" : ""}
                       </span>
                       <span className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>

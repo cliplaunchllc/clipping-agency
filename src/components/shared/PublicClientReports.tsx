@@ -78,7 +78,7 @@ function wow(curr: number, prev: number | null | undefined, inverted = false) {
 
 function TrendIcon({ positive, neutral, size = 12 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
-  if (positive) return <TrendingUp size={size} color="#3DFFA2" />;
+  if (positive) return <TrendingUp size={size} color="#3DD68C" />;
   return <TrendingDown size={size} color="#FF3B3B" />;
 }
 
@@ -91,7 +91,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>
   );
   if (firstWeek) return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>First week</span>
+    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First week</span>
   );
 
   if (grey) {
@@ -104,7 +104,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
     );
   }
 
-  const color = neutral ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B";
+  const color = neutral ? "var(--text-tertiary)" : positive ? "#3DD68C" : "#FF3B3B";
   return (
     <span className="text-xs flex items-center gap-1 font-medium" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} />
@@ -177,7 +177,7 @@ function DonutChart({ report }: { report: Report }) {
     value: platformData[p],
     gradId: `pub-dg-${report.id}-${p}`,
     grad: DONUT_GRADIENTS[p] ?? (["#9CA3AF", "#4B5563"] as [string, string]),
-    color: PLATFORM_COLORS[p] ?? "#8A93A6",
+    color: PLATFORM_COLORS[p] ?? "var(--text-tertiary)",
   }));
 
   const emptySlice = [{
@@ -228,7 +228,7 @@ function DonutChart({ report }: { report: Report }) {
           {platforms.map((p) => {
             const val = platformData[p];
             const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-            const color = PLATFORM_COLORS[p] ?? "#8A93A6";
+            const color = PLATFORM_COLORS[p] ?? "var(--text-tertiary)";
             return (
               <div key={p}>
                 <div className="flex items-center justify-between mb-1">
@@ -350,7 +350,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
         <div className="space-y-3">
           {report.weeklySummary && (
-            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <AlignLeft size={13} color="#8A93A6" />
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>Weekly Overview</p>
@@ -362,7 +362,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
             {report.whatsWorking && (
               <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <ThumbsUp size={13} color="#3DFFA2" />
+                  <ThumbsUp size={13} color="#3DD68C" />
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>What&apos;s Working</p>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
@@ -381,8 +381,8 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
           {report.nextWeekFocus && (
             <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
-                <Rocket size={13} color="#FF8800" />
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#FF8800", fontFamily: "var(--font-display)" }}>Next Week&apos;s Focus</p>
+                <Rocket size={13} color="var(--warning)" />
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--warning)", fontFamily: "var(--font-display)" }}>Next Week&apos;s Focus</p>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
             </div>
@@ -414,7 +414,7 @@ function CopyLinkButton() {
           ? "rgba(61,255,162,0.12)"
           : "linear-gradient(135deg, rgba(255,59,59,0.15) 0%, rgba(255,59,59,0.08) 100%)",
         border: `1px solid ${copied ? "rgba(61,255,162,0.35)" : "rgba(255,59,59,0.25)"}`,
-        color: copied ? "#3DFFA2" : "#FF3B3B",
+        color: copied ? "#3DD68C" : "#FF3B3B",
         fontFamily: "var(--font-display)",
         transition: "all 0.2s ease",
         transform: copied ? "scale(0.97)" : "scale(1)",
@@ -500,7 +500,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs font-medium pb-2" style={{ color: "#4A5568" }}>
+            <p className="text-xs font-medium pb-2" style={{ color: "var(--text-tertiary)" }}>
               {reports.length} {reports.length === 1 ? "report" : "reports"} · most recent first
             </p>
             {reports.map((report, idx) => {
@@ -561,7 +561,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                   {/* Expanded content */}
                   {expanded && (
                     <div className="px-5 pb-5">
-                      <div className="h-px mb-4" style={{ background: "rgba(255,59,59,0.1)" }} />
+                      <div className="h-px mb-4" style={{ background: "var(--accent-muted)" }} />
                       <ReportCard report={report} prev={prevReport(idx)} />
                     </div>
                   )}

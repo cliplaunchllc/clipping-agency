@@ -38,14 +38,14 @@ export default function TopClipsChart({ clips }: Props) {
     pct: f,
   }));
 
-  const rankColors = ["#3DFFA2", "#a78bfa", "#FB923C", "#8A93A6", "#8A93A6"];
+  const rankColors = ["#3DD68C", "#a78bfa", "#FB923C", "var(--text-tertiary)", "var(--text-tertiary)"];
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: "#0B0E17", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <Trophy size={14} color="#3DFFA2" />
-        <h2 className="text-sm font-semibold" style={{ color: "#F5F6FA", fontFamily: "Space Grotesk, sans-serif" }}>
+        <Trophy size={14} color="#3DD68C" />
+        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
           Top {top10.length} Clips by Views
         </h2>
       </div>
@@ -55,7 +55,7 @@ export default function TopClipsChart({ clips }: Props) {
         {/* Y-axis */}
         <div className="flex-shrink-0 flex flex-col justify-between pr-2" style={{ height: BAR_H + THUMB_H, paddingBottom: THUMB_H }}>
           {yTicks.map((t) => (
-            <span key={t.pct} className="text-right block" style={{ fontSize: 10, color: "#8A93A6", lineHeight: 1 }}>
+            <span key={t.pct} className="text-right block" style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1 }}>
               {t.label}
             </span>
           ))}
@@ -95,7 +95,7 @@ export default function TopClipsChart({ clips }: Props) {
                   <div style={{ flex: 1 }} />
 
                   {/* View count above bar */}
-                  <span style={{ fontSize: 9, color: isTop3 ? "#F5F6FA" : "#8A93A6", marginBottom: 3, fontFamily: "Space Grotesk, sans-serif", fontWeight: isTop3 ? 600 : 400 }}>
+                  <span style={{ fontSize: 9, color: isTop3 ? "var(--text-primary)" : "var(--text-tertiary)", marginBottom: 3, fontFamily: "var(--font-display)", fontWeight: isTop3 ? 600 : 400 }}>
                     {fmt(clip.views)}
                   </span>
 
@@ -116,13 +116,13 @@ export default function TopClipsChart({ clips }: Props) {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"
                         style={{ background: "rgba(255,255,255,0.05)" }}>
-                        <span style={{ fontSize: 9, color: "#8A93A6" }}>{i + 1}</span>
+                        <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>{i + 1}</span>
                       </div>
                     )}
                   </a>
 
                   {/* Rank */}
-                  <span style={{ fontSize: 9, color: rankColors[i] ?? "#8A93A6", marginTop: 3, fontWeight: 600, lineHeight: 1 }}>
+                  <span style={{ fontSize: 9, color: rankColors[i] ?? "var(--text-tertiary)", marginTop: 3, fontWeight: 600, lineHeight: 1 }}>
                     #{i + 1}
                   </span>
                 </div>

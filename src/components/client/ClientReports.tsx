@@ -161,7 +161,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
             {c.sublabel && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
             {c.lastWeek && (
-              <p className="text-xs mt-1" style={{ color: "#4A5568" }}>Last week: {c.lastWeek}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Last week: {c.lastWeek}</p>
             )}
           </div>
         ))}
@@ -194,7 +194,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
                     <td className="px-4 py-2.5 text-xs" style={{ color: "var(--text-secondary)" }}>{pctOfTotal}%</td>
                     <td className="px-4 py-2.5">
                       {prevViews !== null ? (
-                        <span className="text-xs flex items-center gap-1" style={{ color: neutral ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B" }}>
+                        <span className="text-xs flex items-center gap-1" style={{ color: neutral ? "var(--text-tertiary)" : positive ? "var(--success)" : "var(--danger)" }}>
                           <TrendIcon positive={positive} neutral={neutral} />
                           {pct}
                         </span>
@@ -240,10 +240,10 @@ export default function ClientReports({ reports, clientName }: { reports: Report
 
       {reports.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center rounded-2xl py-24"
-          style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}
+          className="flex flex-col items-center justify-center rounded-xl py-24"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
         >
-          <BarChart2 size={36} style={{ color: "#a78bfa", opacity: 0.4 }} className="mb-3" />
+          <BarChart2 size={36} style={{ color: "var(--text-tertiary)", opacity: 0.4 }} className="mb-3" />
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No reports published yet.</p>
         </div>
       ) : (

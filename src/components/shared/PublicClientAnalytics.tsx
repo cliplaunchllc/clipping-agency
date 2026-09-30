@@ -149,7 +149,7 @@ export default function PublicClientAnalytics({ client }: Props) {
   }
 
   const tooltipStyle = {
-    contentStyle: { background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 },
+    contentStyle: { background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 12 },
     labelStyle: { color: "var(--text-secondary)" },
   };
 
@@ -175,7 +175,7 @@ export default function PublicClientAnalytics({ client }: Props) {
           </div>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-medium"
-          style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>
+          style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>
           ● Live
         </span>
       </div>
@@ -189,8 +189,8 @@ export default function PublicClientAnalytics({ client }: Props) {
               <button key={p} onClick={() => setTimePeriod(p)}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
                 style={{
-                  background: timePeriod === p ? "rgba(255,59,59,0.2)" : "transparent",
-                  color: timePeriod === p ? "#FF3B3B" : "#8A93A6",
+                  background: timePeriod === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
+                  color: timePeriod === p ? "#FF3B3B" : "var(--text-tertiary)",
                 }}>
                 {p === "all" ? "All Time" : p === "1d" ? "Today" : p === "7d" ? "7 Days" : p === "mtd" ? "This Month" : "Custom"}
               </button>
@@ -210,7 +210,7 @@ export default function PublicClientAnalytics({ client }: Props) {
         </div>
 
         {/* Stats grid */}
-        <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl mb-2 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <div className="grid grid-cols-3">
             {statItems.map((item, i) => {
               const Icon = item.icon;
@@ -231,7 +231,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                       </span>
                       {item.change.ok && (
                         <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                          style={{ color: item.change.pos ? "#3DFFA2" : "#FF4757" }}>
+                          style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}>
                           {item.change.pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                           {item.change.str}
                         </span>
@@ -248,7 +248,7 @@ export default function PublicClientAnalytics({ client }: Props) {
         </div>
 
         {/* Views chart */}
-        <div className="rounded-2xl p-6 mb-6 mt-5" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl p-6 mb-6 mt-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
             Views Over Time
           </h2>
@@ -262,9 +262,9 @@ export default function PublicClientAnalytics({ client }: Props) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: string) => fmtDate(v)} />
-                <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => fmt(v)} width={48} />
                 <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--success)" }} />
                 <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#pubGrad)"
@@ -278,11 +278,11 @@ export default function PublicClientAnalytics({ client }: Props) {
 
         {/* Top Clips */}
         {topClips.length > 0 && (
-          <div className="rounded-2xl mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-xl mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between px-6 py-4"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2">
-                <TrendingUp size={14} color="#3DFFA2" />
+                <TrendingUp size={14} color="#3DD68C" />
                 <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clips</h2>
               </div>
               <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
@@ -303,7 +303,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                       <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                         <img src={clip.thumbnailUrl} alt="thumb"
                           className="rounded-xl object-cover"
-                          style={{ width: 96, height: 56, border: "1px solid rgba(255,255,255,0.08)" }} />
+                          style={{ width: 96, height: 56, border: "1px solid var(--border-default)" }} />
                       </a>
                     ) : (
                       <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
@@ -317,7 +317,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <PlatformIcon platform={clip.platform} size={12} />
                         <span className="text-sm font-semibold"
-                          style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                          style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
                           @{clip.handle}
                         </span>
                       </div>
@@ -375,7 +375,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                     <div className="flex items-center gap-1">
                       <PlatformIcon platform={clip.platform} size={10} />
                       <span className="text-xs font-medium"
-                        style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                        style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
                         @{clip.handle}
                       </span>
                     </div>
@@ -406,7 +406,7 @@ export default function PublicClientAnalytics({ client }: Props) {
         )}
 
         {/* All clips table */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           {/* Table header + filters */}
           <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
             style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -428,15 +428,15 @@ export default function PublicClientAnalytics({ client }: Props) {
                 <button onClick={() => setPlatformFilter("all")}
                   className="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
                   style={{
-                    background: platformFilter === "all" ? "rgba(255,59,59,0.2)" : "transparent",
-                    color: platformFilter === "all" ? "#FF3B3B" : "#8A93A6",
+                    background: platformFilter === "all" ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
+                    color: platformFilter === "all" ? "#FF3B3B" : "var(--text-tertiary)",
                   }}>All</button>
                 {platforms.map((p) => (
                   <button key={p} onClick={() => setPlatformFilter(p)}
                     className="px-3 py-1 text-xs font-medium rounded-lg capitalize transition-colors"
                     style={{
-                      background: platformFilter === p ? "rgba(255,59,59,0.2)" : "transparent",
-                      color: platformFilter === p ? "#FF3B3B" : (PLATFORM_COLORS[p] ?? "#8A93A6"),
+                      background: platformFilter === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
+                      color: platformFilter === p ? "#FF3B3B" : (PLATFORM_COLORS[p] ?? "var(--text-tertiary)"),
                     }}>{p === "twitter" ? "X" : p}</button>
                 ))}
               </div>
@@ -452,7 +452,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                   {(["views", "likes", "comments", "shares", "saves", "date"] as const).map((col) => (
                     <th key={col}
                       className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none"
-                      style={{ color: sortKey === col ? "#FF3B3B" : "#8A93A6" }}
+                      style={{ color: sortKey === col ? "var(--accent-solid)" : "var(--text-tertiary)" }}
                       onClick={() => handleSort(col)}>
                       <span className="flex items-center gap-1">
                         {col === "date" ? "Date" : col.charAt(0).toUpperCase() + col.slice(1)}
@@ -485,7 +485,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                           <div className="flex items-center gap-1">
                             <PlatformIcon platform={clip.platform} size={10} />
                             <span className="text-xs font-medium truncate"
-                              style={{ color: PLATFORM_COLORS[clip.platform] ?? "#8A93A6" }}>
+                              style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
                               @{clip.handle}
                             </span>
                           </div>

@@ -216,7 +216,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
             </div>
 
             {/* Mode toggle */}
-            <div className="flex rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="flex rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border-default)" }}>
               {([
                 { id: "connect", label: "Connect existing account" },
                 { id: "create", label: "Create new credentials" },
@@ -225,7 +225,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   className="flex-1 py-2.5 text-xs font-medium transition-colors"
                   style={{
                     background: addMode === m.id ? "rgba(255,59,59,0.12)" : "transparent",
-                    color: addMode === m.id ? "var(--accent)" : "#8A93A6",
+                    color: addMode === m.id ? "var(--accent)" : "var(--text-tertiary)",
                     borderRight: m.id === "connect" ? "1px solid rgba(255,255,255,0.08)" : "none",
                   }}>
                   {m.label}
@@ -310,7 +310,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         </div>
         <button onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
+          style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
           <Plus size={14} /> Add Client
         </button>
       </div>
@@ -324,7 +324,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         ] as const).map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="px-4 py-2.5 text-sm font-medium relative"
-            style={{ color: tab === t.id ? "#F5F6FA" : "#8A93A6" }}>
+            style={{ color: tab === t.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
             {t.label}
             {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
           </button>
@@ -333,7 +333,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
       {/* PENDING SIGNUP TAB */}
       {tab === "pending" && (
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -407,7 +407,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
       {/* ACTIVE / ARCHIVED TABLE */}
       {(tab === "active" || tab === "archived") && (
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -438,10 +438,10 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                           {c.logoUrl ? (
                             <img src={c.logoUrl} alt={c.name}
                               className="w-8 h-8 rounded-lg object-cover"
-                              style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
+                              style={{ border: "1px solid var(--border-default)" }} />
                           ) : (
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                              style={{ background: c.status === "archived" ? "var(--border-subtle)" : "rgba(255,59,59,0.1)", color: c.status === "archived" ? "#8A93A6" : "var(--accent)" }}>
+                              style={{ background: c.status === "archived" ? "var(--border-subtle)" : "var(--accent-muted)", color: c.status === "archived" ? "var(--text-tertiary)" : "var(--accent)" }}>
                               {uploadingLogoId === c.id ? "..." : c.name[0]}
                             </div>
                           )}
@@ -452,7 +452,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                             </div>
                           )}
                         </button>
-                        <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "#8A93A6" : "#F5F6FA" }}>{c.name}</span>
+                        <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "var(--text-tertiary)" : "var(--text-primary)" }}>{c.name}</span>
                       </div>
                     )}
                   </td>
@@ -466,7 +466,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       {c.status === "active" && (
                         <Link href={`/agency/clients/${c.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
-                          style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-secondary)" }}>
+                          style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
                           Edit
                         </Link>
                       )}

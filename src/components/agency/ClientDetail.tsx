@@ -213,7 +213,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         <div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-              style={{ background: "rgba(255,59,59,0.1)", color: "var(--accent)" }}>
+              style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
               {client.name[0]}
             </div>
             <div>
@@ -234,7 +234,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className="px-4 py-2.5 text-sm font-medium relative tab-btn"
-            style={{ color: activeTab === t.id ? "#F5F6FA" : "#8A93A6" }}>
+            style={{ color: activeTab === t.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
             {t.label}
             {activeTab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
           </button>
@@ -243,7 +243,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
 
       {/* DEAL TERMS */}
       {activeTab === "deal" && (
-        <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
 
           {/* Campaign Tracker URL — always visible */}
           <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
@@ -261,7 +261,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 onClick={saveTrackerUrl}
                 disabled={savingTracker}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                style={{ background: trackerSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${trackerSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: trackerSaved ? "var(--success)" : "var(--accent)" }}
+                style={{ background: trackerSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${trackerSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: trackerSaved ? "var(--success)" : "var(--accent)" }}
               >
                 {trackerSaved ? <><Check size={12} /> Saved</> : savingTracker ? "Saving…" : <><Save size={12} /> Save</>}
               </button>
@@ -274,7 +274,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
               <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>Campaign Type</p>
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>CPM clients see the Ongoing Reports tab on their dashboard.</p>
             </div>
-            <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)" }}>
               {(["manual", "cpm"] as const).map((t) => (
                 <button
                   key={t}
@@ -283,7 +283,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{
                     background: campaignType === t ? (t === "cpm" ? "var(--accent-muted)" : "var(--border-subtle)") : "transparent",
-                    color: campaignType === t ? (t === "cpm" ? "var(--accent)" : "#F5F6FA") : "#8A93A6",
+                    color: campaignType === t ? (t === "cpm" ? "var(--accent)" : "var(--text-primary)") : "var(--text-tertiary)",
                     border: campaignType === t ? `1px solid ${t === "cpm" ? "var(--accent-border)" : "var(--border-strong)"}` : "1px solid transparent",
                   }}
                 >
@@ -310,7 +310,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                   onClick={saveContractUrl}
                   disabled={savingContract}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                  style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.1)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.2)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
+                  style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
                 >
                   {contractSaved ? <><Check size={12} /> Saved</> : savingContract ? "Saving…" : <><Save size={12} /> Save</>}
                 </button>
@@ -416,7 +416,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       {activeTab === "links" && (
         <div className="space-y-4">
           {/* Add link form */}
-          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Add Link</h2>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
@@ -430,13 +430,13 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             </div>
             <button onClick={addLink} disabled={linkSaving || !newLabel || !newUrl}
               className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg"
-              style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: (!newLabel || !newUrl) ? 0.5 : 1 }}>
+              style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: (!newLabel || !newUrl) ? 0.5 : 1 }}>
               <Plus size={12} /> {linkSaving ? "Adding..." : "Add Link"}
             </button>
           </div>
 
           {/* Links list */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             {links.length === 0 ? (
               <p className="px-6 py-10 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No links yet — add one above</p>
             ) : (
@@ -466,7 +466,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         <div className="space-y-4">
           {/* Progress */}
           {steps.length > 0 && (
-            <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Progress</span>
                 <span className="text-xs font-medium" style={{ color: "var(--success)" }}>{onboardingPct}%</span>
@@ -484,11 +484,11 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 style={{ background: "var(--bg-surface)", border: `1px solid ${step.completed ? "rgba(61,255,162,0.15)" : "var(--border-default)"}` }}>
                 <button onClick={() => toggleStep(step.id, !step.completed)}
                   className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all check-circle"
-                  style={{ background: step.completed ? "rgba(61,255,162,0.2)" : "var(--border-subtle)", border: `1px solid ${step.completed ? "var(--success)" : "rgba(255,255,255,0.15)"}` }}>
+                  style={{ background: step.completed ? "color-mix(in srgb, var(--success) 20%, transparent)" : "var(--border-subtle)", border: `1px solid ${step.completed ? "var(--success)" : "rgba(255,255,255,0.15)"}` }}>
                   {step.completed && <Check size={11} color="var(--success)" />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: step.completed ? "#8A93A6" : "#F5F6FA", textDecoration: step.completed ? "line-through" : "none" }}>
+                  <p className="text-sm font-medium" style={{ color: step.completed ? "var(--text-tertiary)" : "var(--text-primary)", textDecoration: step.completed ? "line-through" : "none" }}>
                     {i + 1}. {step.title}
                   </p>
                   {step.description && (
@@ -510,7 +510,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
           </div>
 
           {/* Add step */}
-          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Add Step</h2>
             <div className="space-y-3">
               <input value={newStepTitle} onChange={(e) => setNewStepTitle(e.target.value)}
@@ -521,7 +521,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 placeholder="Link URL (optional, e.g. https://welcome.example.com)" style={inputStyle} />
               <button onClick={addStep} disabled={stepSaving || !newStepTitle}
                 className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg"
-                style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: !newStepTitle ? 0.5 : 1 }}>
+                style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: !newStepTitle ? 0.5 : 1 }}>
                 <Plus size={12} /> {stepSaving ? "Adding..." : "Add Step"}
               </button>
             </div>
@@ -531,7 +531,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
 
       {/* CLIPPERS */}
       {activeTab === "clippers" && (
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -546,7 +546,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                        style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)" }}>
+                        style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>
                         {(c.name || c.email)[0].toUpperCase()}
                       </div>
                       <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.name || "—"}</span>
@@ -555,7 +555,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                   <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>{c.email}</td>
                   <td className="px-6 py-4">
                     <span className="text-xs px-2 py-1 rounded-full"
-                      style={{ background: c.status === "active" ? "rgba(61,255,162,0.1)" : "rgba(255,165,0,0.1)", color: c.status === "active" ? "var(--success)" : "var(--warning)" }}>
+                      style={{ background: c.status === "active" ? "color-mix(in srgb, var(--success) 10%, transparent)" : "rgba(255,165,0,0.1)", color: c.status === "active" ? "var(--success)" : "var(--warning)" }}>
                       {c.status}
                     </span>
                   </td>
