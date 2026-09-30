@@ -7,12 +7,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const client = await prisma.client.findFirst({
+  let client = await prisma.client.findFirst({
     where: { name: { contains: "Apex", mode: "insensitive" } },
   });
 
   if (!client) {
-    return NextResponse.json({ error: "Apex Media client not found" }, { status: 404 });
+    client = await prisma.client.create({
+      data: {
+        name: "Apex Media",
+        status: "active",
+        campaignType: "cpm",
+      },
+    });
   }
 
   // Clear existing reports
