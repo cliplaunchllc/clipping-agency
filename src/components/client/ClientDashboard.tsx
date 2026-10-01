@@ -969,38 +969,64 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   70%  { transform: scale(1.15); }
                   100% { opacity: 1; transform: scale(1); }
                 }
-                .ob-step { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
-                .ob-dot  { animation: obDotPop 0.45s cubic-bezier(0.22,1,0.36,1) both; }
-                .ob-line { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
+                @keyframes liveGlow {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 10px rgba(61,255,162,0.5); }
+                  50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 22px rgba(61,255,162,0.55); }
+                }
+                .ob-step   { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-dot    { animation: obDotPop 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-line   { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
                 .ob-header { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+                .live-dot  { animation: liveGlow 2.2s ease-in-out infinite; }
               `}</style>
 
-              <div className="max-w-lg">
+              <div className="max-w-2xl">
+
+                {/* Live status pill */}
+                <div className="ob-header flex items-center gap-2.5 mb-7" style={{ animationDelay: "0ms" }}>
+                  <div
+                    className="live-dot w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: "var(--accent)", boxShadow: "0 0 10px rgba(61,255,162,0.7)" }}
+                  />
+                  <span
+                    className="text-xs font-bold uppercase tracking-widest"
+                    style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.13em" }}
+                  >
+                    Live
+                  </span>
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>· Campaign portal is active</span>
+                </div>
+
                 {/* Header */}
-                <div className="ob-header mb-6" style={{ animationDelay: "0ms" }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.1em" }}>
-                    Getting Started
-                  </p>
-                  <h2 className="text-xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                <div className="ob-header mb-6" style={{ animationDelay: "30ms" }}>
+                  <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                     Welcome to ClipLaunch
                   </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 520 }}>
                     To get started, head to your Welcome Page. There you&apos;ll find the welcome video, your intake form, and these next steps (also listed on your dashboard for easy reference).
                   </p>
                 </div>
 
                 {/* Welcome Page link placeholder */}
-                <div className="ob-header mb-8 rounded-xl px-4 py-3.5 flex items-center gap-3"
-                  style={{ animationDelay: "40ms", background: "linear-gradient(135deg, rgba(255,59,59,0.08) 0%, rgba(255,59,59,0.04) 100%)", border: "1px solid var(--accent-border)" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div
+                  className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
+                  style={{
+                    animationDelay: "60ms",
+                    background: "linear-gradient(135deg, rgba(61,255,162,0.06) 0%, rgba(61,255,162,0.02) 100%)",
+                    border: "1px solid var(--accent-border)",
+                  }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                       <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Welcome Page</p>
+                    <p className="text-sm font-semibold" style={{ color: "var(--accent)" }}>Welcome Page</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
                   </div>
                 </div>
@@ -1027,7 +1053,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   },
                   {
                     number: "04",
-                    owner: "Us",
+                    owner: "ClipLaunch Team",
                     title: "We build your rules brief",
                     description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted — including CTAs, messaging, and any other specifics based on your goals.",
                   },
@@ -1039,24 +1065,28 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   },
                   {
                     number: "06",
-                    owner: "Us",
+                    owner: "ClipLaunch Team",
                     title: "Campaign launches",
                     description: "Once approved, we launch your campaign across our clipper network and content starts getting created.",
                   },
                   {
                     number: "07",
-                    owner: "Us",
+                    owner: "ClipLaunch Team",
                     title: "Updates and optimization",
                     description: "You'll get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You'll also have access to this dashboard, where we'll post campaign reports and weekly updates so you can track your results in one place. We'll keep you posted on anything worth knowing, along with any adjustments we're making along the way.",
                   },
                 ].map((step, i, arr) => {
-                  const isUs = step.owner === "Us";
-                  const dotBg = isUs ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
-                  const dotBorder = isUs ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
-                  const dotColor = isUs ? "var(--text-tertiary)" : "var(--accent)";
-                  const badgeBg = isUs ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
-                  const badgeBorder = isUs ? "rgba(255,255,255,0.1)" : "var(--accent-border)";
-                  const badgeColor = isUs ? "var(--text-tertiary)" : "var(--accent)";
+                  const isTeam = step.owner === "ClipLaunch Team";
+                  const dotBg     = isTeam ? "rgba(255,255,255,0.05)" : "var(--accent-muted)";
+                  const dotBorder = isTeam ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
+                  const dotColor  = isTeam ? "var(--text-secondary)" : "var(--accent)";
+                  const cardBg    = isTeam
+                    ? "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)"
+                    : "linear-gradient(135deg, rgba(61,255,162,0.05) 0%, rgba(61,255,162,0.02) 100%)";
+                  const cardBorder = isTeam ? "rgba(255,255,255,0.08)" : "var(--accent-border)";
+                  const badgeBg     = isTeam ? "rgba(255,255,255,0.07)" : "var(--accent-muted)";
+                  const badgeBorder = isTeam ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
+                  const badgeColor  = isTeam ? "var(--text-secondary)" : "var(--accent)";
                   return (
                     <div
                       key={step.number}
@@ -1064,35 +1094,82 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       style={{ animationDelay: `${80 + i * 80}ms` }}
                     >
                       {/* Left rail */}
-                      <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
+                      <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 40 }}>
                         <div
-                          className="ob-dot w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
-                          style={{ background: dotBg, border: `1px solid ${dotBorder}`, animationDelay: `${100 + i * 80}ms` }}
+                          className="ob-dot w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10"
+                          style={{
+                            background: dotBg,
+                            border: `1px solid ${dotBorder}`,
+                            animationDelay: `${100 + i * 80}ms`,
+                          }}
                         >
-                          <span className="text-xs font-bold tabular-nums" style={{ color: dotColor, fontFamily: "var(--font-display)" }}>
+                          <span
+                            className="text-xs font-bold tabular-nums"
+                            style={{ color: dotColor, fontFamily: "var(--font-display)", fontSize: 11 }}
+                          >
                             {step.number}
                           </span>
                         </div>
                         {i < arr.length - 1 && (
                           <div
-                            className="ob-line flex-1 w-px mt-1"
-                            style={{ background: "linear-gradient(to bottom, var(--border-default), transparent)", minHeight: 32, animationDelay: `${200 + i * 80}ms` }}
+                            className="ob-line flex-1 w-px mt-2"
+                            style={{
+                              background: "linear-gradient(to bottom, var(--border-default) 0%, transparent 100%)",
+                              minHeight: 40,
+                              animationDelay: `${200 + i * 80}ms`,
+                            }}
                           />
                         )}
                       </div>
 
-                      {/* Content */}
-                      <div className={i < arr.length - 1 ? "pb-7" : ""}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+                      {/* Content card */}
+                      <div
+                        className={`flex-1 rounded-xl px-5 py-4 ${i < arr.length - 1 ? "mb-3" : ""}`}
+                        style={{
+                          background: cardBg,
+                          border: `1px solid ${cardBorder}`,
+                          boxShadow: "var(--shadow-inset-top)",
+                        }}
+                      >
+                        {/* Owner badge */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <p
+                            className="text-base font-semibold leading-snug"
+                            style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                          >
                             {step.title}
                           </p>
-                          <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-semibold"
-                            style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, fontSize: 10, letterSpacing: "0.04em" }}>
-                            {step.owner}
+                          <span
+                            className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-1 rounded-md font-semibold mt-0.5"
+                            style={{
+                              background: badgeBg,
+                              border: `1px solid ${badgeBorder}`,
+                              color: badgeColor,
+                              fontSize: 10,
+                              letterSpacing: "0.03em",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {isTeam ? (
+                              <>
+                                <img
+                                  src="/api/favicon"
+                                  alt=""
+                                  width={12}
+                                  height={12}
+                                  style={{ borderRadius: 2, objectFit: "contain", flexShrink: 0 }}
+                                />
+                                ClipLaunch Team
+                              </>
+                            ) : (
+                              "You"
+                            )}
                           </span>
                         </div>
-                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        <p
+                          className="text-sm leading-relaxed"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
                           {step.description}
                         </p>
                       </div>
