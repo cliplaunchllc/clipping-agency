@@ -15,7 +15,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     include: {
       links: { orderBy: { createdAt: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
-      users: { where: { role: "clipper" }, select: { id: true, name: true, email: true, status: true } },
+      users: { where: { role: "client" }, select: { id: true, name: true, email: true, status: true } },
       _count: { select: { clips: true } },
     },
   });
@@ -42,6 +42,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
       id: s.id, title: s.title, description: s.description, linkUrl: s.linkUrl ?? null, order: s.order, completed: s.completed,
     })),
     clippers: client.users.map((u) => ({ id: u.id, name: u.name, email: u.email, status: u.status })),
+    loginUser: client.users[0] ? { id: client.users[0].id, email: client.users[0].email } : null,
   };
 
   return (

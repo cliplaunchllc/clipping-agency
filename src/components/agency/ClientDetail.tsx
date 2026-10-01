@@ -26,6 +26,7 @@ interface ClientData {
   links: Link[];
   onboardingSteps: OnboardingStep[];
   clippers: Clipper[];
+  loginUser: { id: string; email: string } | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -56,6 +57,13 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
   const [savingTracker, setSavingTracker] = useState(false);
   const [trackerSaved, setTrackerSaved] = useState(false);
+
+  // Client login state
+  const [loginEmail, setLoginEmail] = useState(initial.loginUser?.email ?? "");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [savingLogin, setSavingLogin] = useState(false);
+  const [loginMsg, setLoginMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [currentLoginEmail, setCurrentLoginEmail] = useState(initial.loginUser?.email ?? "");
 
   // Links state
   const [links, setLinks] = useState<Link[]>(initial.links);
@@ -112,6 +120,34 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     });
     if (res.ok) { setStartDateSaved(true); setTimeout(() => setStartDateSaved(false), 2500); }
     setSavingStartDate(false);
+  }
+
+  async function saveLogin() {
+    setSavingLogin(true);
+    setLoginMsg(null);
+    const body: Record<string, string> = {};
+    if (loginEmail && loginEmail !== currentLoginEmail) body.email = loginEmail;
+    if (loginPassword) body.newPassword = loginPassword;
+    if (Object.keys(body).length === 0) {
+      setLoginMsg({ type: "err", text: "No changes to save" });
+      setSavingLogin(false);
+      return;
+    }
+    const res = await fetch(`/api/agency/clients/${client.id}/user`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setLoginMsg({ type: "err", text: data.error || "Failed to update" });
+    } else {
+      setLoginMsg({ type: "ok", text: "Login updated" });
+      if (data.email) { setCurrentLoginEmail(data.email); setLoginEmail(data.email); }
+      setLoginPassword("");
+      setTimeout(() => setLoginMsg(null), 3000);
+    }
+    setSavingLogin(false);
   }
 
   async function addLink() {
@@ -323,6 +359,58 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 {startDateSaved ? <><Check size={12} /> Saved</> : savingStartDate ? "Saving…" : <><Save size={12} /> Save</>}
               </button>
             </div>
+          </div>
+
+          {/* Client Login */}
+          <div className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Client Login</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
+              {currentLoginEmail
+                ? <>Current login email: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{currentLoginEmail}</span></>
+                : "No client login account found for this client."}
+            </p>
+            {initial.loginUser && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Email</label>
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="client@example.com"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>New Password <span style={{ color: "var(--text-tertiary)" }}>(leave blank to keep current)</span></label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    style={inputStyle}
+                  />
+                </div>
+                {loginMsg && (
+                  <div className="text-xs px-3 py-2 rounded-lg"
+                    style={{
+                      background: loginMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
+                      color: loginMsg.type === "ok" ? "var(--success)" : "var(--danger)",
+                      border: `1px solid ${loginMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
+                    }}>
+                    {loginMsg.text}
+                  </div>
+                )}
+                <button
+                  onClick={saveLogin}
+                  disabled={savingLogin}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "var(--accent-muted)", border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)", opacity: savingLogin ? 0.6 : 1 }}
+                >
+                  <Save size={12} /> {savingLogin ? "Saving…" : "Save Login"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
