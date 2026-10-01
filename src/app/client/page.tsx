@@ -21,10 +21,6 @@ export default async function ClientPage() {
         },
         orderBy: { submittedAt: "desc" },
       },
-      users: {
-        where: { role: "clipper" },
-        include: { clipperProfile: { include: { subAccounts: { orderBy: { createdAt: "asc" } } } } },
-      },
       links: { orderBy: { createdAt: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
       ongoingReports: { orderBy: { date: "desc" } },
@@ -38,7 +34,7 @@ export default async function ClientPage() {
     id: client.id,
     name: client.name,
     status: client.status,
-    campaignType: client.campaignType as "manual" | "cpm",
+    campaignType: "cpm" as const,
     contractUrl: client.contractUrl ?? null,
     campaignTrackerUrl: client.campaignTrackerUrl ?? null,
     logoUrl: client.logoUrl ?? null,
@@ -102,20 +98,7 @@ export default async function ClientPage() {
       viewsTotal: r.viewsTotal,
       viewsToday: r.viewsToday,
     })),
-    clippers: client.users.map((u) => ({
-      id: u.id,
-      name: u.name ?? u.email,
-      clipCount: client.clips.filter((c) => c.clipper.userId === u.id).length,
-      totalViews: client.clips
-        .filter((c) => c.clipper.userId === u.id)
-        .reduce((sum, c) => sum + Number(c.views), 0),
-      subAccounts: (u.clipperProfile?.subAccounts ?? []).map((s) => ({
-        id: s.id,
-        platform: s.platform,
-        handle: s.handle,
-        profileUrl: s.profileUrl ?? null,
-      })),
-    })),
+    clippers: [],
   };
 
   return (

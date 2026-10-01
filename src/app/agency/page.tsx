@@ -7,25 +7,12 @@ export default async function AgencyPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [clients, clippers, clips, pendingClientUsers] = await Promise.all([
+  const [clients, clips, pendingClientUsers] = await Promise.all([
     prisma.client.findMany({
       include: {
-        users: { where: { role: "clipper" }, select: { id: true } },
         _count: { select: { clips: true } },
       },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { role: "clipper" },
-      include: {
-        client: true,
-        clipperProfile: {
-          include: {
-            _count: { select: { clips: true } },
-            subAccounts: { orderBy: { createdAt: "asc" } },
-          },
-        },
-      },
     }),
     prisma.clip.findMany({
       include: {
@@ -60,7 +47,6 @@ export default async function AgencyPage() {
     subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
   }));
 
-  // Full shape for ClientManagement
   const serializedClients = clients.map((c) => ({
     id: c.id,
     name: c.name,
@@ -69,37 +55,13 @@ export default async function AgencyPage() {
     archivedAt: c.archivedAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
     _count: { clips: c._count.clips },
-    users: c.users,
   }));
 
-  // Full shape for ClipperManagement
-  const serializedClippers = clippers.map((c) => ({
-    id: c.id,
-    name: c.name,
-    email: c.email,
-    status: c.status,
-    clientId: c.clientId ?? null,
-    client: c.client
-      ? { id: c.client.id, name: c.client.name, status: c.client.status }
-      : null,
-    clipperProfile: c.clipperProfile
-      ? {
-          _count: { clips: c.clipperProfile._count.clips },
-          subAccounts: c.clipperProfile.subAccounts.map((s) => ({
-            id: s.id, platform: s.platform, handle: s.handle, profileUrl: s.profileUrl ?? null,
-          })),
-        }
-      : null,
-  }));
-
-  // Simplified client list for ClipperManagement's allClients prop
   const allClientsList = clients.map((c) => ({
     id: c.id,
     name: c.name,
     status: c.status,
     logoUrl: c.logoUrl ?? null,
-    clipsPerDay: c.clipsPerDay ?? null,
-    pageCount: c.pageCount ?? null,
     dealLengthDays: c.dealLengthDays ?? null,
     dealStartDate: c.dealStartDate?.toISOString() ?? null,
     dealEndDate: c.dealEndDate?.toISOString() ?? null,
@@ -109,7 +71,6 @@ export default async function AgencyPage() {
     <AgencyDashboard
       userName={session.user.name ?? "Agency"}
       clients={serializedClients}
-      clippers={serializedClippers}
       allClients={allClientsList}
       clips={serializedClips}
       totalViews={totalViews}

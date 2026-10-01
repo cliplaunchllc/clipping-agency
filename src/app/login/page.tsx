@@ -16,8 +16,7 @@ interface SavedAccount {
 }
 
 const roles: { id: Role; label: string; desc: string }[] = [
-  { id: "agency",  label: "Agency",  desc: "Manage clients, clippers & all analytics" },
-  { id: "clipper", label: "Clipper", desc: "Submit clips and track your performance" },
+  { id: "agency",  label: "Agency",  desc: "Manage clients & all analytics" },
   { id: "client",  label: "Client",  desc: "View your campaign results and reports" },
 ];
 
@@ -167,7 +166,8 @@ export default function LoginPage() {
 
   const roleInfo = roles.find((r) => r.id === selectedRole);
 
-  if (status === "loading" || status === "authenticated") {
+  // Don't blank out while session loads — keep the form visible
+  if (status === "authenticated") {
     return <div className="min-h-screen" style={{ background: "var(--bg-base)" }} />;
   }
 
@@ -402,10 +402,6 @@ export default function LoginPage() {
                 </div>
               </button>
             ))}
-            <p className="text-center text-xs pt-2" style={{ color: "var(--text-tertiary)" }}>
-              New clipper?{" "}
-              <Link href="/signup" style={{ color: "var(--success)" }}>Create an account</Link>
-            </p>
           </div>
         )}
 
@@ -501,17 +497,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {(selectedRole === "clipper" || selectedRole === "client") && (
-              <p className="text-center text-xs mt-5" style={{ color: "var(--text-tertiary)" }}>
-                New {roleInfo?.label.toLowerCase()}?{" "}
-                <Link
-                  href={selectedRole === "client" ? "/signup?role=client" : "/signup"}
-                  style={{ color: "var(--success)" }}
-                >
-                  Create an account
-                </Link>
-              </p>
-            )}
           </div>
         )}
       </div>

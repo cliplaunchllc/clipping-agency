@@ -4,10 +4,9 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
 import ClientManagement from "@/components/agency/ClientManagement";
-import ClipperManagement from "@/components/agency/ClipperManagement";
 import {
-  Eye, Heart, Share2, Bookmark, MessageCircle, Users, Scissors, BarChart2,
-  TrendingUp, TrendingDown, ExternalLink, ChevronDown, RotateCw, UserCheck,
+  Eye, Heart, Share2, Bookmark, MessageCircle, Users, BarChart2,
+  TrendingUp, TrendingDown, ExternalLink, ChevronDown, RotateCw,
   X, Check, Link2,
 } from "lucide-react";
 import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
@@ -84,19 +83,15 @@ function prevLabel(period: TimePeriod, cs: string, ce: string) {
 interface Props {
   userName: string;
   clients: AnyRecord[];
-  clippers: AnyRecord[];
   allClients: AnyRecord[];
   clips: AnyRecord[];
   totalViews: number;
   pendingClientUsers?: AnyRecord[];
 }
 
-export default function AgencyDashboard({ userName, clients, clippers, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "targets" | "clients" | "clippers" | "clips" | "platform-stats">("overview");
-  const [allClips, setAllClips] = useState<AnyRecord[]>(initialClips);
-  const [refreshingClip, setRefreshingClip] = useState<string | null>(null);
-  const [refreshingAll, setRefreshingAll] = useState(false);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+export default function AgencyDashboard({ userName, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
+  const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clips" | "platform-stats">("overview");
+  const [allClips] = useState<AnyRecord[]>(initialClips);
   const [showLiveLinkModal, setShowLiveLinkModal] = useState(false);
   const [liveLinkClientId, setLiveLinkClientId] = useState("");
   const [liveLinkCopied, setLiveLinkCopied] = useState(false);
@@ -116,45 +111,12 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     setLiveLinkLoading(false);
   }
 
-  async function handleRefreshAll() {
-    if (refreshingAll || allClips.length === 0) return;
-    setRefreshingAll(true);
-    for (const clip of allClips.slice(0, 50)) {
-      const res = await fetch(`/api/clips/${clip.id}`, { method: "PATCH" });
-      if (res.ok) {
-        const updated = await res.json();
-        setAllClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, views: updated.views, likes: updated.likes, comments: updated.comments, shares: updated.shares, saves: updated.saves, lastScraped: updated.lastScraped } : c));
-      }
-    }
-    setRefreshingAll(false);
-    setLastSynced(new Date());
-  }
-
-
-  async function handleRefreshClip(clipId: string) {
-    setRefreshingClip(clipId);
-    const res = await fetch(`/api/clips/${clipId}`, { method: "PATCH" });
-    if (res.ok) {
-      const updated = await res.json();
-      setAllClips((prev) =>
-        prev.map((c) =>
-          c.id === clipId
-            ? { ...c, views: updated.views, likes: updated.likes, comments: updated.comments, shares: updated.shares, saves: updated.saves, lastScraped: updated.lastScraped }
-            : c
-        )
-      );
-    }
-    setRefreshingClip(null);
-  }
-
   // Controls
   const [selectedClientId, setSelectedClientId] = useState("all");
-  const [trackerClientId, setTrackerClientId] = useState("all");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
 
-  const pendingClippers = clippers.filter((c) => c.status === "pending").length;
   const activeClients = clients.filter((c) => c.status === "active");
 
   // Client filter
@@ -192,19 +154,6 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     clipsByPlatform[p] = (clipsByPlatform[p] ?? 0) + 1;
   });
 
-  // Active clippers per period
-  const clipperViewsInPeriod: Record<string, number> = {};
-  filteredClips.forEach((c) => {
-    const name = (c.clipper?.name ?? "Unknown") as string;
-    clipperViewsInPeriod[name] = (clipperViewsInPeriod[name] ?? 0) + (c.views ?? 0);
-  });
-  const activeClippersDisplay = (clippers
-    .filter((c) => c.status === "active" && (selectedClientId === "all" || c.clientId === selectedClientId))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((c) => ({ ...c, periodViews: clipperViewsInPeriod[(c.name as string) ?? ""] ?? 0 })) as AnyRecord[])
-    .sort((a, b) => (b.periodViews as number) - (a.periodViews as number))
-    .slice(0, 8);
-
   // Chart from filtered clips
   const byDate: Record<string, number> = {};
   filteredClips.forEach((c) => {
@@ -224,45 +173,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
     prevViews: prevChartDates[i] !== undefined ? (prevByDate[prevChartDates[i]] ?? 0) : undefined,
   }));
 
-  // Top clippers from filtered
-  const clipperMap: Record<string, { name: string; views: number; likes: number; comments: number; shares: number; saves: number; clips: number }> = {};
-  filteredClips.forEach((c) => {
-    const name = c.clipper?.name ?? "Unknown";
-    if (!clipperMap[name]) clipperMap[name] = { name, views: 0, likes: 0, comments: 0, shares: 0, saves: 0, clips: 0 };
-    clipperMap[name].views += c.views ?? 0;
-    clipperMap[name].likes += c.likes ?? 0;
-    clipperMap[name].comments += c.comments ?? 0;
-    clipperMap[name].shares += c.shares ?? 0;
-    clipperMap[name].saves += c.saves ?? 0;
-    clipperMap[name].clips += 1;
-  });
-  const topClippers = Object.values(clipperMap).sort((a, b) => b.views - a.views).slice(0, 5);
   const topClips = [...filteredClips].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
-
-  // Clipper page breakout (MTD)
-  const now = new Date();
-  const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const mtdClips = allClips.filter((c) => new Date(c.submittedAt as string) >= mtdStart);
-  const BREAKOUT_PLATFORMS = ["tiktok", "instagram", "youtube"];
-  const clipperBreakout = clippers
-    .filter((c) => c.status === "active" && (selectedClientId === "all" || c.clientId === selectedClientId))
-    .map((clipper) => {
-      const myMtd = mtdClips.filter((c) => c.clipper?.name === clipper.name);
-      const byPlatform: Record<string, number> = {};
-      myMtd.forEach((c) => {
-        const p = (c.subAccount?.platform ?? "other") as string;
-        byPlatform[p] = (byPlatform[p] ?? 0) + 1;
-      });
-      const client = allClients.find((cl) => cl.id === clipper.clientId);
-      // Per clipper: clipsPerDay × 3 platforms × dealLengthDays (or 30)
-      const dealDays = (client as AnyRecord)?.dealLengthDays ?? 30;
-      const monthlyTarget = (client as AnyRecord)?.clipsPerDay
-        ? Math.round((client as AnyRecord).clipsPerDay * 3 * dealDays)
-        : null;
-      return { ...clipper, byPlatform, mtdTotal: myMtd.length, monthlyTarget, clientName: (clipper as AnyRecord).client?.name ?? null } as AnyRecord;
-    })
-    .sort((a, b) => (b.mtdTotal as number) - (a.mtdTotal as number));
 
   const statItems = [
     { label: "Views", value: fmt(currViews), icon: Eye, color: "var(--accent)", change: pct(currViews, prevViews) },
@@ -339,9 +250,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
           <div className="flex items-center gap-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
             {([
               { id: "overview", label: "Overview" },
-              { id: "targets", label: "Targets" },
               { id: "clients", label: `Clients (${clients.length})` },
-              { id: "clippers", label: `Clippers${pendingClippers > 0 ? ` · ${pendingClippers} pending` : ""}` },
               { id: "clips", label: `Clips (${allClips.length})` },
               { id: "platform-stats", label: "Platform Stats" },
             ] as const).map((tab) => (
@@ -369,30 +278,11 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {lastSynced && (
-                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Updated {Math.round((Date.now() - lastSynced.getTime()) / 60000)}m ago
-                  </span>
-                )}
                 <button onClick={() => setShowLiveLinkModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
                   style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
                   <Link2 size={11} /> Share Live Tracker
                 </button>
-                <button onClick={handleRefreshAll} disabled={refreshingAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
-                  style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: refreshingAll ? 0.5 : 1 }}>
-                  <RotateCw size={11} className={refreshingAll ? "animate-spin" : ""} />
-                  {refreshingAll ? "Syncing…" : "Sync Stats"}
-                </button>
-                {pendingClippers > 0 && (
-                  <button onClick={() => setActiveTab("clippers")}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: "rgba(255,165,0,0.1)", border: "1px solid rgba(255,165,0,0.25)", color: "var(--warning)" }}>
-                    <Scissors size={13} />
-                    {pendingClippers} clipper{pendingClippers > 1 ? "s" : ""} awaiting assignment
-                  </button>
-                )}
               </div>
             </div>
 
@@ -517,196 +407,8 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
               <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
             </div>
 
-            {/* ── Totals Tracker (overview) ──────────────────────────── */}
-            {(() => {
-              const TRACKER_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
-              const trackerFilteredClients = trackerClientId === "all"
-                ? allClients.filter((c) => (c as AnyRecord).status === "active")
-                : allClients.filter((c) => c.id === trackerClientId && (c as AnyRecord).status === "active");
-              let totalGoal = 0;
-              const platformGoals: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
-              trackerFilteredClients.forEach((c) => {
-                const cpd = (c as AnyRecord).clipsPerDay as number | null;
-                if (!cpd) return;
-                const deal = (c as AnyRecord).dealLengthDays as number | null ?? 30;
-                const numClip = (c as AnyRecord).pageCount as number | null ?? 0; // pageCount = # clippers in deal
-                if (numClip === 0) return;
-                const perPlatformGoal = Math.round(numClip * cpd * deal);
-                totalGoal += perPlatformGoal * 3;
-                TRACKER_PLATFORMS.forEach((p) => { platformGoals[p] += perPlatformGoal; });
-              });
-              // Filter clips by each client's deal window (dealStartDate + dealLengthDays), fallback to MTD
-              const platformActual: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
-              let totalActual = 0;
-              const trackerClientMap = new Map(trackerFilteredClients.map((c) => [c.id, c]));
-              allClips.forEach((clip) => {
-                const clientData = trackerClientMap.get(clip.clientId as string);
-                if (!clientData) return;
-                const startRaw = (clientData as AnyRecord).dealStartDate as string | null;
-                const dealLen = (clientData as AnyRecord).dealLengthDays as number | null ?? 30;
-                const start = startRaw ? new Date(startRaw) : mtdStart;
-                const end = startRaw ? new Date(new Date(startRaw).getTime() + dealLen * 86400000) : now;
-                const submittedAt = new Date(clip.submittedAt as string);
-                if (submittedAt < start || submittedAt > end) return;
-                const p = (clip.subAccount?.platform ?? "other") as string;
-                if (p in platformActual) platformActual[p] = (platformActual[p] ?? 0) + 1;
-                totalActual += 1;
-              });
-              const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
-              const totalColor = totalPct >= 100 ? "var(--success)" : totalPct >= 60 ? "var(--warning)" : "var(--accent)";
-              const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
-              const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
-              const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
-              const singleStart = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealStartDate as string | null) : null;
-              const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-              const computedEnd = singleStart && trackerDeal ? new Date(new Date(singleStart).getTime() + trackerDeal * 86400000) : null;
-              const periodLabel = singleStart && computedEnd
-                ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
-                : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
-              return (
-                <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={14} color="var(--success)" />
-                      <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                        Deal Tracker — {periodLabel}
-                      </h2>
-                    </div>
-                    <div className="relative">
-                      <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
-                        className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                        style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
-                        <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
-                        {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
-                          <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{(c as AnyRecord).name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
-                  {trackerClipper > 0 && (
-                    <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-                      {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
-                      {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
-                      {" · 3 platforms"}
-                      {trackerDeal ? ` · ${trackerDeal}-day deal` : ""}
-                      {totalGoal > 0 ? ` → ${totalGoal} total clips` : ""}
-                    </p>
-                  )}
-                  {totalGoal === 0 ? (
-                    <p className="text-sm py-4 text-center" style={{ color: "var(--text-secondary)" }}>No deal terms set. Add clips/day to clients to see the tracker.</p>
-                  ) : (
-                    <>
-                      <div className="mb-5 rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <div className="flex items-end justify-between mb-2">
-                          <div>
-                            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{totalActual}</span>
-                            <span className="text-sm ml-1.5" style={{ color: "var(--text-secondary)" }}>/ {totalGoal} clips deal total</span>
-                          </div>
-                          <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
-                        </div>
-                        <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                          <div className="h-full rounded-full bar-fill" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60` }} />
-                        </div>
-                        <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
-                          {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        {TRACKER_PLATFORMS.map((p) => {
-                          const goal = platformGoals[p] ?? 0;
-                          const actual = platformActual[p] ?? 0;
-                          const platPct = goal > 0 ? Math.min(100, Math.round((actual / goal) * 100)) : 0;
-                          const color = PLATFORM_COLORS[p] ?? "var(--text-tertiary)";
-                          const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
-                          return (
-                            <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <div className="flex items-center gap-2 mb-3">
-                                <PlatformIcon platform={p} size={13} />
-                                <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
-                              </div>
-                              <div className="flex items-end justify-between mb-2">
-                                <span className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{actual}</span>
-                                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/ {goal}</span>
-                              </div>
-                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                                <div className="h-full rounded-full bar-fill" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50` }} />
-                              </div>
-                              <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "var(--success)" : platPct >= 60 ? "var(--warning)" : color }}>{platPct}%</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Active Clippers */}
-            {activeClippersDisplay.length > 0 && (
-              <div className="rounded-xl p-6 mb-6 fade-up delay-3" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <UserCheck size={14} color="var(--success)" />
-                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Active Clippers</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>
-                      {activeClippersDisplay.length}
-                    </span>
-                  </div>
-                  <button onClick={() => setActiveTab("clippers")} className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{ color: "var(--success)", background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.15)" }}>
-                    Manage
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {activeClippersDisplay.map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl"
-                      style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "rgba(255,59,59,0.12)", color: "var(--accent)" }}>
-                        {((c.name as string) || "?")[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{(c.name as string) ?? (c.email as string)}</p>
-                        {c.client?.name && (
-                          <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{c.client.name as string}</p>
-                        )}
-                        <p className="text-xs" style={{ color: "var(--accent)" }}>{fmt(c.periodViews)} views</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Top Clippers + Top Clips ────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-6 mb-6 fade-up delay-4">
-              <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp size={14} color="var(--success)" />
-                    <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clippers</h2>
-                  </div>
-                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
-                </div>
-                <div className="space-y-3">
-                  {topClippers.map((c, i) => (
-                    <div key={c.name} className="flex items-center gap-3">
-                      <span className="text-xs w-4 text-right flex-shrink-0" style={{ color: "var(--text-secondary)" }}>{i + 1}</span>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>{c.name[0]}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</p>
-                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{c.clips} clips</p>
-                      </div>
-                      <span className="text-sm font-semibold flex-shrink-0" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmt(c.views)}</span>
-                    </div>
-                  ))}
-                  {topClippers.length === 0 && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>}
-                </div>
-              </div>
-
+            {/* ── Top Clips ────────────────────────────────────────────── */}
+            <div className="mb-6 fade-up delay-3">
               <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -744,204 +446,7 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
 
           </>}
 
-          {/* ── TARGETS TAB ───────────────────────────────────────────── */}
-          {activeTab === "targets" && (
-            <div className="space-y-6">
-              {/* ── Clipper Page Breakout ───────────────────────────────── */}
-              {clipperBreakout.length > 0 && (
-                <div className="rounded-xl mb-6 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                  <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="flex items-center gap-2">
-                      <BarChart2 size={14} color="var(--accent)" />
-                      <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Clipper Breakdown — {now.toLocaleString("en-US", { month: "long" })}</h2>
-                    </div>
-                  </div>
-                  <table className="w-full">
-                    <thead>
-                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Clipper</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Client</th>
-                        {BREAKOUT_PLATFORMS.map((p) => (
-                          <th key={p} className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: PLATFORM_COLORS[p] ?? "var(--text-tertiary)" }}>
-                            {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube"}
-                          </th>
-                        ))}
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Total MTD</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Target</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Progress</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clipperBreakout.map((c, i) => {
-                        const pct = c.monthlyTarget ? Math.min(100, Math.round((c.mtdTotal / c.monthlyTarget) * 100)) : null;
-                        const color = pct !== null ? (pct >= 100 ? "var(--success)" : pct >= 60 ? "var(--warning)" : "var(--accent)") : "var(--text-tertiary)";
-                        return (
-                          <tr key={c.id as string} style={{ borderBottom: i < clipperBreakout.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                            <td className="px-6 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                  style={{ background: "rgba(255,59,59,0.12)", color: "var(--accent)" }}>
-                                  {((c.name as string) || "?")[0].toUpperCase()}
-                                </div>
-                                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.name as string}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>{(c.clientName as string) ?? "—"}</td>
-                            {BREAKOUT_PLATFORMS.map((p) => (
-                              <td key={p} className="px-4 py-3 text-center text-sm font-medium" style={{ color: (c.byPlatform as Record<string,number>)[p] > 0 ? (PLATFORM_COLORS[p] ?? "var(--text-primary)") : "var(--text-tertiary)" }}>
-                                {(c.byPlatform as Record<string,number>)[p] ?? 0}
-                              </td>
-                            ))}
-                            <td className="px-4 py-3 text-center text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.mtdTotal as number}</td>
-                            <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--text-secondary)" }}>{c.monthlyTarget ?? "—"}</td>
-                            <td className="px-4 py-3">
-                              {pct !== null ? (
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
-                                  </div>
-                                  <span className="text-xs font-semibold w-8 text-right flex-shrink-0" style={{ color }}>{pct}%</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
 
-              {/* ── Totals Tracker ─────────────────────────────────────── */}
-              {(() => {
-                const TRACKER_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
-                const trackerFilteredClients = trackerClientId === "all"
-                  ? allClients.filter((c) => (c as AnyRecord).status === "active")
-                  : allClients.filter((c) => c.id === trackerClientId && (c as AnyRecord).status === "active");
-                let totalGoal = 0;
-                const platformGoals: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
-                trackerFilteredClients.forEach((c) => {
-                  const cpd = (c as AnyRecord).clipsPerDay as number | null;
-                  if (!cpd) return;
-                  const deal = (c as AnyRecord).dealLengthDays as number | null ?? 30;
-                  const numClip = (c as AnyRecord).pageCount as number | null ?? 0; // pageCount = # clippers in deal
-                  if (numClip === 0) return;
-                  const perPlatformGoal = Math.round(numClip * cpd * deal);
-                  totalGoal += perPlatformGoal * 3;
-                  TRACKER_PLATFORMS.forEach((p) => { platformGoals[p] += perPlatformGoal; });
-                });
-                const platformActual: Record<string, number> = { tiktok: 0, instagram: 0, youtube: 0 };
-                let totalActual = 0;
-                const trackerClientMap = new Map(trackerFilteredClients.map((c) => [c.id, c]));
-                allClips.forEach((clip) => {
-                  const clientData = trackerClientMap.get(clip.clientId as string);
-                  if (!clientData) return;
-                  const startRaw = (clientData as AnyRecord).dealStartDate as string | null;
-                  const dealLen = (clientData as AnyRecord).dealLengthDays as number | null ?? 30;
-                  const start = startRaw ? new Date(startRaw) : mtdStart;
-                  const end = startRaw ? new Date(new Date(startRaw).getTime() + dealLen * 86400000) : now;
-                  const submittedAt = new Date(clip.submittedAt as string);
-                  if (submittedAt < start || submittedAt > end) return;
-                  const p = (clip.subAccount?.platform ?? "other") as string;
-                  if (p in platformActual) platformActual[p] = (platformActual[p] ?? 0) + 1;
-                  totalActual += 1;
-                });
-                const totalPct = totalGoal > 0 ? Math.min(100, Math.round((totalActual / totalGoal) * 100)) : 0;
-                const totalColor = totalPct >= 100 ? "var(--success)" : totalPct >= 60 ? "var(--warning)" : "var(--accent)";
-                const trackerClipper = trackerFilteredClients.reduce((acc, c) => acc + ((c as AnyRecord).pageCount as number | null ?? 0), 0);
-                const trackerCpd = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).clipsPerDay ?? null) : null;
-                const trackerDeal = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealLengthDays ?? 30) : null;
-                const singleStart = trackerFilteredClients.length === 1 ? ((trackerFilteredClients[0] as AnyRecord).dealStartDate as string | null) : null;
-                const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                const computedEnd = singleStart && trackerDeal ? new Date(new Date(singleStart).getTime() + trackerDeal * 86400000) : null;
-                const periodLabel = singleStart && computedEnd
-                  ? `${fmtDate(new Date(singleStart))} – ${fmtDate(computedEnd)}`
-                  : singleStart ? fmtDate(new Date(singleStart)) + " +" : now.toLocaleString("en-US", { month: "long" });
-                return (
-                  <div className="rounded-xl p-6 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp size={14} color="var(--success)" />
-                        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                          Deal Tracker — {periodLabel}
-                        </h2>
-                      </div>
-                      <div className="relative">
-                        <select value={trackerClientId} onChange={(e) => setTrackerClientId(e.target.value)}
-                          className="appearance-none pl-3 pr-7 py-1.5 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                          style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
-                          <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
-                          {allClients.filter((c) => (c as AnyRecord).status === "active").map((c) => (
-                            <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{(c as AnyRecord).name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={11} color="#8A93A6" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                    </div>
-                    {trackerClipper > 0 && (
-                      <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-                        {trackerClipper} clipper{trackerClipper !== 1 ? "s" : ""}
-                        {trackerCpd ? ` · ${trackerCpd} clips/day/platform` : ""}
-                        {" · 3 platforms"}
-                        {trackerDeal ? ` · ${trackerDeal}-day deal` : ""}
-                        {totalGoal > 0 ? ` → ${totalGoal} total clips` : ""}
-                      </p>
-                    )}
-                    {totalGoal === 0 ? (
-                      <p className="text-sm py-4 text-center" style={{ color: "var(--text-secondary)" }}>
-                        No deal terms set. Add clips/day to clients to see the tracker.
-                      </p>
-                    ) : (
-                      <>
-                        <div className="mb-5 rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                          <div className="flex items-end justify-between mb-2">
-                            <div>
-                              <span className="text-2xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{totalActual}</span>
-                              <span className="text-sm ml-1.5" style={{ color: "var(--text-secondary)" }}>/ {totalGoal} clips deal total</span>
-                            </div>
-                            <span className="text-base font-bold" style={{ color: totalColor }}>{totalPct}%</span>
-                          </div>
-                          <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                            <div className="h-full rounded-full" style={{ width: `${totalPct}%`, background: `linear-gradient(90deg, ${totalColor}80 0%, ${totalColor} 100%)`, boxShadow: `0 0 12px ${totalColor}60`, transition: "width 0.5s ease" }} />
-                          </div>
-                          <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
-                            {totalActual >= totalGoal ? "Deal goal reached!" : `${totalGoal - totalActual} clips remaining`}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                          {TRACKER_PLATFORMS.map((p) => {
-                            const goal = platformGoals[p] ?? 0;
-                            const actual = platformActual[p] ?? 0;
-                            const platPct = goal > 0 ? Math.min(100, Math.round((actual / goal) * 100)) : 0;
-                            const color = PLATFORM_COLORS[p] ?? "var(--text-tertiary)";
-                            const platLabel = p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "YouTube";
-                            return (
-                              <div key={p} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <PlatformIcon platform={p} size={13} />
-                                  <span className="text-xs font-semibold" style={{ color }}>{platLabel}</span>
-                                </div>
-                                <div className="flex items-end justify-between mb-2">
-                                  <span className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{actual}</span>
-                                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>/ {goal}</span>
-                                </div>
-                                <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                                  <div className="h-full rounded-full" style={{ width: `${platPct}%`, background: `linear-gradient(90deg, ${color}70 0%, ${color} 100%)`, boxShadow: `0 0 8px ${color}50`, transition: "width 0.5s ease" }} />
-                                </div>
-                                <p className="text-xs mt-1.5 font-semibold" style={{ color: platPct >= 100 ? "var(--success)" : platPct >= 60 ? "var(--warning)" : color }}>{platPct}%</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
 
           {/* ── CLIENTS TAB ───────────────────────────────────────────── */}
           {activeTab === "clients" && (
@@ -949,11 +454,6 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
             <ClientManagement initialClients={clients as any} pendingClientUsers={pendingClientUsers as any} allClients={allClients as any} />
           )}
 
-          {/* ── CLIPPERS TAB ──────────────────────────────────────────── */}
-          {activeTab === "clippers" && (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <ClipperManagement initialClippers={clippers as any} allClients={allClients as any} />
-          )}
 
           {/* ── PLATFORM STATS TAB ────────────────────────────────────── */}
           {activeTab === "platform-stats" && (
@@ -977,20 +477,12 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                   <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>All Clips</h1>
                   <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{allClips.length} clips total</p>
                 </div>
-                {allClips.length > 0 && (
-                  <button onClick={handleRefreshAll} disabled={refreshingAll}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)", opacity: refreshingAll ? 0.6 : 1 }}>
-                    <RotateCw size={13} className={refreshingAll ? "animate-spin" : ""} />
-                    {refreshingAll ? "Refreshing..." : "Refresh All"}
-                  </button>
-                )}
               </div>
               <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Platform", "Preview", "Title", "Account", "Clipper", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link", "Refresh"].map((h) => (
+                      {["Platform", "Preview", "Title", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link"].map((h) => (
                         <th key={h} className="px-4 py-4 text-left text-xs font-medium uppercase tracking-wider"
                           style={{ color: "var(--text-secondary)" }}>{h}</th>
                       ))}
@@ -1023,9 +515,6 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                           @{clip.subAccount?.handle ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>
-                          {clip.clipper?.name ?? clip.clipper?.user?.name ?? "—"}
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>
                           {clip.client?.name ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views ?? 0)}</td>
@@ -1042,16 +531,11 @@ export default function AgencyDashboard({ userName, clients, clippers, allClient
                             <ExternalLink size={12} color="var(--accent)" />
                           </a>
                         </td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => handleRefreshClip(clip.id)} disabled={refreshingClip === clip.id} title="Refresh stats from platform">
-                            <RotateCw size={12} color="#8A93A6" className={refreshingClip === clip.id ? "animate-spin" : ""} />
-                          </button>
-                        </td>
                       </tr>
                     ))}
                     {allClips.length === 0 && (
                       <tr>
-                        <td colSpan={13} className="px-4 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
+                        <td colSpan={11} className="px-4 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                           No clips yet.
                         </td>
                       </tr>

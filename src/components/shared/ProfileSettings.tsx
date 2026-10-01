@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Sidebar from "@/components/shared/Sidebar";
 
 interface Props {
-  role: "clipper" | "client";
+  role: "agency" | "client";
   userName: string;
   userEmail: string;
 }

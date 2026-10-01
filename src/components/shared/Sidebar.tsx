@@ -5,21 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Scissors, Settings, FileText, BarChart2,
+  LayoutDashboard, Users, Settings, BarChart2,
 } from "lucide-react";
 
 const NAV_ITEMS = {
   agency: [
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
-    { label: "Clippers", href: "/agency/clippers", icon: Scissors },
     { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
     { label: "Settings", href: "/agency/settings", icon: Settings },
-  ],
-  clipper: [
-    { label: "Dashboard", href: "/clipper", icon: LayoutDashboard },
-    { label: "Submissions", href: "/clipper/submissions", icon: FileText },
-    { label: "Settings", href: "/clipper/settings", icon: Settings },
   ],
   client: [
     { label: "Dashboard", href: "/client", icon: LayoutDashboard },
@@ -28,7 +22,7 @@ const NAV_ITEMS = {
 };
 
 interface SidebarProps {
-  role: "agency" | "clipper" | "client";
+  role: "agency" | "client";
   userName: string;
 }
 
