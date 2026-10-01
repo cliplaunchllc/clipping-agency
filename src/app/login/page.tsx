@@ -82,7 +82,13 @@ export default function LoginPage() {
   useEffect(() => {
     const accounts = getSavedAccounts();
     setSavedAccounts(accounts);
-    if (accounts.length === 0) setStep("role");
+    if (accounts.length === 0) {
+      setStep("role");
+    } else if (accounts.length === 1) {
+      // Auto-tap the only saved account so the user never has to click
+      handleTapAccount(accounts[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
