@@ -964,23 +964,31 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   from { transform: scaleY(0); }
                   to   { transform: scaleY(1); }
                 }
-                @keyframes obDotPop {
-                  0%   { opacity: 0; transform: scale(0.4); }
-                  70%  { transform: scale(1.15); }
-                  100% { opacity: 1; transform: scale(1); }
-                }
                 @keyframes liveGlow {
                   0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 10px rgba(61,255,162,0.5); }
                   50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 22px rgba(61,255,162,0.55); }
                 }
-                .ob-step   { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
-                .ob-dot    { animation: obDotPop 0.45s cubic-bezier(0.22,1,0.36,1) both; }
-                .ob-line   { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
-                .ob-header { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-                .live-dot  { animation: liveGlow 2.2s ease-in-out infinite; }
+                /* Cascade glow: each dot's animation is 4.9s (7 steps × 0.7s).
+                   Negative delay staggers each dot's position within the cycle so
+                   the glow passes down the list automatically and loops. */
+                @keyframes stepCascade {
+                  0%, 8%, 100% {
+                    box-shadow: none;
+                    border-color: rgba(255,255,255,0.1);
+                  }
+                  4% {
+                    box-shadow: 0 0 0 4px rgba(61,255,162,0.18), 0 0 18px rgba(61,255,162,0.45);
+                    border-color: rgba(61,255,162,0.55);
+                  }
+                }
+                .ob-step    { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-line    { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
+                .ob-header  { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+                .live-dot   { animation: liveGlow 2.2s ease-in-out infinite; }
+                .step-dot   { animation: stepCascade 4.9s ease-in-out infinite; }
               `}</style>
 
-              <div className="max-w-2xl">
+              <div style={{ maxWidth: "100%" }}>
 
                 {/* Live status pill */}
                 <div className="ob-header flex items-center gap-2.5 mb-7" style={{ animationDelay: "0ms" }}>
@@ -1002,7 +1010,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                     Welcome to ClipLaunch
                   </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 520 }}>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 560 }}>
                     To get started, head to your Welcome Page. There you&apos;ll find the welcome video, your intake form, and these next steps (also listed on your dashboard for easy reference).
                   </p>
                 </div>
@@ -1012,21 +1020,22 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
                   style={{
                     animationDelay: "60ms",
-                    background: "linear-gradient(135deg, rgba(61,255,162,0.06) 0%, rgba(61,255,162,0.02) 100%)",
-                    border: "1px solid var(--accent-border)",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border-default)",
+                    boxShadow: "var(--shadow-inset-top)",
                   }}
                 >
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
+                    style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                       <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: "var(--accent)" }}>Welcome Page</p>
+                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
                   </div>
                 </div>
@@ -1077,35 +1086,30 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   },
                 ].map((step, i, arr) => {
                   const isTeam = step.owner === "ClipLaunch Team";
-                  const dotBg     = isTeam ? "rgba(255,255,255,0.05)" : "var(--accent-muted)";
-                  const dotBorder = isTeam ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
-                  const dotColor  = isTeam ? "var(--text-secondary)" : "var(--accent)";
-                  const cardBg    = isTeam
-                    ? "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)"
-                    : "linear-gradient(135deg, rgba(61,255,162,0.05) 0%, rgba(61,255,162,0.02) 100%)";
-                  const cardBorder = isTeam ? "rgba(255,255,255,0.08)" : "var(--accent-border)";
-                  const badgeBg     = isTeam ? "rgba(255,255,255,0.07)" : "var(--accent-muted)";
-                  const badgeBorder = isTeam ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
+                  const badgeBg     = isTeam ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
+                  const badgeBorder = isTeam ? "rgba(255,255,255,0.1)" : "var(--accent-border)";
                   const badgeColor  = isTeam ? "var(--text-secondary)" : "var(--accent)";
+                  // Cascade: 7 steps × 0.7s = 4.9s cycle. Step i fires at i × 0.7s into the cycle.
+                  const cascadeDelay = `-${((arr.length - 1 - i) * 0.7).toFixed(1)}s`;
                   return (
                     <div
                       key={step.number}
                       className="ob-step flex gap-5"
-                      style={{ animationDelay: `${80 + i * 80}ms` }}
+                      style={{ animationDelay: `${80 + i * 70}ms` }}
                     >
                       {/* Left rail */}
                       <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 40 }}>
                         <div
-                          className="ob-dot w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10"
+                          className="step-dot w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10"
                           style={{
-                            background: dotBg,
-                            border: `1px solid ${dotBorder}`,
-                            animationDelay: `${100 + i * 80}ms`,
+                            background: "var(--bg-surface)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            animationDelay: cascadeDelay,
                           }}
                         >
                           <span
                             className="text-xs font-bold tabular-nums"
-                            style={{ color: dotColor, fontFamily: "var(--font-display)", fontSize: 11 }}
+                            style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontSize: 11 }}
                           >
                             {step.number}
                           </span>
@@ -1116,7 +1120,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                             style={{
                               background: "linear-gradient(to bottom, var(--border-default) 0%, transparent 100%)",
                               minHeight: 40,
-                              animationDelay: `${200 + i * 80}ms`,
+                              animationDelay: `${200 + i * 70}ms`,
                             }}
                           />
                         )}
@@ -1126,12 +1130,11 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       <div
                         className={`flex-1 rounded-xl px-5 py-4 ${i < arr.length - 1 ? "mb-3" : ""}`}
                         style={{
-                          background: cardBg,
-                          border: `1px solid ${cardBorder}`,
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border-default)",
                           boxShadow: "var(--shadow-inset-top)",
                         }}
                       >
-                        {/* Owner badge */}
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <p
                             className="text-base font-semibold leading-snug"
