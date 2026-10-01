@@ -977,7 +977,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
               <div className="max-w-lg">
                 {/* Header */}
-                <div className="ob-header mb-10" style={{ animationDelay: "0ms" }}>
+                <div className="ob-header mb-6" style={{ animationDelay: "0ms" }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.1em" }}>
                     Getting Started
                   </p>
@@ -985,65 +985,120 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     Welcome to ClipLaunch
                   </h2>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    Complete the steps below to get your campaign live and running.
+                    To get started, head to your Welcome Page. There you&apos;ll find the welcome video, your intake form, and these next steps (also listed on your dashboard for easy reference).
                   </p>
+                </div>
+
+                {/* Welcome Page link placeholder */}
+                <div className="ob-header mb-8 rounded-xl px-4 py-3.5 flex items-center gap-3"
+                  style={{ animationDelay: "40ms", background: "linear-gradient(135deg, rgba(255,59,59,0.08) 0%, rgba(255,59,59,0.04) 100%)", border: "1px solid var(--accent-border)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Welcome Page</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
+                  </div>
                 </div>
 
                 {/* Steps */}
                 {[
                   {
                     number: "01",
-                    title: "Complete your onboarding on the welcome page",
-                    description: "Head to the welcome page and fill out the onboarding form with your campaign details, goals, and preferences. This sets everything up on our end.",
+                    owner: "You",
+                    title: "Watch the welcome video",
+                    description: "Get a quick overview of how the process works and what to expect.",
                   },
                   {
                     number: "02",
-                    title: "Approve the ClipLaunch rules brief",
-                    description: "After submitting your onboarding form, our team will send over a rules brief outlining campaign guidelines. Review and sign off to officially kick things off.",
+                    owner: "You",
+                    title: "Complete the intake form",
+                    description: "Tell us about your brand, goals, and niche.",
                   },
-                ].map((step, i) => (
-                  <div
-                    key={step.number}
-                    className="ob-step flex gap-5"
-                    style={{ animationDelay: `${80 + i * 130}ms` }}
-                  >
-                    {/* Left rail */}
-                    <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
-                      <div
-                        className="ob-dot w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
-                        style={{
-                          background: "var(--accent-muted)",
-                          border: "1px solid var(--accent-border)",
-                          animationDelay: `${100 + i * 130}ms`,
-                        }}
-                      >
-                        <span className="text-xs font-bold tabular-nums" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>
-                          {step.number}
-                        </span>
-                      </div>
-                      {i < 1 && (
+                  {
+                    number: "03",
+                    owner: "You",
+                    title: "Notify us in our dedicated communication channel",
+                    description: "Let us know you're ready so we can kick things off.",
+                  },
+                  {
+                    number: "04",
+                    owner: "Us",
+                    title: "We build your rules brief",
+                    description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted — including CTAs, messaging, and any other specifics based on your goals.",
+                  },
+                  {
+                    number: "05",
+                    owner: "You",
+                    title: "You approve the brief",
+                    description: "Before anything goes live, you'll review and sign off on the brief. Your campaign doesn't launch without your green light.",
+                  },
+                  {
+                    number: "06",
+                    owner: "Us",
+                    title: "Campaign launches",
+                    description: "Once approved, we launch your campaign across our clipper network and content starts getting created.",
+                  },
+                  {
+                    number: "07",
+                    owner: "Us",
+                    title: "Updates and optimization",
+                    description: "You'll get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You'll also have access to this dashboard, where we'll post campaign reports and weekly updates so you can track your results in one place. We'll keep you posted on anything worth knowing, along with any adjustments we're making along the way.",
+                  },
+                ].map((step, i, arr) => {
+                  const isUs = step.owner === "Us";
+                  const dotBg = isUs ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
+                  const dotBorder = isUs ? "rgba(255,255,255,0.12)" : "var(--accent-border)";
+                  const dotColor = isUs ? "var(--text-tertiary)" : "var(--accent)";
+                  const badgeBg = isUs ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
+                  const badgeBorder = isUs ? "rgba(255,255,255,0.1)" : "var(--accent-border)";
+                  const badgeColor = isUs ? "var(--text-tertiary)" : "var(--accent)";
+                  return (
+                    <div
+                      key={step.number}
+                      className="ob-step flex gap-5"
+                      style={{ animationDelay: `${80 + i * 80}ms` }}
+                    >
+                      {/* Left rail */}
+                      <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
                         <div
-                          className="ob-line flex-1 w-px mt-1"
-                          style={{
-                            background: "linear-gradient(to bottom, var(--accent-border), transparent)",
-                            minHeight: 32,
-                            animationDelay: `${200 + i * 130}ms`,
-                          }}
-                        />
-                      )}
-                    </div>
+                          className="ob-dot w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10"
+                          style={{ background: dotBg, border: `1px solid ${dotBorder}`, animationDelay: `${100 + i * 80}ms` }}
+                        >
+                          <span className="text-xs font-bold tabular-nums" style={{ color: dotColor, fontFamily: "var(--font-display)" }}>
+                            {step.number}
+                          </span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div
+                            className="ob-line flex-1 w-px mt-1"
+                            style={{ background: "linear-gradient(to bottom, var(--border-default), transparent)", minHeight: 32, animationDelay: `${200 + i * 80}ms` }}
+                          />
+                        )}
+                      </div>
 
-                    {/* Content */}
-                    <div className={i < 1 ? "pb-8" : ""}>
-                      <p className="text-sm font-semibold mb-1.5 leading-snug" style={{ color: "var(--text-primary)" }}>
-                        {step.title}
-                      </p>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                        {step.description}
-                      </p>
+                      {/* Content */}
+                      <div className={i < arr.length - 1 ? "pb-7" : ""}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+                            {step.title}
+                          </p>
+                          <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-semibold"
+                            style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, fontSize: 10, letterSpacing: "0.04em" }}>
+                            {step.owner}
+                          </span>
+                        </div>
+                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                          {step.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
