@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "ClipLaunch",
   description: "Clipping agency management dashboard",
   icons: {
-    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+    icon: [{ url: "/api/favicon", type: "image/png" }],
   },
 };
 
