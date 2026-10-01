@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText } from "lucide-react";
 
 interface Link { id: string; label: string; url: string; }
 interface OnboardingStep { id: string; title: string; description: string | null; linkUrl: string | null; order: number; completed: boolean; }
@@ -43,23 +43,16 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const router = useRouter();
   const searchParams = useSearchParams();
   const [client, setClient] = useState(initial);
-  const [activeTab, setActiveTab] = useState<"deal" | "links" | "onboarding" | "clippers">("deal");
+  const [activeTab, setActiveTab] = useState<"settings" | "onboarding">("settings");
 
   // Deal terms state — auto-open edit if ?edit=1 in URL
-  const [dealEdit, setDealEdit] = useState(() => searchParams.get("edit") === "1");
-  const [dealForm, setDealForm] = useState({
-    name: initial.name,
-    dealLengthDays: initial.dealLengthDays?.toString() ?? "",
-    dealStartDate: initial.dealStartDate ? initial.dealStartDate.slice(0, 10) : "",
-    pageCount: initial.pageCount?.toString() ?? "",   // repurposed as # clippers
-    clipsPerDay: initial.clipsPerDay?.toString() ?? "",
-  });
-  const [dealSaving, setDealSaving] = useState(false);
-  const [campaignType, setCampaignType] = useState<"manual" | "cpm">(initial.campaignType);
-  const [savingType, setSavingType] = useState(false);
+  const [startDate, setStartDate] = useState(initial.dealStartDate ? initial.dealStartDate.slice(0, 10) : "");
+  const [savingStartDate, setSavingStartDate] = useState(false);
+  const [startDateSaved, setStartDateSaved] = useState(false);
   const [contractUrl, setContractUrl] = useState(initial.contractUrl ?? "");
   const [savingContract, setSavingContract] = useState(false);
   const [contractSaved, setContractSaved] = useState(false);
+  const contractFileRef = useRef<HTMLInputElement>(null);
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
   const [savingTracker, setSavingTracker] = useState(false);
   const [trackerSaved, setTrackerSaved] = useState(false);
@@ -77,15 +70,26 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [newStepLink, setNewStepLink] = useState("");
   const [stepSaving, setStepSaving] = useState(false);
 
-  async function toggleCampaignType(type: "manual" | "cpm") {
-    setSavingType(true);
-    const res = await fetch(`/api/agency/clients/${client.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ campaignType: type }),
-    });
-    if (res.ok) setCampaignType(type);
-    setSavingType(false);
+  async function handleContractUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSavingContract(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const res = await fetch(`/api/agency/clients/${client.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractUrl: dataUrl }),
+      });
+      if (res.ok) {
+        setContractUrl(dataUrl);
+        setContractSaved(true);
+        setTimeout(() => setContractSaved(false), 2500);
+      }
+      setSavingContract(false);
+    };
+    reader.readAsDataURL(file);
   }
 
   async function saveTrackerUrl() {
@@ -99,36 +103,15 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     setSavingTracker(false);
   }
 
-  async function saveContractUrl() {
-    setSavingContract(true);
+  async function saveStartDate() {
+    setSavingStartDate(true);
     const res = await fetch(`/api/agency/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contractUrl }),
+      body: JSON.stringify({ dealStartDate: startDate || null }),
     });
-    if (res.ok) { setContractSaved(true); setTimeout(() => setContractSaved(false), 2500); }
-    setSavingContract(false);
-  }
-
-  async function saveDeal() {
-    setDealSaving(true);
-    const res = await fetch(`/api/agency/clients/${client.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dealForm),
-    });
-    if (res.ok) {
-      setClient((prev) => ({
-        ...prev,
-        name: dealForm.name,
-        dealLengthDays: dealForm.dealLengthDays ? Number(dealForm.dealLengthDays) : null,
-        dealStartDate: dealForm.dealStartDate ? dealForm.dealStartDate : null,
-        pageCount: dealForm.pageCount ? Number(dealForm.pageCount) : null,
-        clipsPerDay: dealForm.clipsPerDay ? Number(dealForm.clipsPerDay) : null,
-      }));
-      setDealEdit(false);
-    }
-    setDealSaving(false);
+    if (res.ok) { setStartDateSaved(true); setTimeout(() => setStartDateSaved(false), 2500); }
+    setSavingStartDate(false);
   }
 
   async function addLink() {
@@ -194,10 +177,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const onboardingPct = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
 
   const tabs = [
-    { id: "deal", label: "Deal Terms" },
-    { id: "links", label: `Links (${links.length})` },
+    { id: "settings", label: "Settings" },
     { id: "onboarding", label: `Onboarding (${completedSteps}/${steps.length})` },
-    { id: "clippers", label: `Clippers (${client.clippers.length})` },
   ] as const;
 
   return (
@@ -221,7 +202,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 {client.name}
               </h1>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                {client.clipCount} clips · {client.clippers.length} clippers ·{" "}
                 <span style={{ color: client.status === "active" ? "var(--success)" : "var(--warning)" }}>{client.status}</span>
               </p>
             </div>
@@ -241,8 +221,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         ))}
       </div>
 
-      {/* DEAL TERMS */}
-      {activeTab === "deal" && (
+      {/* SETTINGS */}
+      {activeTab === "settings" && (
         <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
 
           {/* Campaign Tracker URL — always visible */}
@@ -268,195 +248,81 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             </div>
           </div>
 
-          {/* Campaign type — always visible */}
+          {/* Campaign type — static CPM badge */}
           <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
             <div>
               <p className="text-xs font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>Campaign Type</p>
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>CPM clients see the Ongoing Reports tab on their dashboard.</p>
             </div>
-            <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)" }}>
-              {(["manual", "cpm"] as const).map((t) => (
-                <button
-                  key={t}
-                  disabled={savingType}
-                  onClick={() => toggleCampaignType(t)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: campaignType === t ? (t === "cpm" ? "var(--accent-muted)" : "var(--border-subtle)") : "transparent",
-                    color: campaignType === t ? (t === "cpm" ? "var(--accent)" : "var(--text-primary)") : "var(--text-tertiary)",
-                    border: campaignType === t ? `1px solid ${t === "cpm" ? "var(--accent-border)" : "var(--border-strong)"}` : "1px solid transparent",
-                  }}
-                >
-                  {t === "cpm" ? "CPM Based" : "Manual"}
-                </button>
-              ))}
-            </div>
+            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
+              CPM Based
+            </span>
           </div>
 
-          {/* Contract URL (CPM only) — always visible when CPM */}
-          {campaignType === "cpm" && (
-            <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Signed Agreement</p>
-              <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>Link to the signed contract — visible to the client on their dashboard.</p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={contractUrl}
-                  onChange={(e) => setContractUrl(e.target.value)}
-                  placeholder="https://..."
-                  style={{ ...inputStyle, flex: 1 }}
-                />
-                <button
-                  onClick={saveContractUrl}
-                  disabled={savingContract}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                  style={{ background: contractSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
-                >
-                  {contractSaved ? <><Check size={12} /> Saved</> : savingContract ? "Saving…" : <><Save size={12} /> Save</>}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Deal Terms</h2>
-            {dealEdit ? (
-              <div className="flex items-center gap-2">
-                <button onClick={() => { setDealEdit(false); setDealForm({ name: client.name, dealLengthDays: client.dealLengthDays?.toString() ?? "", dealStartDate: client.dealStartDate ? client.dealStartDate.slice(0, 10) : "", pageCount: client.pageCount?.toString() ?? "", clipsPerDay: client.clipsPerDay?.toString() ?? "" }); }}
-                  className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "var(--text-secondary)" }}>Cancel</button>
-                <button onClick={saveDeal} disabled={dealSaving}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                  style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "var(--accent)" }}>
-                  <Save size={12} /> {dealSaving ? "Saving..." : "Save"}
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => setDealEdit(true)}
-                className="text-xs px-3 py-1.5 rounded-lg"
-                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
-                Edit
+          {/* Contract — PDF upload */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Signed Agreement</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>Upload a PDF contract — visible to the client as a download on their dashboard.</p>
+            <div className="flex items-center gap-3">
+              <input
+                ref={contractFileRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={handleContractUpload}
+              />
+              <button
+                onClick={() => contractFileRef.current?.click()}
+                disabled={savingContract}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                style={{ background: savingContract ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
+              >
+                {contractSaved ? <><Check size={12} /> Uploaded</> : savingContract ? "Uploading…" : <><Upload size={12} /> Upload PDF</>}
               </button>
-            )}
-          </div>
-
-          {dealEdit ? (
-            <>
-              {/* Formula hint */}
-              <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--text-secondary)" }}>
-                Goal = <span style={{ color: "var(--text-primary)" }}>Clippers</span> × <span style={{ color: "var(--text-primary)" }}>3 platforms</span> (TikTok · Instagram · YouTube) × <span style={{ color: "var(--text-primary)" }}>Clips/day</span> × <span style={{ color: "var(--text-primary)" }}>Deal length</span>
-                {dealForm.pageCount && dealForm.clipsPerDay && dealForm.dealLengthDays ? (
-                  <span className="ml-2" style={{ color: "var(--success)" }}>
-                    = {Number(dealForm.pageCount) * 3 * Number(dealForm.clipsPerDay) * Number(dealForm.dealLengthDays)} total clips
-                  </span>
-                ) : null}
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Client Name</label>
-                  <input value={dealForm.name} onChange={(e) => setDealForm((f) => ({ ...f, name: e.target.value }))} style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Number of Clippers</label>
-                  <input type="number" value={dealForm.pageCount} onChange={(e) => setDealForm((f) => ({ ...f, pageCount: e.target.value }))} placeholder="e.g. 5" style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Clips / Day <span style={{ color: "var(--text-tertiary)" }}>(per clipper, per platform)</span></label>
-                  <input type="number" value={dealForm.clipsPerDay} onChange={(e) => setDealForm((f) => ({ ...f, clipsPerDay: e.target.value }))} placeholder="e.g. 3" style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Deal Length (days)</label>
-                  <input type="number" value={dealForm.dealLengthDays} onChange={(e) => setDealForm((f) => ({ ...f, dealLengthDays: e.target.value }))} placeholder="e.g. 30" style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Deal Start Date</label>
-                  <input type="date" value={dealForm.dealStartDate} onChange={(e) => setDealForm((f) => ({ ...f, dealStartDate: e.target.value }))} style={{ ...inputStyle, colorScheme: "dark" }} />
-                </div>
-                <div className="rounded-xl p-4 flex flex-col justify-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Deal End Date <span style={{ color: "var(--text-tertiary)" }}>(auto-computed)</span></p>
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {dealForm.dealStartDate && dealForm.dealLengthDays
-                      ? new Date(new Date(dealForm.dealStartDate).getTime() + Number(dealForm.dealLengthDays) * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Formula summary */}
-              {client.pageCount && client.clipsPerDay && client.dealLengthDays && (
-                <div className="rounded-xl px-4 py-3 mb-6 text-xs" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--text-secondary)" }}>
-                  {client.pageCount} clipper{client.pageCount !== 1 ? "s" : ""} × 3 platforms × {client.clipsPerDay} clips/day × {client.dealLengthDays} days
-                  <span className="ml-2 font-semibold" style={{ color: "var(--success)" }}>= {client.pageCount * 3 * client.clipsPerDay * client.dealLengthDays} total clips</span>
-                </div>
+              {contractUrl && contractUrl.startsWith("data:") && (
+                <a
+                  href={contractUrl}
+                  download="contract.pdf"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                >
+                  <FileText size={12} /> Download current
+                </a>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: "Client Name", value: client.name },
-                  { label: "Number of Clippers", value: client.pageCount?.toString() ?? "—" },
-                  { label: "Pages per Clipper", value: "3 (TikTok · Instagram · YouTube)" },
-                  { label: "Clips / Day", value: client.clipsPerDay ? `${client.clipsPerDay} per clipper, per platform` : "—" },
-                  { label: "Deal Length", value: client.dealLengthDays ? `${client.dealLengthDays} days` : "—" },
-                  { label: "Deal Start", value: client.dealStartDate ? new Date(client.dealStartDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" },
-                  { label: "Deal End", value: client.dealStartDate && client.dealLengthDays ? new Date(new Date(client.dealStartDate).getTime() + client.dealLengthDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" },
-                  { label: "Total Clips Submitted", value: client.clipCount.toString() },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
-                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* LINKS */}
-      {activeTab === "links" && (
-        <div className="space-y-4">
-          {/* Add link form */}
-          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Add Link</h2>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Label</label>
-                <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Onboarding doc, Brand assets..." style={inputStyle} />
-              </div>
-              <div>
-                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>URL</label>
-                <input type="url" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
-              </div>
+              {contractUrl && !contractUrl.startsWith("data:") && (
+                <a
+                  href={contractUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                >
+                  <ExternalLink size={12} /> View current
+                </a>
+              )}
             </div>
-            <button onClick={addLink} disabled={linkSaving || !newLabel || !newUrl}
-              className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg"
-              style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: (!newLabel || !newUrl) ? 0.5 : 1 }}>
-              <Plus size={12} /> {linkSaving ? "Adding..." : "Add Link"}
-            </button>
           </div>
 
-          {/* Links list */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-            {links.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No links yet — add one above</p>
-            ) : (
-              <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
-                {links.map((link) => (
-                  <div key={link.id} className="flex items-center gap-4 px-6 py-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{link.label}</p>
-                      <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{link.url}</p>
-                    </div>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-white/5">
-                      <ExternalLink size={13} color="#8A93A6" />
-                    </a>
-                    <button onClick={() => deleteLink(link.id)} className="p-1.5 rounded-lg hover:bg-white/5">
-                      <Trash2 size={13} color="var(--danger)" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Campaign Start Date */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Campaign Start Date</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The date this client&apos;s campaign began.</p>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{ ...inputStyle, flex: 1, colorScheme: "dark" }}
+              />
+              <button
+                onClick={saveStartDate}
+                disabled={savingStartDate}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                style={{ background: startDateSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${startDateSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: startDateSaved ? "var(--success)" : "var(--accent)" }}
+              >
+                {startDateSaved ? <><Check size={12} /> Saved</> : savingStartDate ? "Saving…" : <><Save size={12} /> Save</>}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -529,45 +395,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         </div>
       )}
 
-      {/* CLIPPERS */}
-      {activeTab === "clippers" && (
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-          <table className="w-full">
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {["Clipper", "Email", "Status"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {client.clippers.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: i < client.clippers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                        style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>
-                        {(c.name || c.email)[0].toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.name || "—"}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>{c.email}</td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs px-2 py-1 rounded-full"
-                      style={{ background: c.status === "active" ? "color-mix(in srgb, var(--success) 10%, transparent)" : "rgba(255,165,0,0.1)", color: c.status === "active" ? "var(--success)" : "var(--warning)" }}>
-                      {c.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {client.clippers.length === 0 && (
-                <tr><td colSpan={3} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No clippers assigned</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
