@@ -2,13 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import { PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
-import ClientManagement from "@/components/agency/ClientManagement";
 import {
   ExternalLink, ChevronDown, RotateCw,
   X, Check, Link2, Activity, CalendarDays, ChevronRight,
 } from "lucide-react";
-import PlatformStatsCards, { PlatformBreakdownTable } from "@/components/shared/PlatformStatsCards";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -71,7 +68,6 @@ const card: React.CSSProperties = {
 };
 
 export default function AgencyDashboard({ userName, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "clients" | "clips" | "platform-stats">("overview");
   const [allClips] = useState<AnyRecord[]>(initialClips);
   const [showLiveLinkModal, setShowLiveLinkModal] = useState(false);
   const [liveLinkClientId, setLiveLinkClientId] = useState("");
@@ -118,15 +114,6 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
   const ongoingReports = (selectedClient?.ongoingReports ?? [])
     .slice()
     .sort((a: OngoingReport, b: OngoingReport) => b.date.localeCompare(a.date)) as OngoingReport[];
-
-  // Platform stats for Platform Stats tab
-  const viewsByPlatform: Record<string, number> = {};
-  const clipsByPlatform: Record<string, number> = {};
-  allClips.forEach((c) => {
-    const p = (c.subAccount?.platform ?? c.platform ?? "other") as string;
-    viewsByPlatform[p] = (viewsByPlatform[p] ?? 0) + (c.views ?? 0);
-    clipsByPlatform[p] = (clipsByPlatform[p] ?? 0) + 1;
-  });
 
   // Chart data for single-client view
   const cpmChartData = [...ongoingReports]
@@ -187,29 +174,11 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
       <Sidebar role="agency" userName={userName} />
       <main className="flex-1 overflow-y-auto ml-56">
 
-        {/* Tab bar */}
-        <div className="sticky top-0 z-30 px-8 pt-6 pb-0" style={{ background: "var(--bg-elevated)" }}>
-          <div className="flex items-center gap-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-            {([
-              { id: "overview", label: "Overview" },
-              { id: "clients", label: `Clients (${clients.length})` },
-              { id: "clips", label: `Clips (${allClips.length})` },
-              { id: "platform-stats", label: "Platform Stats" },
-            ] as const).map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="px-5 py-3 text-sm font-medium transition-all relative tab-btn"
-                style={{ color: activeTab === tab.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                {tab.label}
-                {activeTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div className="max-w-7xl mx-auto px-8 py-8">
 
           {/* ── OVERVIEW ──────────────────────────────────────────────── */}
-          {activeTab === "overview" && <>
+          {true && <>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
@@ -490,13 +459,8 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                               const isOpen = expandedMonths.has(monthKey);
                               const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
 
-                              type DailyRow = { kind: "daily"; date: string; report: OngoingReport };
-                              type WeeklyRow = { kind: "weekly"; date: string; report: CampaignReport };
-                              type Row = DailyRow | WeeklyRow;
-                              const rows: Row[] = [
-                                ...monthReports.map((r): DailyRow => ({ kind: "daily", date: r.date, report: r })),
-                                ...monthWeekReports.map((r): WeeklyRow => ({ kind: "weekly", date: r.weekEndDate, report: r })),
-                              ].sort((a, b) => b.date.localeCompare(a.date));
+                              const sortedDailyRows = [...monthReports].sort((a, b) => b.date.localeCompare(a.date));
+                              const sortedWeeklyRows = [...monthWeekReports].sort((a, b) => b.weekEndDate.localeCompare(a.weekEndDate));
 
                               return (
                                 <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
@@ -531,198 +495,190 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                   </button>
 
                                   {isOpen && (
-                                    <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                      {rows.map((row) => {
-                                        if (row.kind === "weekly") {
-                                          const wr = row.report;
-                                          const isExpanded = expandedWeekReportId === wr.id;
-                                          const isHighlighted = highlightedWeekId === wr.id;
-                                          return (
-                                            <div key={`week-${wr.id}`}
-                                              ref={(el) => { weekReportRefs.current[wr.id] = el; }}
-                                              className="rounded-lg overflow-hidden"
-                                              style={{ background: "var(--bg-base)", border: `1px solid ${isHighlighted ? "var(--accent)" : "var(--accent-border)"}`, transition: "border-color 400ms ease, box-shadow 400ms ease", boxShadow: isHighlighted ? "0 0 0 2px var(--accent-muted)" : "none" }}>
-                                              <button
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                                style={{ background: isHighlighted ? "var(--accent-muted)" : "transparent" }}
-                                                onMouseEnter={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; }}
-                                                onMouseLeave={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                                                onClick={() => setExpandedWeekReportId(isExpanded ? null : wr.id)}
-                                              >
-                                                <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
-                                                  style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-                                                  <CalendarDays size={11} style={{ color: "var(--accent)" }} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}</span>
-                                                    <span className="text-xs px-1.5 py-0.5 rounded font-semibold"
-                                                      style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 9, letterSpacing: "0.06em" }}>WEEK SUMMARY</span>
-                                                  </div>
-                                                </div>
-                                                <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                                  <div className="text-right">
-                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Total Views</p>
-                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
-                                                  </div>
-                                                  {wr.paidOut > 0 && (
-                                                    <div className="text-right">
-                                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Paid Out</p>
-                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
+                                    <div className="px-3 pb-3 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                      {/* Two-column: daily left, weekly right */}
+                                      <div className="grid grid-cols-2 gap-3">
+                                        {/* Left — Daily / Ongoing */}
+                                        <div className="space-y-1.5">
+                                          <p className="text-xs font-semibold uppercase tracking-widest px-1 pt-1"
+                                            style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>
+                                            Daily Reports
+                                          </p>
+                                          {sortedDailyRows.length === 0 && (
+                                            <p className="text-xs px-2 py-3" style={{ color: "var(--text-tertiary)" }}>No daily reports</p>
+                                          )}
+                                          {sortedDailyRows.map((report) => {
+                                            const isExpanded = expandedReportId === report.id;
+                                            const globalIdx = ongoingReports.indexOf(report);
+                                            const prevReport = globalIdx >= 0 && globalIdx + 1 < ongoingReports.length ? ongoingReports[globalIdx + 1] : null;
+                                            const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                                              ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
+                                              : null;
+                                            const changeColor = viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+                                            return (
+                                              <div key={report.id} className="rounded-lg overflow-hidden"
+                                                style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
+                                                <button
+                                                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors"
+                                                  style={{ background: "transparent" }}
+                                                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                                  onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                                >
+                                                  <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
+                                                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
                                                     </div>
-                                                  )}
-                                                  <div className="text-right">
-                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Clips</p>
-                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
+                                                    <div className="flex items-center gap-3 mt-0.5">
+                                                      <span className="text-xs" style={{ color: "var(--success)" }}>{report.approved} approved</span>
+                                                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmt(report.viewsToday)} views
+                                                        {viewsTodayChange !== null && (
+                                                          <span className="ml-1 font-medium" style={{ color: changeColor }}>{viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%</span>
+                                                        )}
+                                                      </span>
+                                                    </div>
                                                   </div>
-                                                </div>
-                                                <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                                  style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
-                                                  <ChevronRight size={13} />
-                                                </div>
-                                              </button>
-
-                                              {isExpanded && (
-                                                <div className="px-5 pb-5 pt-4 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
-                                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                  <div className="flex-shrink-0 transition-transform duration-200"
+                                                    style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                                    <ChevronRight size={12} />
+                                                  </div>
+                                                </button>
+                                                {isExpanded && (
+                                                  <div className="px-4 pb-4 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                      {[
+                                                        { label: "Approved",     value: report.approved.toString(),  color: "var(--success)" },
+                                                        { label: "Views Today",  value: fmt(report.viewsToday),      color: "var(--accent)" },
+                                                        { label: "Views Total",  value: fmt(report.viewsTotal),      color: "var(--text-primary)" },
+                                                        { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
+                                                      ].map((s) => (
+                                                        <div key={s.label} className="rounded-lg p-2.5" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                          <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 10 }}>{s.label}</p>
+                                                          <p className="text-base font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                        </div>
+                                                      ))}
+                                                    </div>
                                                     {[
-                                                      { label: "Total Views", value: fmt(wr.totalViews), color: "var(--accent)" },
-                                                      { label: "Paid Out", value: fmtCurrency(wr.paidOut), color: "var(--success)" },
-                                                      { label: "Clips", value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`, color: "var(--text-primary)" },
-                                                      { label: "Eff. CPM", value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
-                                                    ].map((s) => (
-                                                      <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                        <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                                        <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                      { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",  color: "var(--accent)" },
+                                                      { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",    color: "var(--warning)" },
+                                                      { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",      color: "var(--text-secondary)" },
+                                                    ].filter((s) => s.value).map((s) => (
+                                                      <div key={s.key} className="rounded-lg p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                                        <p className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
                                                       </div>
                                                     ))}
                                                   </div>
-                                                  {wr.totalViews > 0 && (() => {
-                                                    const platforms = [
-                                                      { label: "TikTok", views: wr.tiktokViews, color: "var(--accent)" },
-                                                      { label: "Instagram", views: wr.instagramViews, color: "#FF8800" },
-                                                      { label: "YouTube", views: wr.youtubeViews, color: "#CC1A1A" },
-                                                      { label: "X", views: wr.twitterViews, color: "#5B9BD5" },
-                                                    ].filter((p) => p.views > 0);
-                                                    if (!platforms.length) return null;
-                                                    return (
-                                                      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
-                                                        <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
-                                                          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Platform Breakdown</p>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+
+                                        {/* Right — Weekly Summaries */}
+                                        <div className="space-y-1.5">
+                                          <p className="text-xs font-semibold uppercase tracking-widest px-1 pt-1"
+                                            style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>
+                                            Weekly Summaries
+                                          </p>
+                                          {sortedWeeklyRows.length === 0 && (
+                                            <p className="text-xs px-2 py-3" style={{ color: "var(--text-tertiary)" }}>No weekly summaries</p>
+                                          )}
+                                          {sortedWeeklyRows.map((wr) => {
+                                            const isExpanded = expandedWeekReportId === wr.id;
+                                            const isHighlighted = highlightedWeekId === wr.id;
+                                            return (
+                                              <div key={`week-${wr.id}`}
+                                                ref={(el) => { weekReportRefs.current[wr.id] = el; }}
+                                                className="rounded-lg overflow-hidden"
+                                                style={{ background: "var(--bg-base)", border: `1px solid ${isHighlighted ? "var(--accent)" : "var(--accent-border)"}`, transition: "border-color 400ms ease, box-shadow 400ms ease", boxShadow: isHighlighted ? "0 0 0 2px var(--accent-muted)" : "none" }}>
+                                                <button
+                                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
+                                                  style={{ background: isHighlighted ? "var(--accent-muted)" : "transparent" }}
+                                                  onMouseEnter={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; }}
+                                                  onMouseLeave={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                                                  onClick={() => setExpandedWeekReportId(isExpanded ? null : wr.id)}
+                                                >
+                                                  <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                                                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                                    <CalendarDays size={10} style={{ color: "var(--accent)" }} />
+                                                  </div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                                                      {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
+                                                    </p>
+                                                    <div className="flex items-center gap-3 mt-0.5">
+                                                      <span className="text-xs" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)} views</span>
+                                                      {wr.paidOut > 0 && <span className="text-xs" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</span>}
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex-shrink-0 transition-transform duration-200"
+                                                    style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                                    <ChevronRight size={12} />
+                                                  </div>
+                                                </button>
+                                                {isExpanded && (
+                                                  <div className="px-4 pb-4 pt-3 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                      {[
+                                                        { label: "Total Views", value: fmt(wr.totalViews),                                        color: "var(--accent)" },
+                                                        { label: "Paid Out",    value: fmtCurrency(wr.paidOut),                                   color: "var(--success)" },
+                                                        { label: "Clips",       value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`,              color: "var(--text-primary)" },
+                                                        { label: "Eff. CPM",    value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
+                                                      ].map((s) => (
+                                                        <div key={s.label} className="rounded-lg p-2.5" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                          <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 10 }}>{s.label}</p>
+                                                          <p className="text-base font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
                                                         </div>
-                                                        <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
-                                                          {platforms.map((p) => (
-                                                            <div key={p.label} className="flex items-center justify-between px-3 py-2">
-                                                              <span className="text-xs font-semibold" style={{ color: p.color }}>{p.label}</span>
-                                                              <div className="flex items-center gap-3">
-                                                                <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(p.views)}</span>
-                                                                <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{((p.views / wr.totalViews) * 100).toFixed(1)}%</span>
+                                                      ))}
+                                                    </div>
+                                                    {wr.totalViews > 0 && (() => {
+                                                      const platforms = [
+                                                        { label: "TikTok",    views: wr.tiktokViews,    color: "var(--accent)" },
+                                                        { label: "Instagram", views: wr.instagramViews, color: "#FF8800" },
+                                                        { label: "YouTube",   views: wr.youtubeViews,   color: "#CC1A1A" },
+                                                        { label: "X",         views: wr.twitterViews,   color: "#5B9BD5" },
+                                                      ].filter((p) => p.views > 0);
+                                                      if (!platforms.length) return null;
+                                                      return (
+                                                        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+                                                          <div className="px-3 py-1.5" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
+                                                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Platforms</p>
+                                                          </div>
+                                                          <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
+                                                            {platforms.map((p) => (
+                                                              <div key={p.label} className="flex items-center justify-between px-3 py-1.5">
+                                                                <span className="text-xs font-semibold" style={{ color: p.color }}>{p.label}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                  <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(p.views)}</span>
+                                                                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{((p.views / wr.totalViews) * 100).toFixed(1)}%</span>
+                                                                </div>
                                                               </div>
-                                                            </div>
-                                                          ))}
+                                                            ))}
+                                                          </div>
                                                         </div>
+                                                      );
+                                                    })()}
+                                                    {[
+                                                      { key: "weeklySummary",   label: "Weekly Summary",      value: wr.weeklySummary,   border: "var(--accent-border)",  bg: "var(--accent-muted)",        color: "var(--accent)" },
+                                                      { key: "whatsWorking",    label: "What's Working",      value: wr.whatsWorking,    border: "rgba(61,214,140,0.3)",  bg: "var(--success-bg)",          color: "var(--success)" },
+                                                      { key: "whatsNotWorking", label: "What's Not Working",  value: wr.whatsNotWorking, border: "rgba(255,59,59,0.2)",   bg: "rgba(255,59,59,0.06)",       color: "var(--danger)" },
+                                                      { key: "nextWeekFocus",   label: "Next Week Focus",     value: wr.nextWeekFocus,   border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",          color: "var(--warning)" },
+                                                    ].filter((s) => s.value).map((s) => (
+                                                      <div key={s.key} className="rounded-lg p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                                        <p className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
                                                       </div>
-                                                    );
-                                                  })()}
-                                                  {[
-                                                    { key: "weeklySummary", label: "Weekly Summary", value: wr.weeklySummary, border: "var(--accent-border)", bg: "var(--accent-muted)", color: "var(--accent)" },
-                                                    { key: "whatsWorking", label: "What's Working", value: wr.whatsWorking, border: "rgba(61,214,140,0.3)", bg: "var(--success-bg)", color: "var(--success)" },
-                                                    { key: "whatsNotWorking", label: "What's Not Working", value: wr.whatsNotWorking, border: "rgba(255,59,59,0.2)", bg: "rgba(255,59,59,0.06)", color: "var(--danger)" },
-                                                    { key: "nextWeekFocus", label: "Next Week Focus", value: wr.nextWeekFocus, border: "rgba(245,185,74,0.3)", bg: "var(--warning-bg)", color: "var(--warning)" },
-                                                  ].filter((s) => s.value).map((s) => (
-                                                    <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
-                                                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        }
-
-                                        // Daily row
-                                        const report = row.report as OngoingReport;
-                                        const isExpanded = expandedReportId === report.id;
-                                        const globalIdx = ongoingReports.indexOf(report);
-                                        const prevReport = globalIdx >= 0 && globalIdx + 1 < ongoingReports.length ? ongoingReports[globalIdx + 1] : null;
-                                        const viewsTodayChange = prevReport && prevReport.viewsToday > 0
-                                          ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                          : null;
-                                        const changeColor = viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
-
-                                        return (
-                                          <div key={report.id} className="rounded-lg overflow-hidden"
-                                            style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
-                                            <button
-                                              className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                              style={{ background: "transparent" }}
-                                              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                              onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
-                                            >
-                                              <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
-                                              <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
-                                                  <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
-                                                </div>
-                                              </div>
-                                              <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                                <div className="text-right">
-                                                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                                  <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
-                                                  <div className="flex items-center justify-end gap-1.5">
-                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
-                                                    {viewsTodayChange !== null && (
-                                                      <span className="text-xs font-medium" style={{ color: changeColor }}>{viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%</span>
-                                                    )}
+                                                    ))}
                                                   </div>
-                                                </div>
-                                                <div className="text-right">
-                                                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
-                                                  <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
-                                                </div>
+                                                )}
                                               </div>
-                                              <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                                style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
-                                                <ChevronRight size={13} />
-                                              </div>
-                                            </button>
-
-                                            {isExpanded && (
-                                              <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                  {[
-                                                    { label: "Approved", value: report.approved.toString(), color: "var(--success)" },
-                                                    { label: "Views Today", value: fmt(report.viewsToday), color: "var(--accent)" },
-                                                    { label: "Views Total", value: fmt(report.viewsTotal), color: "var(--text-primary)" },
-                                                    { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
-                                                  ].map((s) => (
-                                                    <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                      <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                                      <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                                {[
-                                                  { key: "mainTrend", label: "Main Trend", value: report.mainTrend, border: "var(--accent-border)", bg: "var(--accent-muted)", color: "var(--accent)" },
-                                                  { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)", bg: "var(--warning-bg)", color: "var(--warning)" },
-                                                  { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, border: "var(--border-default)", bg: "var(--bg-hover)", color: "var(--text-secondary)" },
-                                                ].filter((s) => s.value).map((s) => (
-                                                  <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                    <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
-                                                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -732,95 +688,107 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                         )}
                       </div>
                     )}
+
+                    {/* ── Clip Engagement ─────────────────────────────── */}
+                    {(() => {
+                      const clientClips = allClips.filter((c) => c.clientId === selectedClientId);
+                      const totalViews    = clientClips.reduce((a: number, c: AnyRecord) => a + (c.views    ?? 0), 0);
+                      const totalLikes    = clientClips.reduce((a: number, c: AnyRecord) => a + (c.likes    ?? 0), 0);
+                      const totalComments = clientClips.reduce((a: number, c: AnyRecord) => a + (c.comments ?? 0), 0);
+                      const totalShares   = clientClips.reduce((a: number, c: AnyRecord) => a + (c.shares   ?? 0), 0);
+                      const totalSaves    = clientClips.reduce((a: number, c: AnyRecord) => a + (c.saves    ?? 0), 0);
+
+                      const byDate: Record<string, number> = {};
+                      clientClips.forEach((c: AnyRecord) => {
+                        const d = (c.submittedAt as string).slice(0, 10);
+                        byDate[d] = (byDate[d] ?? 0) + (c.views ?? 0);
+                      });
+                      const clipChartData = Object.entries(byDate)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([date, views]) => ({ date, views }));
+
+                      const statItems = [
+                        { label: "Views",    value: fmt(totalViews),              color: "var(--accent)" },
+                        { label: "Likes",    value: fmt(totalLikes),              color: "var(--text-primary)" },
+                        { label: "Comments", value: fmt(totalComments),           color: "var(--text-primary)" },
+                        { label: "Shares",   value: fmt(totalShares),             color: "var(--text-primary)" },
+                        { label: "Saves",    value: fmt(totalSaves),              color: "var(--text-primary)" },
+                        { label: "Clips",    value: clientClips.length.toString(), color: "var(--text-primary)" },
+                      ];
+
+                      return (
+                        <div className="mt-6 space-y-4">
+                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                            Clip Engagement
+                          </p>
+
+                          {clientClips.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center rounded-xl py-12"
+                              style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                              <Activity size={24} style={{ color: "var(--text-tertiary)", opacity: 0.35, marginBottom: 10 }} />
+                              <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No clip data yet</p>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Stats will populate as clips are submitted and approved.</p>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Stat bar */}
+                              <div style={{ ...card, overflow: "hidden", padding: 0 }}>
+                                <div className="grid grid-cols-6">
+                                  {statItems.map((s, i) => (
+                                    <div key={s.label}
+                                      className="flex flex-col items-center justify-center gap-1.5 px-3 py-4"
+                                      style={{ borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none" }}>
+                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.label}</p>
+                                      <span className="text-lg font-semibold leading-none tabular-nums"
+                                        style={{ color: s.color, fontFamily: "var(--font-display)" }}>
+                                        {s.value}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Views over time chart */}
+                              {clipChartData.length > 1 && (
+                                <div style={card} className="p-5">
+                                  <p className="text-sm font-semibold mb-4"
+                                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                                    Views Over Time
+                                  </p>
+                                  <ResponsiveContainer width="100%" height={200}>
+                                    <AreaChart data={clipChartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                                      <defs>
+                                        <linearGradient id="agClipViewGrad" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.6} />
+                                          <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.04} />
+                                        </linearGradient>
+                                      </defs>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                                      <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                                        axisLine={false} tickLine={false} tickFormatter={(v: string) => fmtDate(v)} />
+                                      <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                                        axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
+                                      <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle}
+                                        itemStyle={{ color: "var(--text-primary)" }} />
+                                      <Area name="Views" type="linear" dataKey="views"
+                                        stroke="var(--accent)" strokeWidth={1.5}
+                                        fill="url(#agClipViewGrad)" dot={false}
+                                        activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }} />
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 );
               })()
             )}
           </>}
 
-          {/* ── CLIENTS TAB ───────────────────────────────────────────── */}
-          {activeTab === "clients" && (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <ClientManagement initialClients={clients as any} pendingClientUsers={pendingClientUsers as any} allClients={allClients as any} />
-          )}
-
-          {/* ── PLATFORM STATS TAB ────────────────────────────────────── */}
-          {activeTab === "platform-stats" && (
-            <div>
-              <div className="mb-6">
-                <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Platform Stats</h1>
-                <p className="text-sm" style={{ color: "var(--text-secondary)" }}>View and post breakdown across platforms</p>
-              </div>
-              <div className="mb-6">
-                <PlatformStatsCards viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
-              </div>
-              <PlatformBreakdownTable viewsByPlatform={viewsByPlatform} clipsByPlatform={clipsByPlatform} />
-            </div>
-          )}
-
-          {/* ── CLIPS TAB ─────────────────────────────────────────────── */}
-          {activeTab === "clips" && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>All Clips</h1>
-                  <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{allClips.length} clips total</p>
-                </div>
-              </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      {["Platform", "Preview", "Title", "Account", "Client", "Views", "Likes", "Comments", "Shares", "Date", "Link"].map((h) => (
-                        <th key={h} className="px-4 py-4 text-left text-xs font-medium uppercase tracking-wider"
-                          style={{ color: "var(--text-secondary)" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allClips.map((clip, i) => (
-                      <tr key={clip.id} style={{ borderBottom: i < allClips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-semibold capitalize" style={{ color: PLATFORM_COLORS[clip.subAccount?.platform] ?? "var(--text-tertiary)" }}>
-                            {clip.subAccount?.platform ?? "—"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {clip.thumbnailUrl ? (
-                            <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                              <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover" style={{ width: 64, height: 36 }} />
-                            </a>
-                          ) : <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)", maxWidth: 120 }}>
-                          <span className="truncate block">{clip.title ?? "—"}</span>
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>@{clip.subAccount?.handle ?? "—"}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{clip.client?.name ?? "—"}</td>
-                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.likes ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.comments ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.shares ?? 0)}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
-                          {clip.submittedAt ? new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink size={12} color="var(--accent)" />
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                    {allClips.length === 0 && (
-                      <tr>
-                        <td colSpan={11} className="px-4 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No clips yet.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
         </div>
       </main>
