@@ -6,6 +6,9 @@ import SpaceBackground from "@/components/shared/SpaceBackground";
 export const metadata: Metadata = {
   title: "ClipLaunch",
   description: "Clipping agency management dashboard",
+  icons: {
+    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
