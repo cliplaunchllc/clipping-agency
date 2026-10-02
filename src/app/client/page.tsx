@@ -37,6 +37,7 @@ export default async function ClientPage() {
     campaignType: "cpm" as const,
     contractUrl: client.contractUrl ?? null,
     campaignTrackerUrl: client.campaignTrackerUrl ?? null,
+    welcomePageUrl: client.welcomePageUrl ?? null,
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,
     dealStartDate: client.dealStartDate?.toISOString() ?? null,

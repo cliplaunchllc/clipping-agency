@@ -107,6 +107,7 @@ model Client {
   shareToken     String?      @unique
   campaignType        CampaignType @default(manual)
   campaignTrackerUrl  String?
+  welcomePageUrl      String?
   contractUrl         String?
   createdAt           DateTime     @default(now())
 

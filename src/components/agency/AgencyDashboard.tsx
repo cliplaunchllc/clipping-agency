@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import {
-  ExternalLink, ChevronDown, RotateCw,
-  X, Check, Link2, Activity, CalendarDays, ChevronRight,
+  ExternalLink, ChevronDown,
+  Activity, CalendarDays, ChevronRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -67,14 +67,27 @@ const card: React.CSSProperties = {
   borderRadius: "var(--radius-lg)",
 };
 
+/* ── Status helper ──────────────────────────────────────────────────── */
+type ClientStatus = "good" | "neutral" | "needs attention";
+function getClientStatus(cFull: AnyRecord): ClientStatus {
+  const sevenDaysAgo  = new Date(Date.now() - 7  * 86_400_000);
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000);
+  const latestDateStr = (cFull?.campaignReports?.[0]?.weekEndDate ?? cFull?.ongoingReports?.[0]?.date) as string | undefined;
+  if (!latestDateStr) return "needs attention";
+  const d = new Date(latestDateStr + "T00:00:00");
+  if (d >= sevenDaysAgo)    return "good";
+  if (d >= fourteenDaysAgo) return "neutral";
+  return "needs attention";
+}
+
 export default function AgencyDashboard({ userName, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
   const [allClips] = useState<AnyRecord[]>(initialClips);
-  const [showLiveLinkModal, setShowLiveLinkModal] = useState(false);
-  const [liveLinkClientId, setLiveLinkClientId] = useState("");
-  const [liveLinkCopied, setLiveLinkCopied] = useState(false);
-  const [liveLinkLoading, setLiveLinkLoading] = useState(false);
-
   const [selectedClientId, setSelectedClientId] = useState("all");
+  // Per-client inline report breakout
+  const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
+  function toggleClientBreakout(id: string) {
+    setExpandedClientIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
 
   // Report expansion state (single-client view)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
@@ -93,20 +106,6 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
     setExpandedMonths(reports.length ? new Set([reports[0].date.slice(0, 7)]) : new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClientId]);
-
-  async function handleGetLiveLink() {
-    if (!liveLinkClientId || liveLinkLoading) return;
-    setLiveLinkLoading(true);
-    const res = await fetch(`/api/agency/clients/${liveLinkClientId}/share-token`, { method: "POST" });
-    if (res.ok) {
-      const { token } = await res.json();
-      const url = `${window.location.origin}/share/${token}`;
-      await navigator.clipboard.writeText(url);
-      setLiveLinkCopied(true);
-      setTimeout(() => setLiveLinkCopied(false), 2500);
-    }
-    setLiveLinkLoading(false);
-  }
 
   const activeClients = clients.filter((c) => c.status === "active");
   const selectedClient = allClients.find((c) => c.id === selectedClientId) ?? null;
@@ -127,50 +126,6 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-
-      {/* Live Link Modal */}
-      {showLiveLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-xl p-8 w-full max-w-sm fade-in" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
-                  <Link2 size={14} color="var(--accent)" />
-                </div>
-                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Live Tracker Link</h2>
-              </div>
-              <button onClick={() => { setShowLiveLinkModal(false); setLiveLinkCopied(false); }}><X size={18} color="#8A93A6" /></button>
-            </div>
-            <div className="rounded-xl p-4 mb-5" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--accent)" }}>What your client sees:</p>
-              <ul className="space-y-1">
-                {["Live campaign performance & CPM stats", "Weekly & daily report breakdowns", "Platform-by-platform view breakdown", "Real-time deal progress tracking"].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-xs" style={{ color: "var(--text-primary)" }}>
-                    <span style={{ color: "var(--accent)", fontSize: 10 }}>▸</span>{item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mb-5">
-              <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Select Client</label>
-              <select value={liveLinkClientId} onChange={(e) => setLiveLinkClientId(e.target.value)}
-                className="w-full outline-none appearance-none px-3 py-2.5 rounded-xl text-sm"
-                style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}>
-                <option value="" style={{ background: "var(--bg-surface)" }}>Choose a client…</option>
-                {allClients.filter((c) => c.status === "active").map((c) => (
-                  <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <button onClick={handleGetLiveLink} disabled={!liveLinkClientId || liveLinkLoading}
-              className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-              style={{ background: liveLinkCopied ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)", border: `1px solid ${liveLinkCopied ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`, color: liveLinkCopied ? "var(--success)" : "var(--accent)", opacity: (!liveLinkClientId || liveLinkLoading) ? 0.5 : 1 }}>
-              {liveLinkLoading ? <><RotateCw size={14} className="animate-spin" /> Generating…</> : liveLinkCopied ? <><Check size={14} /> Link Copied!</> : <><Link2 size={14} /> Copy Live Link</>}
-            </button>
-          </div>
-        </div>
-      )}
-
       <Sidebar role="agency" userName={userName} />
       <main className="flex-1 overflow-y-auto ml-56">
 
@@ -179,7 +134,15 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
           {/* ── OVERVIEW ──────────────────────────────────────────────── */}
           {true && <>
-            <div className="flex items-center justify-between mb-5">
+            <style>{`
+              @keyframes liveOrbPulse {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 8px rgba(61,255,162,0.5); }
+                50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 18px rgba(61,255,162,0.5); }
+              }
+              .live-orb { animation: liveOrbPulse 2.4s ease-in-out infinite; }
+            `}</style>
+
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                   {selectedClient ? selectedClient.name : "Overview"}
@@ -188,15 +151,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                   {selectedClient ? "CPM Campaign" : `${activeClients.length} active client${activeClients.length !== 1 ? "s" : ""} · CPM campaigns`}
                 </p>
               </div>
-              <button onClick={() => setShowLiveLinkModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
-                style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
-                <Link2 size={11} /> Share Live Tracker
-              </button>
-            </div>
-
-            {/* Client selector */}
-            <div className="flex items-center gap-3 mb-6">
+              {/* Client selector for single-client drilldown */}
               <div className="relative">
                 <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
                   className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
@@ -212,103 +167,218 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
             {selectedClientId === "all" ? (
               /* ── ALL CLIENTS ──────────────────────────────────────── */
-              <>
-                {/* Summary stats */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  {[
-                    {
-                      label: "Active Clients",
-                      value: activeClients.length.toString(),
-                      sub: `${clients.filter((c) => c.status !== "active").length} archived`,
-                      color: "var(--accent)",
-                    },
-                    {
-                      label: "Weekly Reports",
-                      value: allClients
-                        .filter((c) => c.status === "active")
-                        .reduce((s: number, c: AnyRecord) => s + (c.campaignReports?.length ?? 0), 0)
-                        .toString(),
-                      sub: "total across all clients",
-                      color: "var(--text-primary)",
-                    },
-                    {
-                      label: "Latest Week Views",
-                      value: fmt(
-                        allClients
-                          .filter((c) => c.status === "active")
-                          .reduce((s: number, c: AnyRecord) => s + (c.campaignReports?.[0]?.totalViews ?? 0), 0)
-                      ),
-                      sub: "sum of most recent reports",
-                      color: "var(--success)",
-                    },
-                  ].map((s) => (
-                    <div key={s.label} style={card} className="p-5">
-                      <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
-                      <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
-                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
-                    </div>
-                  ))}
-                </div>
+              (() => {
+                const activeFullClients = allClients.filter((c) => c.status === "active");
+                const goodCount      = activeFullClients.filter((c) => getClientStatus(c) === "good").length;
+                const attnCount      = activeFullClients.filter((c) => getClientStatus(c) === "needs attention").length;
+                const neutralCount   = activeFullClients.filter((c) => getClientStatus(c) === "neutral").length;
+                const totalReports   = activeFullClients.reduce((s: number, c: AnyRecord) => s + (c.campaignReports?.length ?? 0) + (c.ongoingReports?.length ?? 0), 0);
 
-                {/* Client list */}
-                {activeClients.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                    <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
-                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No active clients</p>
-                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Add a client to get started.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {activeClients.map((c) => {
-                      const cFull = allClients.find((x) => x.id === c.id);
-                      const latestWeekly = cFull?.campaignReports?.[0] as CampaignReport | undefined;
-                      const latestOngoing = cFull?.ongoingReports?.[0] as OngoingReport | undefined;
-                      return (
-                        <div key={c.id} className="flex items-center gap-4 rounded-xl px-5 py-4" style={card}>
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
-                            style={c.logoUrl
-                              ? { border: "1px solid var(--border-default)" }
-                              : { background: "var(--accent-muted)", color: "var(--accent)" }}>
-                            {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-full h-full object-cover" /> : (c.name as string)[0]}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.name}</p>
-                            {latestWeekly ? (
-                              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                                Latest week: {fmtWeekRange(latestWeekly.weekStartDate, latestWeekly.weekEndDate)}
-                                {" · "}<span style={{ color: "var(--accent)" }}>{fmt(latestWeekly.totalViews)} views</span>
-                                {latestWeekly.paidOut > 0 && <>{" · "}<span style={{ color: "var(--success)" }}>{fmtCurrency(latestWeekly.paidOut)}</span></>}
-                              </p>
-                            ) : latestOngoing ? (
-                              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                                Latest report: {fmtDate(latestOngoing.date)}
-                                {" · "}{latestOngoing.approved} approved
-                                {" · "}<span style={{ color: "var(--accent)" }}>{fmt(latestOngoing.viewsTotal)} total views</span>
-                              </p>
-                            ) : (
-                              <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>No reports yet</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {cFull?.campaignTrackerUrl && (
-                              <a href={cFull.campaignTrackerUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                                style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
-                                <ExternalLink size={11} /> Tracker
-                              </a>
-                            )}
-                            <button onClick={() => setSelectedClientId(c.id)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                              style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
-                              Reports
-                            </button>
-                          </div>
+                return (
+                  <>
+                    {/* Summary stats */}
+                    <div className="grid grid-cols-4 gap-4 mb-6">
+                      {/* Active Clients — with live orb */}
+                      <div style={card} className="p-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="live-orb w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ background: "var(--accent)", boxShadow: "0 0 8px rgba(61,255,162,0.6)" }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Active Clients</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+                        <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{activeClients.length}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{clients.filter((c) => c.status !== "active").length} archived</p>
+                      </div>
+                      {/* On Track */}
+                      <div style={card} className="p-5">
+                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>On Track</p>
+                        <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{goodCount}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>report in last 7 days</p>
+                      </div>
+                      {/* Quiet */}
+                      <div style={card} className="p-5">
+                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Quiet</p>
+                        <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--warning)", fontFamily: "var(--font-display)" }}>{neutralCount}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>no report in 7–14 days</p>
+                      </div>
+                      {/* Needs Attention */}
+                      <div style={card} className="p-5">
+                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Needs Attention</p>
+                        <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--danger)", fontFamily: "var(--font-display)" }}>{attnCount}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{totalReports} total reports filed</p>
+                      </div>
+                    </div>
+
+                    {/* Client list */}
+                    {activeClients.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center rounded-xl py-16"
+                        style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                        <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
+                        <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No active clients</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Add a client to get started.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeClients.map((c) => {
+                          const cFull  = allClients.find((x) => x.id === c.id)!;
+                          const status = getClientStatus(cFull);
+                          const latestWeekly  = cFull?.campaignReports?.[0]  as CampaignReport | undefined;
+                          const latestOngoing = cFull?.ongoingReports?.[0]   as OngoingReport  | undefined;
+                          const isExpanded    = expandedClientIds.has(c.id);
+
+                          const statusDot   = status === "good" ? "var(--success)" : status === "neutral" ? "var(--warning)" : "var(--danger)";
+                          const statusLabel = status === "good" ? "Good" : status === "neutral" ? "Neutral" : "Needs Attention";
+                          const statusBg    = status === "good" ? "rgba(61,214,140,0.1)" : status === "neutral" ? "rgba(245,185,74,0.1)" : "rgba(255,59,59,0.1)";
+                          const statusBorder= status === "good" ? "rgba(61,214,140,0.25)" : status === "neutral" ? "rgba(245,185,74,0.25)" : "rgba(255,59,59,0.25)";
+
+                          // Build combined report list for breakout
+                          const allReports: Array<{ kind: "daily" | "weekly"; date: string; report: OngoingReport | CampaignReport }> = [
+                            ...(cFull?.ongoingReports ?? []).map((r: OngoingReport) => ({ kind: "daily" as const, date: r.date, report: r })),
+                            ...(cFull?.campaignReports ?? []).map((r: CampaignReport) => ({ kind: "weekly" as const, date: r.weekEndDate, report: r })),
+                          ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+
+                          return (
+                            <div key={c.id} style={{ ...card, overflow: "hidden", padding: 0 }}>
+                              {/* Client row */}
+                              <div className="flex items-center gap-4 px-5 py-4">
+                                {/* Logo */}
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
+                                  style={c.logoUrl ? { border: "1px solid var(--border-default)" } : { background: "var(--accent-muted)", color: "var(--accent)" }}>
+                                  {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-full h-full object-cover" /> : (c.name as string)[0]}
+                                </div>
+
+                                {/* Name + last report info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                                    {/* Status badge */}
+                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold"
+                                      style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusDot, fontSize: 10 }}>
+                                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: statusDot }} />
+                                      {statusLabel}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                                    {latestWeekly ? (
+                                      <>Last week: {fmtWeekRange(latestWeekly.weekStartDate, latestWeekly.weekEndDate)}
+                                        {" · "}<span style={{ color: "var(--accent)" }}>{fmt(latestWeekly.totalViews)} views</span>
+                                        {latestWeekly.paidOut > 0 && <>{" · "}<span style={{ color: "var(--success)" }}>{fmtCurrency(latestWeekly.paidOut)}</span></>}
+                                      </>
+                                    ) : latestOngoing ? (
+                                      <>Latest: {fmtDate(latestOngoing.date)}
+                                        {" · "}{latestOngoing.approved} approved
+                                        {" · "}<span style={{ color: "var(--accent)" }}>{fmt(latestOngoing.viewsTotal)} views</span>
+                                      </>
+                                    ) : (
+                                      <span style={{ color: "var(--text-tertiary)" }}>No reports yet</span>
+                                    )}
+                                  </p>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {cFull?.campaignTrackerUrl && (
+                                    <a href={cFull.campaignTrackerUrl} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                      style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
+                                      <ExternalLink size={11} /> Tracker
+                                    </a>
+                                  )}
+                                  <button onClick={() => setSelectedClientId(c.id)}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
+                                    Full View
+                                  </button>
+                                  <button
+                                    onClick={() => toggleClientBreakout(c.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                    style={{ background: isExpanded ? "var(--bg-active)" : "var(--border-subtle)", border: "1px solid var(--border-default)", color: isExpanded ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                                    Reports
+                                    <span className="transition-transform duration-200" style={{ display: "inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                                      <ChevronDown size={11} />
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Inline report breakout */}
+                              {isExpanded && (
+                                <div className="px-4 pb-4 space-y-1.5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                  {allReports.length === 0 ? (
+                                    <p className="text-xs py-4 text-center" style={{ color: "var(--text-tertiary)" }}>No reports yet for this client.</p>
+                                  ) : (
+                                    <>
+                                      <div className="grid grid-cols-2 gap-2 pt-3">
+                                        {/* Daily reports column */}
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-semibold uppercase tracking-widest px-1 pb-1"
+                                            style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Daily Reports</p>
+                                          {allReports.filter((r) => r.kind === "daily").length === 0 && (
+                                            <p className="text-xs px-1" style={{ color: "var(--text-tertiary)" }}>None</p>
+                                          )}
+                                          {allReports.filter((r) => r.kind === "daily").map(({ report }) => {
+                                            const r = report as OngoingReport;
+                                            return (
+                                              <div key={r.id} className="rounded-lg px-3 py-2.5"
+                                                style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+                                                <div className="flex items-center justify-between gap-3">
+                                                  <div>
+                                                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                                                      {fmtDate(r.date)}
+                                                      <span className="ml-1.5 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                                                        {new Date(r.date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" })}
+                                                      </span>
+                                                    </p>
+                                                  </div>
+                                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                                    <span className="text-xs" style={{ color: "var(--success)" }}>{r.approved} approved</span>
+                                                    <span className="text-xs tabular-nums" style={{ color: "var(--accent)" }}>{fmt(r.viewsToday)} views</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                        {/* Weekly summaries column */}
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-semibold uppercase tracking-widest px-1 pb-1"
+                                            style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Weekly Summaries</p>
+                                          {allReports.filter((r) => r.kind === "weekly").length === 0 && (
+                                            <p className="text-xs px-1" style={{ color: "var(--text-tertiary)" }}>None</p>
+                                          )}
+                                          {allReports.filter((r) => r.kind === "weekly").map(({ report }) => {
+                                            const wr = report as CampaignReport;
+                                            return (
+                                              <div key={wr.id} className="rounded-lg px-3 py-2.5"
+                                                style={{ background: "var(--bg-base)", border: "1px solid var(--accent-border)" }}>
+                                                <div className="flex items-center justify-between gap-3">
+                                                  <div>
+                                                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                                                      {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
+                                                    </p>
+                                                  </div>
+                                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                                    <span className="text-xs tabular-nums" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)} views</span>
+                                                    {wr.paidOut > 0 && <span className="text-xs tabular-nums" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</span>}
+                                                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted} clips</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()
             ) : (
               /* ── SINGLE CLIENT VIEW ───────────────────────────────── */
               (() => {

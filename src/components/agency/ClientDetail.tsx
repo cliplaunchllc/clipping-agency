@@ -15,6 +15,7 @@ interface ClientData {
   campaignType: "manual" | "cpm";
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
+  welcomePageUrl: string | null;
   dealLengthDays: number | null;
   dealStartDate: string | null;
   dealEndDate: string | null;
@@ -57,6 +58,9 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
   const [savingTracker, setSavingTracker] = useState(false);
   const [trackerSaved, setTrackerSaved] = useState(false);
+  const [welcomeUrl, setWelcomeUrl] = useState(initial.welcomePageUrl ?? "");
+  const [savingWelcome, setSavingWelcome] = useState(false);
+  const [welcomeSaved, setWelcomeSaved] = useState(false);
 
   // Client login state
   const [loginEmail, setLoginEmail] = useState(initial.loginUser?.email ?? "");
@@ -98,6 +102,17 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       setSavingContract(false);
     };
     reader.readAsDataURL(file);
+  }
+
+  async function saveWelcomeUrl() {
+    setSavingWelcome(true);
+    const res = await fetch(`/api/agency/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ welcomePageUrl: welcomeUrl }),
+    });
+    if (res.ok) { setWelcomeSaved(true); setTimeout(() => setWelcomeSaved(false), 2500); }
+    setSavingWelcome(false);
   }
 
   async function saveTrackerUrl() {
@@ -280,6 +295,29 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 style={{ background: trackerSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${trackerSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: trackerSaved ? "var(--success)" : "var(--accent)" }}
               >
                 {trackerSaved ? <><Check size={12} /> Saved</> : savingTracker ? "Saving…" : <><Save size={12} /> Save</>}
+              </button>
+            </div>
+          </div>
+
+          {/* Welcome Page URL */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Welcome Page URL</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The onboarding welcome page link shown to the client in their Onboarding tab.</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={welcomeUrl}
+                onChange={(e) => setWelcomeUrl(e.target.value)}
+                placeholder="https://..."
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                onClick={saveWelcomeUrl}
+                disabled={savingWelcome}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                style={{ background: welcomeSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${welcomeSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: welcomeSaved ? "var(--success)" : "var(--accent)" }}
+              >
+                {welcomeSaved ? <><Check size={12} /> Saved</> : savingWelcome ? "Saving…" : <><Save size={12} /> Save</>}
               </button>
             </div>
           </div>

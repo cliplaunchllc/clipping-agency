@@ -110,6 +110,7 @@ interface ClientData {
   campaignType: "manual" | "cpm";
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
+  welcomePageUrl?: string | null;
   logoUrl: string | null;
   dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
   pageCount: number | null; clipsPerDay: number | null;
@@ -1019,23 +1020,48 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   </p>
                 </div>
 
-                {/* Welcome Page link placeholder */}
-                <div
-                  className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
-                  style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
-                >
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                {/* Welcome Page link */}
+                {client.welcomePageUrl ? (
+                  <a
+                    href={client.welcomePageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4 group"
+                    style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
+                  >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
+                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--accent)" }}>{client.welcomePageUrl}</p>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
                     </svg>
+                  </a>
+                ) : (
+                  <div
+                    className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
+                    style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
+                  >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
-                  </div>
-                </div>
+                )}
 
                 {/* Steps */}
                 {([
