@@ -960,32 +960,39 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   from { opacity: 0; transform: translateY(14px); }
                   to   { opacity: 1; transform: translateY(0); }
                 }
-                @keyframes obLineDraw {
-                  from { transform: scaleY(0); }
-                  to   { transform: scaleY(1); }
-                }
                 @keyframes liveGlow {
                   0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 10px rgba(61,255,162,0.5); }
                   50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 22px rgba(61,255,162,0.55); }
                 }
-                /* Cascade glow: each dot's animation is 4.9s (7 steps × 0.7s).
-                   Negative delay staggers each dot's position within the cycle so
-                   the glow passes down the list automatically and loops. */
-                @keyframes stepCascade {
-                  0%, 8%, 100% {
+                /*
+                  Continuous flow cascade — 9.8s cycle (7 steps × 1.4s each).
+                  Dot i delay = i×1.4 − 9.8  →  fires at t = i×1.4s
+                  Line i delay = i×1.4+0.5 − 9.8  →  fills 0.5s after dot above it,
+                  completing just as the next dot glows. Feels like a pulse of current
+                  travelling down the wire continuously.
+                */
+                @keyframes dotGlow {
+                  0%, 9%, 100% {
                     box-shadow: none;
-                    border-color: rgba(255,255,255,0.1);
+                    border-color: rgba(255,255,255,0.08);
                   }
-                  4% {
-                    box-shadow: 0 0 0 4px rgba(61,255,162,0.18), 0 0 18px rgba(61,255,162,0.45);
-                    border-color: rgba(61,255,162,0.55);
+                  4.5% {
+                    box-shadow: 0 0 0 5px rgba(61,255,162,0.22), 0 0 22px rgba(61,255,162,0.6);
+                    border-color: rgba(61,255,162,0.65);
                   }
                 }
-                .ob-step    { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
-                .ob-line    { animation: obLineDraw 0.5s cubic-bezier(0.22,1,0.36,1) both; transform-origin: top center; }
-                .ob-header  { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-                .live-dot   { animation: liveGlow 2.2s ease-in-out infinite; }
-                .step-dot   { animation: stepCascade 4.9s ease-in-out infinite; }
+                @keyframes lineFill {
+                  /* Invisible at start, fills top-to-bottom, then fades */
+                  0%, 100%  { transform: scaleY(0); opacity: 0; }
+                  1.5%      { transform: scaleY(0); opacity: 1; }
+                  9%        { transform: scaleY(1); opacity: 0.75; }
+                  12%, 99%  { transform: scaleY(1); opacity: 0; }
+                }
+                .ob-step   { animation: obFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+                .ob-header { animation: obFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+                .live-dot  { animation: liveGlow 2.2s ease-in-out infinite; }
+                .step-dot  { animation: dotGlow  9.8s ease-in-out infinite; }
+                .line-fill { animation: lineFill 9.8s ease-in-out infinite; transform-origin: top center; }
               `}</style>
 
               <div style={{ maxWidth: "100%" }}>
@@ -996,10 +1003,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     className="live-dot w-3 h-3 rounded-full flex-shrink-0"
                     style={{ background: "var(--accent)", boxShadow: "0 0 10px rgba(61,255,162,0.7)" }}
                   />
-                  <span
-                    className="text-xs font-bold uppercase tracking-widest"
-                    style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.13em" }}
-                  >
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.13em" }}>
                     Live
                   </span>
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>· Campaign portal is active</span>
@@ -1018,17 +1022,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 {/* Welcome Page link placeholder */}
                 <div
                   className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
-                  style={{
-                    animationDelay: "60ms",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-default)",
-                    boxShadow: "var(--shadow-inset-top)",
-                  }}
+                  style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
                 >
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}
-                  >
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                       <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -1041,56 +1038,23 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 </div>
 
                 {/* Steps */}
-                {[
-                  {
-                    number: "01",
-                    owner: "You",
-                    title: "Watch the welcome video",
-                    description: "Get a quick overview of how the process works and what to expect.",
-                  },
-                  {
-                    number: "02",
-                    owner: "You",
-                    title: "Complete the intake form",
-                    description: "Tell us about your brand, goals, and niche.",
-                  },
-                  {
-                    number: "03",
-                    owner: "You",
-                    title: "Notify us in our dedicated communication channel",
-                    description: "Let us know you're ready so we can kick things off.",
-                  },
-                  {
-                    number: "04",
-                    owner: "ClipLaunch Team",
-                    title: "We build your rules brief",
-                    description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted — including CTAs, messaging, and any other specifics based on your goals.",
-                  },
-                  {
-                    number: "05",
-                    owner: "You",
-                    title: "You approve the brief",
-                    description: "Before anything goes live, you'll review and sign off on the brief. Your campaign doesn't launch without your green light.",
-                  },
-                  {
-                    number: "06",
-                    owner: "ClipLaunch Team",
-                    title: "Campaign launches",
-                    description: "Once approved, we launch your campaign across our clipper network and content starts getting created.",
-                  },
-                  {
-                    number: "07",
-                    owner: "ClipLaunch Team",
-                    title: "Updates and optimization",
-                    description: "You'll get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You'll also have access to this dashboard, where we'll post campaign reports and weekly updates so you can track your results in one place. We'll keep you posted on anything worth knowing, along with any adjustments we're making along the way.",
-                  },
-                ].map((step, i, arr) => {
+                {([
+                  { number: "01", owner: "You",            title: "Watch the welcome video",                        description: "Get a quick overview of how the process works and what to expect." },
+                  { number: "02", owner: "You",            title: "Complete the intake form",                       description: "Tell us about your brand, goals, and niche." },
+                  { number: "03", owner: "You",            title: "Notify us in our dedicated communication channel", description: "Let us know you're ready so we can kick things off." },
+                  { number: "04", owner: "ClipLaunch Team", title: "We build your rules brief",                      description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted — including CTAs, messaging, and any other specifics based on your goals." },
+                  { number: "05", owner: "You",            title: "You approve the brief",                          description: "Before anything goes live, you'll review and sign off on the brief. Your campaign doesn't launch without your green light." },
+                  { number: "06", owner: "ClipLaunch Team", title: "Campaign launches",                              description: "Once approved, we launch your campaign across our clipper network and content starts getting created." },
+                  { number: "07", owner: "ClipLaunch Team", title: "Updates and optimization",                       description: "You'll get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You'll also have access to this dashboard, where we'll post campaign reports and weekly updates so you can track your results in one place. We'll keep you posted on anything worth knowing, along with any adjustments we're making along the way." },
+                ] as const).map((step, i, arr) => {
                   const isTeam = step.owner === "ClipLaunch Team";
                   const badgeBg     = isTeam ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
-                  const badgeBorder = isTeam ? "rgba(255,255,255,0.1)" : "var(--accent-border)";
-                  const badgeColor  = isTeam ? "var(--text-secondary)" : "var(--accent)";
-                  // Cascade: 7 steps × 0.7s = 4.9s cycle. Step i fires at i × 0.7s into the cycle.
-                  const cascadeDelay = `-${((arr.length - 1 - i) * 0.7).toFixed(1)}s`;
+                  const badgeBorder = isTeam ? "rgba(255,255,255,0.1)"  : "var(--accent-border)";
+                  const badgeColor  = isTeam ? "var(--text-secondary)"  : "var(--accent)";
+                  // Cycle = 9.8s. Dot i fires at t = i×1.4s → delay = i×1.4 − 9.8
+                  // Line i fills at t = i×1.4+0.5s → delay = i×1.4+0.5 − 9.8
+                  const dotDelay  = `${(i * 1.4 - 9.8).toFixed(1)}s`;
+                  const lineDelay = `${(i * 1.4 + 0.5 - 9.8).toFixed(1)}s`;
                   return (
                     <div
                       key={step.number}
@@ -1099,80 +1063,55 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     >
                       {/* Left rail */}
                       <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 40 }}>
+                        {/* Dot */}
                         <div
                           className="step-dot w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10"
-                          style={{
-                            background: "var(--bg-surface)",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            animationDelay: cascadeDelay,
-                          }}
+                          style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", animationDelay: dotDelay }}
                         >
-                          <span
-                            className="text-xs font-bold tabular-nums"
-                            style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontSize: 11 }}
-                          >
+                          <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontSize: 11 }}>
                             {step.number}
                           </span>
                         </div>
+
+                        {/* Connecting line with fill animation */}
                         {i < arr.length - 1 && (
-                          <div
-                            className="ob-line flex-1 w-px mt-2"
-                            style={{
-                              background: "linear-gradient(to bottom, var(--border-default) 0%, transparent 100%)",
-                              minHeight: 40,
-                              animationDelay: `${200 + i * 70}ms`,
-                            }}
-                          />
+                          <div className="relative flex-1 mt-2" style={{ width: 1, minHeight: 44, overflow: "hidden" }}>
+                            {/* Static dim base */}
+                            <div className="absolute inset-0" style={{ background: "rgba(255,255,255,0.07)" }} />
+                            {/* Animated fill — travels top to bottom */}
+                            <div
+                              className="line-fill absolute inset-0"
+                              style={{
+                                background: "linear-gradient(to bottom, rgba(61,255,162,0.8) 0%, rgba(61,255,162,0.1) 100%)",
+                                animationDelay: lineDelay,
+                              }}
+                            />
+                          </div>
                         )}
                       </div>
 
                       {/* Content card */}
                       <div
                         className={`flex-1 rounded-xl px-5 py-4 ${i < arr.length - 1 ? "mb-3" : ""}`}
-                        style={{
-                          background: "var(--bg-surface)",
-                          border: "1px solid var(--border-default)",
-                          boxShadow: "var(--shadow-inset-top)",
-                        }}
+                        style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
-                          <p
-                            className="text-base font-semibold leading-snug"
-                            style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-                          >
+                          <p className="text-base font-semibold leading-snug" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                             {step.title}
                           </p>
                           <span
                             className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-1 rounded-md font-semibold mt-0.5"
-                            style={{
-                              background: badgeBg,
-                              border: `1px solid ${badgeBorder}`,
-                              color: badgeColor,
-                              fontSize: 10,
-                              letterSpacing: "0.03em",
-                              whiteSpace: "nowrap",
-                            }}
+                            style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, fontSize: 10, letterSpacing: "0.03em", whiteSpace: "nowrap" }}
                           >
                             {isTeam ? (
                               <>
-                                <img
-                                  src="/api/favicon"
-                                  alt=""
-                                  width={12}
-                                  height={12}
-                                  style={{ borderRadius: 2, objectFit: "contain", flexShrink: 0 }}
-                                />
+                                <img src="/api/favicon" alt="" width={12} height={12} style={{ borderRadius: 2, objectFit: "contain", flexShrink: 0 }} />
                                 ClipLaunch Team
                               </>
-                            ) : (
-                              "You"
-                            )}
+                            ) : "You"}
                           </span>
                         </div>
-                        <p
-                          className="text-sm leading-relaxed"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
+                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           {step.description}
                         </p>
                       </div>
