@@ -32,10 +32,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     return NextResponse.json(client);
   }
-  if (body.action === "unarchive") {
+  if (body.action === "unarchive" || body.action === "activate") {
     const client = await prisma.client.update({
       where: { id },
       data: { status: "active", archivedAt: null },
+    });
+    return NextResponse.json(client);
+  }
+  if (body.action === "prelaunch") {
+    const client = await prisma.client.update({
+      where: { id },
+      data: { status: "prelaunch", archivedAt: null },
     });
     return NextResponse.json(client);
   }

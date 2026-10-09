@@ -27,6 +27,7 @@ enum UserStatus {
 
 enum ClientStatus {
   active
+  prelaunch
   archived
 }
 

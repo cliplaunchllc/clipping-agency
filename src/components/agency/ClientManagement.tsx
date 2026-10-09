@@ -59,7 +59,7 @@ const selectStyle: React.CSSProperties = {
 export default function ClientManagement({ initialClients, pendingClientUsers: initialPending = [], allClients: allClientOptions = [] }: Props) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [pendingUsers, setPendingUsers] = useState<PendingClientUser[]>(initialPending);
-  const [tab, setTab] = useState<"active" | "archived" | "pending">("active");
+  const [tab, setTab] = useState<"active" | "prelaunch" | "archived" | "pending">("active");
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<"connect" | "create">("connect");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -133,7 +133,11 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     reader.readAsDataURL(file);
   }
 
-  const visible = clients.filter((c) => tab === "active" ? c.status === "active" : tab === "archived" ? c.status === "archived" : false);
+  const visible = clients.filter((c) =>
+    tab === "active" ? c.status === "active" :
+    tab === "prelaunch" ? c.status === "prelaunch" :
+    tab === "archived" ? c.status === "archived" : false
+  );
 
   function resetAddForm() {
     setName(""); setEmail(""); setPassword(""); setSelectedUserId(""); setError(""); setCampaignBudget("");
@@ -178,7 +182,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     setLoading(false);
   }
 
-  async function handleArchive(id: string, action: "archive" | "unarchive") {
+  async function handleSetStatus(id: string, action: "archive" | "unarchive" | "prelaunch" | "activate") {
     const res = await fetch(`/api/agency/clients/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -186,7 +190,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     });
     if (res.ok) {
       const updated = await res.json();
-      setClients((prev) => prev.map((c) => c.id === id ? { ...c, status: updated.status, archivedAt: updated.archivedAt } : c));
+      setClients((prev) => prev.map((c) => c.id === id ? { ...c, status: updated.status, archivedAt: updated.archivedAt ?? null } : c));
     }
   }
 
@@ -397,9 +401,10 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       {/* Tabs */}
       <div className="flex gap-1 mb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         {([
-          { id: "active", label: `Active (${clients.filter((c) => c.status === "active").length})` },
-          { id: "archived", label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
-          { id: "pending", label: `Pending Signup (${pendingUsers.length})` },
+          { id: "active",    label: `Active (${clients.filter((c) => c.status === "active").length})` },
+          { id: "prelaunch", label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
+          { id: "archived",  label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
+          { id: "pending",   label: `Pending Signup (${pendingUsers.length})` },
         ] as const).map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="px-4 py-2.5 text-sm font-medium relative"
@@ -484,8 +489,8 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         </div>
       )}
 
-      {/* ACTIVE / ARCHIVED TABLE */}
-      {(tab === "active" || tab === "archived") && (
+      {/* ACTIVE / PRE-LAUNCH / ARCHIVED TABLE */}
+      {(tab === "active" || tab === "prelaunch" || tab === "archived") && (
         <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
@@ -542,21 +547,36 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {c.status === "active" && (
+                      {(c.status === "active" || c.status === "prelaunch") && (
                         <Link href={`/agency/clients/${c.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
                           style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
                           Edit
                         </Link>
                       )}
-                      {c.status === "active" ? (
-                        <button onClick={() => handleArchive(c.id, "archive")}
+                      {c.status === "active" && (
+                        <button onClick={() => handleSetStatus(c.id, "prelaunch")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(245,185,74,0.08)", border: "1px solid rgba(245,185,74,0.2)", color: "var(--warning)" }}>
+                          Pre-launch
+                        </button>
+                      )}
+                      {c.status === "prelaunch" && (
+                        <button onClick={() => handleSetStatus(c.id, "activate")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
+                          Set Active
+                        </button>
+                      )}
+                      {(c.status === "active" || c.status === "prelaunch") && (
+                        <button onClick={() => handleSetStatus(c.id, "archive")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
                           style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--text-tertiary)" }}>
                           Archive
                         </button>
-                      ) : (
-                        <button onClick={() => handleArchive(c.id, "unarchive")}
+                      )}
+                      {c.status === "archived" && (
+                        <button onClick={() => handleSetStatus(c.id, "activate")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
                           style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
                           Restore
@@ -578,7 +598,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
               ))}
               {visible.length === 0 && (
                 <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-                  {tab === "archived" ? "No archived clients" : "No clients yet — add your first client"}
+                  {tab === "archived" ? "No archived clients" : tab === "prelaunch" ? "No pre-launch clients" : "No clients yet — add your first client"}
                 </td></tr>
               )}
             </tbody>

@@ -84,6 +84,7 @@ function getClientStatus(cFull: AnyRecord): ClientStatus {
 export default function AgencyDashboard({ userName, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
   const [allClips] = useState<AnyRecord[]>(initialClips);
   const [selectedClientId, setSelectedClientId] = useState("all");
+  const [clientListTab, setClientListTab] = useState<"active" | "prelaunch" | "archived">("active");
   // Per-client inline report breakout
   const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
   function toggleClientBreakout(id: string) {
@@ -108,7 +109,9 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClientId]);
 
-  const activeClients = clients.filter((c) => c.status === "active");
+  const activeClients    = clients.filter((c) => c.status === "active");
+  const prelaunchClients = clients.filter((c) => c.status === "prelaunch");
+  const archivedClients  = clients.filter((c) => c.status === "archived");
   const selectedClient = allClients.find((c) => c.id === selectedClientId) ?? null;
   const campaignReports = (selectedClient?.campaignReports ?? []) as CampaignReport[];
   const ongoingReports = (selectedClient?.ongoingReports ?? [])
@@ -163,8 +166,8 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                   className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
                   style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
                   <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
-                  {allClients.filter((c) => c.status === "active").map((c) => (
-                    <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
+                  {allClients.filter((c) => c.status === "active" || c.status === "prelaunch").map((c) => (
+                    <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}{c.status === "prelaunch" ? " (Pre-launch)" : ""}</option>
                   ))}
                 </select>
                 <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -194,7 +197,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                         <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{activeClients.length}</p>
                         <div className="flex items-center gap-1.5">
                           <Users size={11} style={{ color: "var(--text-tertiary)" }} />
-                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{clients.filter((c) => c.status !== "active").length} archived</p>
+                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{prelaunchClients.length} pre-launch · {archivedClients.length} archived</p>
                         </div>
                       </div>
                       {/* On Track */}
@@ -229,17 +232,105 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                       </div>
                     </div>
 
+                    {/* Client list tabs */}
+                    <div className="flex gap-1 mb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                      {([
+                        { id: "active",    label: `Active (${activeClients.length})` },
+                        { id: "prelaunch", label: `Pre-launch (${prelaunchClients.length})` },
+                        { id: "archived",  label: `Archived (${archivedClients.length})` },
+                      ] as const).map((t) => (
+                        <button key={t.id} onClick={() => setClientListTab(t.id)}
+                          className="px-4 py-2.5 text-sm font-medium relative"
+                          style={{ color: clientListTab === t.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                          {t.label}
+                          {clientListTab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "var(--accent)" }} />}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Budget Focus widget — active clients only */}
+                    {clientListTab === "active" && (() => {
+                      const budgetClients = allClients
+                        .filter((c) => c.status === "active")
+                        .map((c) => {
+                          const totalBudget = (c.campaigns ?? []).reduce((s: number, camp: AnyRecord) => s + (camp.totalBudget ?? 0), 0);
+                          const allSnapshots: { date: string; value: number }[] = [
+                            ...(c.campaignReports ?? []).filter((r: AnyRecord) => r.paidOut > 0).map((r: AnyRecord) => ({ date: r.weekEndDate, value: r.paidOut as number })),
+                            ...(c.ongoingReports ?? []).filter((r: AnyRecord) => r.amountSpent != null && r.amountSpent > 0).map((r: AnyRecord) => ({ date: r.date, value: r.amountSpent as number })),
+                          ].sort((a, b) => b.date.localeCompare(a.date));
+                          const paidOut = allSnapshots[0]?.value ?? 0;
+                          const remaining = totalBudget - paidOut;
+                          const pct = totalBudget > 0 ? (paidOut / totalBudget) * 100 : 0;
+                          return { id: c.id, name: c.name as string, totalBudget, paidOut, remaining, pct };
+                        })
+                        .filter((c) => c.totalBudget > 0);
+
+                      if (budgetClients.length === 0) return null;
+
+                      const byLowestSpent  = [...budgetClients].sort((a, b) => a.pct - b.pct).slice(0, 5);
+                      const byHighestSpent = [...budgetClients].sort((a, b) => b.pct - a.pct).slice(0, 5);
+                      const byMostRemaining = [...budgetClients].sort((a, b) => b.remaining - a.remaining).slice(0, 5);
+
+                      const BudgetRow = ({ c, accent }: { c: typeof budgetClients[0]; accent: string }) => (
+                        <div className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                          <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            style={{ background: "var(--bg-active)", color: "var(--text-secondary)" }}>
+                            {(c.name as string)[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                            <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, c.pct)}%`, background: accent }} />
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs font-semibold tabular-nums" style={{ color: accent }}>{Math.round(c.pct)}%</p>
+                            <p className="text-xs tabular-nums" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(c.remaining)} left</p>
+                          </div>
+                        </div>
+                      );
+
+                      return (
+                        <div className="mb-5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-default)", background: "var(--bg-surface)" }}>
+                          <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                            <div className="flex items-center gap-2">
+                              <Wallet size={13} style={{ color: "var(--text-tertiary)" }} />
+                              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Budget Focus</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 divide-x" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                            {[
+                              { title: "Lowest Spent", items: byLowestSpent,   accent: "var(--warning)" },
+                              { title: "Highest Spent", items: byHighestSpent,  accent: "var(--danger)" },
+                              { title: "Most Remaining", items: byMostRemaining, accent: "var(--success)" },
+                            ].map(({ title, items, accent }) => (
+                              <div key={title} className="px-4 py-3">
+                                <p className="text-xs font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>{title}</p>
+                                {items.map((c) => <BudgetRow key={c.id} c={c} accent={accent} />)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Client list */}
-                    {activeClients.length === 0 ? (
+                    {(() => {
+                      const visibleClients = clientListTab === "active" ? activeClients : clientListTab === "prelaunch" ? prelaunchClients : archivedClients;
+                      return visibleClients.length === 0 ? (
                       <div className="flex flex-col items-center justify-center rounded-xl py-16"
                         style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
                         <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
-                        <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No active clients</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Add a client to get started.</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>
+                          {clientListTab === "active" ? "No active clients" : clientListTab === "prelaunch" ? "No pre-launch clients" : "No archived clients"}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                          {clientListTab === "active" ? "Add a client to get started." : clientListTab === "prelaunch" ? "Mark a client as Pre-launch from the Clients page." : "Archive a client from the Clients page."}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {activeClients.map((c) => {
+                        {visibleClients.map((c) => {
                           const cFull  = allClients.find((x) => x.id === c.id)!;
                           const status = getClientStatus(cFull);
                           const latestWeekly  = cFull?.campaignReports?.[0]  as CampaignReport | undefined;
@@ -396,7 +487,8 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                           );
                         })}
                       </div>
-                    )}
+                    );
+                    })()}
                   </>
                 );
               })()
