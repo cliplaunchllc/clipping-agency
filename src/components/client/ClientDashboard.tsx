@@ -92,7 +92,7 @@ interface OngoingReport {
   id: string; date: string; totalSubmissions: number; pending: number;
   approved: number; rejected: number; mainTrend: string | null;
   clipperFeedback: string | null; mainOptimization: string | null; status: string;
-  viewsTotal: number; viewsToday: number;
+  viewsTotal: number; viewsToday: number; amountSpent?: number | null;
 }
 
 interface CampaignReport {
@@ -468,7 +468,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
                     const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
 
-                    const totalPaidOut = (client.campaignReports ?? []).reduce((s, r) => s + (r.paidOut ?? 0), 0);
+                    // Find most recent report (daily or weekly) that has a paid-out value
+                    const allPaidSnapshots: { date: string; value: number }[] = [
+                      ...(client.campaignReports ?? [])
+                        .filter((r) => r.paidOut > 0)
+                        .map((r) => ({ date: r.weekEndDate, value: r.paidOut })),
+                      ...(client.ongoingReports ?? [])
+                        .filter((r) => r.amountSpent != null && r.amountSpent > 0)
+                        .map((r) => ({ date: r.date, value: r.amountSpent as number })),
+                    ].sort((a, b) => b.date.localeCompare(a.date));
+                    const totalPaidOut = allPaidSnapshots[0]?.value ?? 0;
                     const totalBudget = (client.campaigns ?? []).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
 
                     return (

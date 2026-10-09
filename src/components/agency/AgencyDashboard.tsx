@@ -50,7 +50,7 @@ interface OngoingReport {
   id: string; date: string; totalSubmissions: number; pending: number;
   approved: number; rejected: number; mainTrend: string | null;
   clipperFeedback: string | null; mainOptimization: string | null; status: string;
-  viewsTotal: number; viewsToday: number;
+  viewsTotal: number; viewsToday: number; amountSpent?: number | null;
 }
 
 interface Props {
@@ -506,7 +506,15 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                       <div className="space-y-4">
                         {/* Summary cards */}
                         {(() => {
-                          const totalPaidOut = campaignReports.reduce((s, r) => s + (r.paidOut ?? 0), 0);
+                          const allPaidSnapshots: { date: string; value: number }[] = [
+                            ...campaignReports
+                              .filter((r) => r.paidOut > 0)
+                              .map((r) => ({ date: r.weekEndDate, value: r.paidOut })),
+                            ...ongoingReports
+                              .filter((r) => (r as OngoingReport).amountSpent != null && (r as OngoingReport).amountSpent! > 0)
+                              .map((r) => ({ date: r.date, value: (r as OngoingReport).amountSpent as number })),
+                          ].sort((a, b) => b.date.localeCompare(a.date));
+                          const totalPaidOut = allPaidSnapshots[0]?.value ?? 0;
                           const totalBudget = ((selectedClient?.campaigns ?? []) as {totalBudget: number}[]).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
                           return (
                             <>

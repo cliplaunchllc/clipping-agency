@@ -100,6 +100,7 @@ export default async function ClientPage() {
       status: r.status as string,
       viewsTotal: r.viewsTotal,
       viewsToday: r.viewsToday,
+      amountSpent: r.amountSpent ?? null,
     })),
     clippers: [],
   };

@@ -51,18 +51,14 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
 
   // Deal terms state — auto-open edit if ?edit=1 in URL
   const [startDate, setStartDate] = useState(initial.dealStartDate ? initial.dealStartDate.slice(0, 10) : "");
-  const [savingStartDate, setSavingStartDate] = useState(false);
-  const [startDateSaved, setStartDateSaved] = useState(false);
   const [contractUrl, setContractUrl] = useState(initial.contractUrl ?? "");
   const [savingContract, setSavingContract] = useState(false);
   const [contractSaved, setContractSaved] = useState(false);
   const contractFileRef = useRef<HTMLInputElement>(null);
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
-  const [savingTracker, setSavingTracker] = useState(false);
-  const [trackerSaved, setTrackerSaved] = useState(false);
   const [welcomeUrl, setWelcomeUrl] = useState(initial.welcomePageUrl ?? "");
-  const [savingWelcome, setSavingWelcome] = useState(false);
-  const [welcomeSaved, setWelcomeSaved] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
   // Client login state
   const [loginEmail, setLoginEmail] = useState(initial.loginUser?.email ?? "");
@@ -153,37 +149,19 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     if (res.ok) setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
   }
 
-  async function saveWelcomeUrl() {
-    setSavingWelcome(true);
+  async function saveAllSettings() {
+    setSavingSettings(true);
     const res = await fetch(`/api/agency/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ welcomePageUrl: welcomeUrl }),
+      body: JSON.stringify({
+        campaignTrackerUrl: trackerUrl,
+        welcomePageUrl: welcomeUrl,
+        dealStartDate: startDate || null,
+      }),
     });
-    if (res.ok) { setWelcomeSaved(true); setTimeout(() => setWelcomeSaved(false), 2500); }
-    setSavingWelcome(false);
-  }
-
-  async function saveTrackerUrl() {
-    setSavingTracker(true);
-    const res = await fetch(`/api/agency/clients/${client.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ campaignTrackerUrl: trackerUrl }),
-    });
-    if (res.ok) { setTrackerSaved(true); setTimeout(() => setTrackerSaved(false), 2500); }
-    setSavingTracker(false);
-  }
-
-  async function saveStartDate() {
-    setSavingStartDate(true);
-    const res = await fetch(`/api/agency/clients/${client.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dealStartDate: startDate || null }),
-    });
-    if (res.ok) { setStartDateSaved(true); setTimeout(() => setStartDateSaved(false), 2500); }
-    setSavingStartDate(false);
+    if (res.ok) { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 2500); }
+    setSavingSettings(false);
   }
 
   async function saveLogin() {
@@ -329,46 +307,26 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
           <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Campaign Tracker URL</p>
             <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The live tracking link shared with the client on their dashboard overview.</p>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={trackerUrl}
-                onChange={(e) => setTrackerUrl(e.target.value)}
-                placeholder="https://..."
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                onClick={saveTrackerUrl}
-                disabled={savingTracker}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                style={{ background: trackerSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${trackerSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: trackerSaved ? "var(--success)" : "var(--accent)" }}
-              >
-                {trackerSaved ? <><Check size={12} /> Saved</> : savingTracker ? "Saving…" : <><Save size={12} /> Save</>}
-              </button>
-            </div>
+            <input
+              type="url"
+              value={trackerUrl}
+              onChange={(e) => setTrackerUrl(e.target.value)}
+              placeholder="https://..."
+              style={inputStyle}
+            />
           </div>
 
           {/* Welcome Page URL */}
           <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Welcome Page URL</p>
             <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The onboarding welcome page link shown to the client in their Onboarding tab.</p>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={welcomeUrl}
-                onChange={(e) => setWelcomeUrl(e.target.value)}
-                placeholder="https://..."
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                onClick={saveWelcomeUrl}
-                disabled={savingWelcome}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                style={{ background: welcomeSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${welcomeSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: welcomeSaved ? "var(--success)" : "var(--accent)" }}
-              >
-                {welcomeSaved ? <><Check size={12} /> Saved</> : savingWelcome ? "Saving…" : <><Save size={12} /> Save</>}
-              </button>
-            </div>
+            <input
+              type="url"
+              value={welcomeUrl}
+              onChange={(e) => setWelcomeUrl(e.target.value)}
+              placeholder="https://..."
+              style={inputStyle}
+            />
           </div>
 
           {/* Campaigns */}
@@ -488,22 +446,12 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
           <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Campaign Start Date</p>
             <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The date this client&apos;s campaign began.</p>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{ ...inputStyle, flex: 1, colorScheme: "dark" }}
-              />
-              <button
-                onClick={saveStartDate}
-                disabled={savingStartDate}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
-                style={{ background: startDateSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${startDateSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: startDateSaved ? "var(--success)" : "var(--accent)" }}
-              >
-                {startDateSaved ? <><Check size={12} /> Saved</> : savingStartDate ? "Saving…" : <><Save size={12} /> Save</>}
-              </button>
-            </div>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ ...inputStyle, colorScheme: "dark" }}
+            />
           </div>
 
           {/* Client Login */}
@@ -556,6 +504,18 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Single save for URL + date fields */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={saveAllSettings}
+              disabled={savingSettings}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
+              style={{ background: settingsSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${settingsSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: settingsSaved ? "var(--success)" : "var(--accent)", opacity: savingSettings ? 0.6 : 1 }}
+            >
+              {settingsSaved ? <><Check size={14} /> Settings Saved</> : savingSettings ? "Saving…" : <><Save size={14} /> Save Settings</>}
+            </button>
           </div>
         </div>
       )}

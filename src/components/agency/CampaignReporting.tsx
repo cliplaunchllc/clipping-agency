@@ -1035,9 +1035,9 @@ function OngoingReportForm({
         </div>
       </div>
 
-      {/* Amount Spent */}
+      {/* Amount Paid Out */}
       <div>
-        <label style={labelStyle}>Amount Spent ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>vs. campaign budget</span></label>
+        <label style={labelStyle}>Amount Paid Out — Total to Date ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>running total vs. campaign budget</span></label>
         <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
       </div>
 
@@ -1128,6 +1128,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
   const [showNewClient, setShowNewClient] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
@@ -1255,6 +1256,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
     const res = await fetch(`/api/agency/reports/${id}`, { method: "DELETE" });
     if (res.ok) setReports((prev) => prev.filter((r) => r.id !== id));
     setDeletingId(null);
+    setConfirmDeleteId(null);
   }
 
   async function handleTogglePublish(id: string) {
@@ -1352,6 +1354,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
     const res = await fetch(`/api/agency/reports/ongoing/${id}`, { method: "DELETE" });
     if (res.ok) setOngoingReports((prev) => prev.filter((r) => r.id !== id));
     setDeletingId(null);
+    setConfirmDeleteId(null);
   }
 
   // ── Share link ──────────────────────────────────────────────────────────────
@@ -1875,6 +1878,20 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                       <button onClick={() => handleTogglePublish(report.id)} disabled={publishingId === report.id} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: report.published ? "var(--success)" : "var(--text-primary)", background: report.published ? "color-mix(in srgb, var(--success) 10%, transparent)" : "var(--accent-muted)", border: `1px solid ${report.published ? "color-mix(in srgb, var(--success) 20%, transparent)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}` }}>
                                         {publishingId === report.id ? "…" : report.published ? "Published" : "Publish"}
                                       </button>
+                                      {confirmDeleteId === report.id ? (
+                                        <div className="flex items-center gap-1">
+                                          <button onClick={() => handleWeeklyDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.3)" }}>
+                                            {deletingId === report.id ? "…" : "Confirm"}
+                                          </button>
+                                          <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => setConfirmDeleteId(report.id)} className="p-1.5 rounded-lg" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>
+                                          <Trash2 size={13} />
+                                        </button>
+                                      )}
                                       <button onClick={() => toggleExpand(report.id)} className="p-1.5 rounded-lg transition-transform duration-200" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", transform: expanded ? "rotate(180deg)" : "none" }}>
                                         <ChevronDown size={13} />
                                       </button>
@@ -2039,6 +2056,20 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                             <button onClick={() => setEditingOngoing(report)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: "var(--text-secondary)", background: "var(--border-subtle)", border: "1px solid var(--border-default)" }}>
                               Edit
                             </button>
+                            {confirmDeleteId === report.id ? (
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => handleOngoingDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.3)" }}>
+                                  {deletingId === report.id ? "…" : "Confirm"}
+                                </button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(report.id)} className="p-1.5 rounded-lg" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
