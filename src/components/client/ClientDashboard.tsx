@@ -1273,7 +1273,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       </div>
                       <div>
                         <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Signed Agreement</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your executed campaign contract</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your executed campaign contract. This is here for viewing purposes if needed.</p>
                       </div>
                     </div>
                   </div>
