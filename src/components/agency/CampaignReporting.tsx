@@ -430,7 +430,7 @@ function NewClientModal({ onCreated, onClose }: {
     });
     if (res.ok) {
       const client = await res.json();
-      onCreated({ id: client.id, name: client.name, logoUrl: client.logoUrl ?? null });
+      onCreated({ id: client.id, name: client.name, logoUrl: client.logoUrl ?? null, campaigns: [] });
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Failed to create client");
