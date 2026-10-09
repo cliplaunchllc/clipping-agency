@@ -564,6 +564,17 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
                     return (
                       <div className="space-y-4">
+                        {/* Not-live notice */}
+                        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: "rgba(245,185,74,0.06)", border: "1px solid rgba(245,185,74,0.18)" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                          </svg>
+                          <p className="metric-sub">
+                            These numbers come from <strong style={{ color: "var(--text-primary)" }}>manually filed reports</strong> and are not live.
+                            For real-time views, clips, and payout — use the <strong style={{ color: "var(--text-primary)" }}>Live Tracker</strong> linked above.
+                          </p>
+                        </div>
+
                         {/* Summary cards */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {([
