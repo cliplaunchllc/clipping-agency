@@ -250,9 +250,9 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                   .sort((a, b) => b.days - a.days);
 
                 const barClass = (pct: number) =>
-                  pct >= 75 ? "paid-bar" : pct >= 40 ? "warn-bar" : "success-bar";
+                  pct >= 60 ? "success-bar" : pct >= 30 ? "warn-bar" : "paid-bar";
                 const barColor = (pct: number) =>
-                  pct >= 75 ? "var(--danger)" : pct >= 40 ? "var(--warning)" : "var(--success)";
+                  pct >= 60 ? "var(--success)" : pct >= 30 ? "var(--warning)" : "var(--danger)";
 
                 return (
                   <>
@@ -314,8 +314,8 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                               const pctUsed = Math.round(c.pct);
                               const bColor = barColor(c.pct);
                               const bClass = barClass(c.pct);
-                              const urgencyBg = c.pct >= 75 ? "rgba(255,59,59,0.06)" : c.pct >= 40 ? "rgba(245,185,74,0.04)" : "rgba(61,214,140,0.04)";
-                              const urgencyBorder = c.pct >= 75 ? "rgba(255,59,59,0.18)" : c.pct >= 40 ? "rgba(245,185,74,0.15)" : "rgba(61,214,140,0.12)";
+                              const urgencyBg = c.pct >= 60 ? "rgba(61,214,140,0.04)" : c.pct >= 30 ? "rgba(245,185,74,0.04)" : "rgba(255,59,59,0.06)";
+                              const urgencyBorder = c.pct >= 60 ? "rgba(61,214,140,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.15)" : "rgba(255,59,59,0.18)";
                               return (
                                 <div key={c.id} className="rounded-xl px-4 py-3.5" style={{ background: urgencyBg, border: `1px solid ${urgencyBorder}` }}>
                                   {/* Row 1: rank + logo + name + % badge */}
@@ -326,7 +326,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                       {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-full h-full object-cover" /> : c.name[0]}
                                     </div>
                                     <p className="text-sm font-semibold flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.name}</p>
-                                    <span className="flex-shrink-0 tabular-nums font-bold text-xs px-2 py-0.5 rounded-md" style={{ background: c.pct >= 75 ? "rgba(255,59,59,0.15)" : c.pct >= 40 ? "rgba(245,185,74,0.12)" : "rgba(61,214,140,0.12)", color: bColor, letterSpacing: "0.04em" }}>
+                                    <span className="flex-shrink-0 tabular-nums font-bold text-xs px-2 py-0.5 rounded-md" style={{ background: c.pct >= 60 ? "rgba(61,214,140,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.12)" : "rgba(255,59,59,0.15)", color: bColor, letterSpacing: "0.04em" }}>
                                       {pctUsed}%
                                     </span>
                                   </div>
