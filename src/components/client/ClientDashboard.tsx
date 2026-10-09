@@ -1138,8 +1138,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                     Welcome to ClipLaunch!
                   </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 560 }}>
-                    Follow the steps below carefully — each one gets your campaign set up and live. Pay close attention to what&apos;s assigned to you.
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 580 }}>
+                    We are so excited to have you on board! Read through each step carefully so we can get your campaign live and running as fast as possible. Your campaign will be live within 24 to 72 hours depending on payment method, prelaunch strategy, and how quickly you complete the onboarding steps below.
                   </p>
                 </div>
 
@@ -1147,11 +1147,11 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 {([
                   { number: "01", owner: "You",            title: "Watch the welcome video",                        description: "Get a quick overview of how the process works and what to expect." },
                   { number: "02", owner: "You",            title: "Complete the intake form",                       description: "Tell us about your brand, goals, and niche." },
-                  { number: "03", owner: "You",            title: "Notify us in our dedicated communication channel", description: "Let us know you're ready so we can kick things off." },
-                  { number: "04", owner: "ClipLaunch Team", title: "We build your rules brief",                      description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted — including CTAs, messaging, and any other specifics based on your goals." },
-                  { number: "05", owner: "You",            title: "You approve the brief",                          description: "Before anything goes live, you'll review and sign off on the brief. Your campaign doesn't launch without your green light." },
+                  { number: "03", owner: "You",            title: "Notify us in our dedicated communication channel", description: "Once your intake form is complete, notify us in our dedicated communication channel so we can start building your rules brief." },
+                  { number: "04", owner: "ClipLaunch Team", title: "We build your rules brief",                      description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted including CTAs, messaging, and any other specifics based on your goals." },
+                  { number: "05", owner: "You",            title: "You approve the brief",                          description: "Before anything goes live, you will review and sign off on the brief. Your campaign does not launch without your green light." },
                   { number: "06", owner: "ClipLaunch Team", title: "Campaign launches",                              description: "Once approved, we launch your campaign across our clipper network and content starts getting created." },
-                  { number: "07", owner: "ClipLaunch Team", title: "Updates and optimization",                       description: "You'll get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You'll also have access to this dashboard, where we'll post campaign reports and weekly updates so you can track your results in one place. We'll keep you posted on anything worth knowing, along with any adjustments we're making along the way." },
+                  { number: "07", owner: "ClipLaunch Team", title: "Updates and optimization",                       description: "You will get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You will also have access to this dashboard, where we will post campaign reports and weekly updates so you can track your results in one place. We will keep you posted on anything worth knowing along with any adjustments we are making along the way." },
                 ] as const).map((step, i, arr) => {
                   const isTeam = step.owner === "ClipLaunch Team";
                   const badgeBg     = isTeam ? "rgba(255,255,255,0.06)" : "var(--accent-muted)";
