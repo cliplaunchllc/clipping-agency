@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const report = await prisma.campaignReport.findUnique({
     where: { id },
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(serialize(report));
@@ -44,6 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
+    campaignId, amountSpent,
   } = body;
 
   const report = await prisma.campaignReport.update({
@@ -66,8 +67,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(whatsNotWorking !== undefined && { whatsNotWorking: whatsNotWorking || null }),
       ...(nextWeekFocus !== undefined && { nextWeekFocus: nextWeekFocus || null }),
       ...(campaignLink !== undefined && { campaignLink: campaignLink || null }),
+      ...(campaignId !== undefined && { campaignId: campaignId || null }),
+      ...(amountSpent !== undefined && { amountSpent: amountSpent != null ? parseFloat(amountSpent) : null }),
     },
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });
 
   return NextResponse.json(serialize(report));

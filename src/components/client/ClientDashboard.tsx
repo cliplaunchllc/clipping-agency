@@ -103,6 +103,8 @@ interface CampaignReport {
   weeklySummary: string | null; whatsWorking: string | null;
   whatsNotWorking: string | null; nextWeekFocus: string | null;
   publishedAt: string | null;
+  campaignId?: string | null;
+  amountSpent?: number | null;
 }
 
 interface ClientData {
@@ -111,6 +113,7 @@ interface ClientData {
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
   welcomePageUrl?: string | null;
+  campaigns?: { id: string; name: string; totalBudget: number }[];
   logoUrl: string | null;
   dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
   pageCount: number | null; clipsPerDay: number | null;
@@ -665,6 +668,27 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                         </div>
                                                       ))}
                                                     </div>
+                                                    {/* Budget progress */}
+                                                    {(() => {
+                                                      if (!wr.campaignId || wr.amountSpent == null) return null;
+                                                      const campaign = client.campaigns?.find((c) => c.id === wr.campaignId);
+                                                      if (!campaign || campaign.totalBudget <= 0) return null;
+                                                      const ratio = wr.amountSpent / campaign.totalBudget;
+                                                      const barColor = ratio > 0.9 ? "var(--danger)" : ratio > 0.7 ? "var(--warning)" : "var(--success)";
+                                                      const remaining = Math.max(0, campaign.totalBudget - wr.amountSpent);
+                                                      return (
+                                                        <div className="rounded-lg p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                          <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>{campaign.name} — Budget</p>
+                                                            <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmtCurrency(wr.amountSpent)} / {fmtCurrency(campaign.totalBudget)}</p>
+                                                          </div>
+                                                          <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-subtle)" }}>
+                                                            <div style={{ width: `${Math.min(100, ratio * 100)}%`, height: "100%", background: barColor, borderRadius: "9999px", transition: "width 0.4s ease" }} />
+                                                          </div>
+                                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(remaining)} remaining</p>
+                                                        </div>
+                                                      );
+                                                    })()}
                                                     {/* Platform breakdown */}
                                                     {wr.totalViews > 0 && (() => {
                                                       const platforms = [

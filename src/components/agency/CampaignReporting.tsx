@@ -38,10 +38,17 @@ const STATUS_META = {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface ClientCampaign {
+  id: string;
+  name: string;
+  totalBudget: number;
+}
+
 interface ClientOption {
   id: string;
   name: string;
   logoUrl: string | null;
+  campaigns: ClientCampaign[];
 }
 
 interface Report {
@@ -65,6 +72,9 @@ interface Report {
   whatsNotWorking: string | null;
   nextWeekFocus: string | null;
   campaignLink: string | null;
+  campaignId: string | null;
+  amountSpent: number | null;
+  campaign: ClientCampaign | null;
   published: boolean;
   publishedAt: string | null;
   createdAt: string;
@@ -86,6 +96,9 @@ interface OngoingReport {
   status: "Strong" | "Normal" | "NeedsAttention";
   viewsTotal: number;
   viewsToday: number;
+  campaignId: string | null;
+  amountSpent: number | null;
+  campaign: ClientCampaign | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -109,6 +122,8 @@ interface FormState {
   whatsNotWorking: string;
   nextWeekFocus: string;
   campaignLink: string;
+  campaignId: string;
+  amountSpent: string;
 }
 
 interface OngoingFormState {
@@ -118,6 +133,8 @@ interface OngoingFormState {
   totalSubmissions: string;
   pending: string;
   approved: string;
+  campaignId: string;
+  amountSpent: string;
   viewsTotal: string;
   viewsToday: string;
   mainTrend: string;
@@ -569,6 +586,26 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
           </div>
         ))}
       </div>
+      {/* Budget progress */}
+      {report.campaign && report.campaign.totalBudget > 0 && report.amountSpent != null && (
+        <div className="mb-4 rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{report.campaign.name} — Budget</p>
+            <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+              {fmtCurrency(report.amountSpent)} <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>/ {fmtCurrency(report.campaign.totalBudget)}</span>
+            </p>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-default)" }}>
+            <div className="h-2 rounded-full transition-all" style={{
+              width: `${Math.min(100, (report.amountSpent / report.campaign.totalBudget) * 100).toFixed(1)}%`,
+              background: (report.amountSpent / report.campaign.totalBudget) > 0.9 ? "var(--danger)" : (report.amountSpent / report.campaign.totalBudget) > 0.7 ? "var(--warning)" : "var(--success)",
+            }} />
+          </div>
+          <p className="text-xs mt-1.5" style={{ color: "var(--text-tertiary)" }}>
+            {fmtCurrency(Math.max(0, report.campaign.totalBudget - report.amountSpent))} remaining this week
+          </p>
+        </div>
+      )}
       <div className="mb-4"><ReportDonut report={report} /></div>
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
         <div className="space-y-3">
@@ -652,10 +689,11 @@ const EMPTY_FORM: FormState = {
   totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
   paidOut: "", effectiveCpm: "", budgetRemaining: "", clipsSubmitted: "", clipsApproved: "",
   weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
+  campaignId: "", amountSpent: "",
 };
 
 function WeeklyReportForm({
-  clients, initial, onSave, onCancel, saving, onNewClient, referenceOngoing,
+  clients, initial, onSave, onCancel, saving, onNewClient, referenceOngoing, campaigns,
 }: {
   clients: ClientOption[];
   initial: FormState;
@@ -664,6 +702,7 @@ function WeeklyReportForm({
   saving: boolean;
   onNewClient: (currentForm: FormState) => void;
   referenceOngoing: OngoingReport[];
+  campaigns: ClientCampaign[];
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [refOpen, setRefOpen] = useState(referenceOngoing.length > 0);
@@ -753,6 +792,20 @@ function WeeklyReportForm({
         </select>
       </div>
 
+      {/* Campaign */}
+      {campaigns.length > 0 && (
+        <div>
+          <label style={labelStyle}>Campaign</label>
+          <select
+            value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
+            className={inputCls} style={{ ...inputStyle, appearance: "none" } as React.CSSProperties}
+          >
+            <option value="">No campaign / General</option>
+            {campaigns.map((c) => (<option key={c.id} value={c.id}>{c.name}{c.totalBudget > 0 ? ` — $${c.totalBudget.toLocaleString()} budget` : ""}</option>))}
+          </select>
+        </div>
+      )}
+
       {/* Week dates */}
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -790,10 +843,14 @@ function WeeklyReportForm({
       </div>
 
       {/* Financial */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label style={labelStyle}>Paid out ($)</label>
           <input type="number" min={0} step="0.01" value={form.paidOut} onChange={(e) => set("paidOut", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Amount Spent ($) <span style={{ color: "var(--accent)", fontSize: "0.7rem" }}>vs. campaign budget</span></label>
+          <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Effective CPM ($)</label>
@@ -863,16 +920,18 @@ const EMPTY_ONGOING: OngoingFormState = {
   totalSubmissions: "", pending: "", approved: "",
   viewsTotal: "", viewsToday: "",
   mainTrend: "", clipperFeedback: "", mainOptimization: "", status: "",
+  campaignId: "", amountSpent: "",
 };
 
 function OngoingReportForm({
-  clients, initial, onSave, onCancel, saving,
+  clients, initial, onSave, onCancel, saving, campaigns,
 }: {
   clients: ClientOption[];
   initial: OngoingFormState;
   onSave: (form: OngoingFormState) => void;
   onCancel: () => void;
   saving: boolean;
+  campaigns: ClientCampaign[];
 }) {
   const [form, setForm] = useState<OngoingFormState>(initial);
 
@@ -925,6 +984,20 @@ function OngoingReportForm({
         </select>
       </div>
 
+      {/* Campaign */}
+      {campaigns.length > 0 && (
+        <div>
+          <label style={labelStyle}>Campaign</label>
+          <select
+            value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
+            className={inputCls} style={{ ...inputStyle, appearance: "none" } as React.CSSProperties}
+          >
+            <option value="">No campaign / General</option>
+            {campaigns.map((c) => (<option key={c.id} value={c.id}>{c.name}{c.totalBudget > 0 ? ` — $${c.totalBudget.toLocaleString()} budget` : ""}</option>))}
+          </select>
+        </div>
+      )}
+
       {/* Submission numbers */}
       <div>
         <label style={labelStyle}>Total Submissions</label>
@@ -960,6 +1033,12 @@ function OngoingReportForm({
           <label style={labelStyle}>Views Today (from approved clips)</label>
           <input type="number" min={0} value={form.viewsToday} onChange={(e) => set("viewsToday", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
+      </div>
+
+      {/* Amount Spent */}
+      <div>
+        <label style={labelStyle}>Amount Spent ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>vs. campaign budget</span></label>
+        <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
       </div>
 
       {/* Text sections */}
@@ -1066,6 +1145,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   const clientReports = (id: string) => reports.filter((r) => r.clientId === id);
   const clientOngoing = (id: string) => ongoingReports.filter((r) => r.clientId === id);
+  const getClientCampaigns = (clientId: string) => clients.find((c) => c.id === clientId)?.campaigns ?? [];
 
   function prevWeeklyReport(report: Report): Report | null {
     const clientRpts = reports
@@ -1103,6 +1183,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       whatsNotWorking: form.whatsNotWorking || null,
       nextWeekFocus: form.nextWeekFocus || null,
       campaignLink: form.campaignLink || null,
+      campaignId: form.campaignId || null,
+      amountSpent: form.amountSpent ? parseFloat(form.amountSpent) : null,
     };
   }
 
@@ -1126,6 +1208,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       whatsNotWorking: r.whatsNotWorking ?? "",
       nextWeekFocus: r.nextWeekFocus ?? "",
       campaignLink: r.campaignLink ?? "",
+      campaignId: r.campaignId ?? "",
+      amountSpent: r.amountSpent?.toString() ?? "",
     };
   }
 
@@ -1199,6 +1283,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       clipperFeedback: r.clipperFeedback ?? "",
       mainOptimization: r.mainOptimization ?? "",
       status: r.status,
+      campaignId: r.campaignId ?? "",
+      amountSpent: r.amountSpent?.toString() ?? "",
     };
   }
 
@@ -1225,6 +1311,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       clipperFeedback: form.clipperFeedback || null,
       mainOptimization: form.mainOptimization || null,
       status: form.status,
+      campaignId: form.campaignId || null,
+      amountSpent: form.amountSpent ? parseFloat(form.amountSpent) : null,
     };
   }
 
@@ -1414,6 +1502,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               saving={saving}
               onNewClient={(currentForm) => { setPendingFormState(currentForm); setShowNewClient(true); }}
               referenceOngoing={refOngoing}
+              campaigns={getClientCampaigns(activeWeeklyFormClientId)}
             />
           </div>
         </div>
@@ -1437,6 +1526,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               onSave={editingOngoing ? handleOngoingEdit : handleOngoingCreate}
               onCancel={() => { setShowOngoingForm(false); setEditingOngoing(null); }}
               saving={saving}
+              campaigns={getClientCampaigns(editingOngoing?.clientId ?? (selectedClientId !== "all" ? selectedClientId : ""))}
             />
           </div>
         </div>

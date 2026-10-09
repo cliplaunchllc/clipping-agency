@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText } from "lucide-react";
 
 interface Link { id: string; label: string; url: string; }
+interface Campaign { id: string; name: string; totalBudget: number; order: number; }
 interface OnboardingStep { id: string; title: string; description: string | null; linkUrl: string | null; order: number; completed: boolean; }
 interface Clipper { id: string; name: string | null; email: string; status: string; }
 
@@ -25,6 +26,7 @@ interface ClientData {
   createdAt: string;
   clipCount: number;
   links: Link[];
+  campaigns: Campaign[];
   onboardingSteps: OnboardingStep[];
   clippers: Clipper[];
   loginUser: { id: string; email: string } | null;
@@ -75,6 +77,15 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [newUrl, setNewUrl] = useState("");
   const [linkSaving, setLinkSaving] = useState(false);
 
+  // Campaigns state
+  const [campaigns, setCampaigns] = useState<Campaign[]>(initial.campaigns);
+  const [newCampaignName, setNewCampaignName] = useState("");
+  const [newCampaignBudget, setNewCampaignBudget] = useState("");
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [editCampaignName, setEditCampaignName] = useState("");
+  const [editCampaignBudget, setEditCampaignBudget] = useState("");
+
   // Onboarding state
   const [steps, setSteps] = useState<OnboardingStep[]>(initial.onboardingSteps);
   const [newStepTitle, setNewStepTitle] = useState("");
@@ -102,6 +113,44 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       setSavingContract(false);
     };
     reader.readAsDataURL(file);
+  }
+
+  async function addCampaign() {
+    if (!newCampaignName) return;
+    setCampaignSaving(true);
+    const res = await fetch(`/api/agency/clients/${client.id}/campaigns`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCampaignName, totalBudget: parseFloat(newCampaignBudget || "0"), order: campaigns.length + 1 }),
+    });
+    if (res.ok) {
+      const c = await res.json();
+      setCampaigns((prev) => [...prev, c]);
+      setNewCampaignName(""); setNewCampaignBudget("");
+    }
+    setCampaignSaving(false);
+  }
+
+  async function saveCampaignEdit(campaignId: string) {
+    const res = await fetch(`/api/agency/clients/${client.id}/campaigns`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId, name: editCampaignName, totalBudget: parseFloat(editCampaignBudget || "0") }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setCampaigns((prev) => prev.map((c) => c.id === campaignId ? updated : c));
+      setEditingCampaignId(null);
+    }
+  }
+
+  async function deleteCampaign(campaignId: string) {
+    const res = await fetch(`/api/agency/clients/${client.id}/campaigns`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId }),
+    });
+    if (res.ok) setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
   }
 
   async function saveWelcomeUrl() {
@@ -318,6 +367,64 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 style={{ background: welcomeSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${welcomeSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: welcomeSaved ? "var(--success)" : "var(--accent)" }}
               >
                 {welcomeSaved ? <><Check size={12} /> Saved</> : savingWelcome ? "Saving…" : <><Save size={12} /> Save</>}
+              </button>
+            </div>
+          </div>
+
+          {/* Campaigns */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Campaigns</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>Track budget per campaign. Reports can be linked to a campaign to show spent vs. available.</p>
+            {/* Existing campaigns */}
+            {campaigns.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {campaigns.map((camp, i) => (
+                  <div key={camp.id} className="rounded-lg p-3" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+                    {editingCampaignId === camp.id ? (
+                      <div className="flex gap-2">
+                        <input value={editCampaignName} onChange={(e) => setEditCampaignName(e.target.value)} placeholder="Campaign name" style={{ ...inputStyle, flex: 2 }} />
+                        <input type="number" value={editCampaignBudget} onChange={(e) => setEditCampaignBudget(e.target.value)} placeholder="Budget $" style={{ ...inputStyle, flex: 1 }} />
+                        <button onClick={() => saveCampaignEdit(camp.id)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
+                          style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)" }}>
+                          <Check size={11} /> Save
+                        </button>
+                        <button onClick={() => setEditingCampaignId(null)} className="px-2 py-1.5 rounded-lg text-xs flex-shrink-0" style={{ color: "var(--text-tertiary)" }}>×</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Campaign {i + 1}: {camp.name}</p>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                            {camp.totalBudget > 0 ? `$${camp.totalBudget.toLocaleString()} budget` : "No budget set"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setEditingCampaignId(camp.id); setEditCampaignName(camp.name); setEditCampaignBudget(camp.totalBudget.toString()); }}
+                            className="p-1.5 rounded-lg text-xs" style={{ color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                            Edit
+                          </button>
+                          <button onClick={() => deleteCampaign(camp.id)} className="p-1.5 rounded-lg">
+                            <Trash2 size={12} color="var(--danger)" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Add campaign */}
+            <div className="flex gap-2">
+              <input value={newCampaignName} onChange={(e) => setNewCampaignName(e.target.value)}
+                placeholder={campaigns.length === 0 ? "Campaign 1 name (e.g. Summer 2026)" : `Campaign ${campaigns.length + 1} name`}
+                style={{ ...inputStyle, flex: 2 }} />
+              <input type="number" value={newCampaignBudget} onChange={(e) => setNewCampaignBudget(e.target.value)}
+                placeholder="Budget $" style={{ ...inputStyle, flex: 1 }} />
+              <button onClick={addCampaign} disabled={campaignSaving || !newCampaignName}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0"
+                style={{ background: "var(--accent-muted)", border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)", opacity: !newCampaignName ? 0.5 : 1 }}>
+                <Plus size={11} /> {campaignSaving ? "..." : "Add"}
               </button>
             </div>
           </div>

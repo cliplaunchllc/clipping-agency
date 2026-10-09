@@ -67,6 +67,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [campaignBudget, setCampaignBudget] = useState("");
   const [editName, setEditName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -135,7 +136,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   const visible = clients.filter((c) => tab === "active" ? c.status === "active" : tab === "archived" ? c.status === "archived" : false);
 
   function resetAddForm() {
-    setName(""); setEmail(""); setPassword(""); setSelectedUserId(""); setError("");
+    setName(""); setEmail(""); setPassword(""); setSelectedUserId(""); setError(""); setCampaignBudget("");
     setAddMode("connect");
   }
 
@@ -159,6 +160,14 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       return;
     }
     const client = await res.json();
+    // Create initial campaign if budget provided
+    if (campaignBudget && parseFloat(campaignBudget) > 0) {
+      await fetch(`/api/agency/clients/${client.id}/campaigns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Campaign 1", totalBudget: parseFloat(campaignBudget), order: 1 }),
+      });
+    }
     setClients((prev) => [{ ...client, _count: { clips: 0 }, users: [], archivedAt: null, createdAt: new Date().toISOString() }, ...prev]);
     // Remove the connected user from pending list
     if (addMode === "connect" && selectedUserId) {
@@ -290,6 +299,12 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   </div>
                 </>
               )}
+
+              <div>
+                <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Campaign 1 Budget ($) <span style={{ color: "var(--text-tertiary)" }}>(optional)</span></label>
+                <input type="number" min={0} step="0.01" value={campaignBudget} onChange={(e) => setCampaignBudget(e.target.value)} placeholder="e.g. 5000" style={inputStyle} />
+                <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Sets the total budget for this client&apos;s first campaign. You can add more campaigns later in client settings.</p>
+              </div>
 
               {error && <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>}
 

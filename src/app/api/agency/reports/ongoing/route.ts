@@ -20,7 +20,7 @@ export async function GET() {
   if (!agencyOnly(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const reports = await prisma.ongoingReport.findMany({
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
     orderBy: [{ clientId: "asc" }, { date: "desc" }],
   });
 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     totalSubmissions, pending, approved, rejected,
     viewsTotal, viewsToday,
     mainTrend, clipperFeedback, mainOptimization, status,
+    campaignId, amountSpent,
   } = body;
 
   if (!clientId || !date || !status) {
@@ -58,8 +59,10 @@ export async function POST(req: NextRequest) {
       clipperFeedback: clipperFeedback || null,
       mainOptimization: mainOptimization || null,
       status,
+      campaignId: campaignId || null,
+      amountSpent: amountSpent != null ? parseFloat(amountSpent) : null,
     },
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });
 
   return NextResponse.json(serialize(report), { status: 201 });

@@ -13,15 +13,15 @@ export default async function CampaignReportingPage() {
   const [clients, reports, ongoingReports] = await Promise.all([
     prisma.client.findMany({
       where: { status: "active" },
-      select: { id: true, name: true, logoUrl: true },
+      select: { id: true, name: true, logoUrl: true, campaigns: { orderBy: { order: "asc" } } },
       orderBy: { name: "asc" },
     }),
     prisma.campaignReport.findMany({
-      include: { client: { select: { id: true, name: true, logoUrl: true } } },
+      include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
       orderBy: [{ clientId: "asc" }, { weekEndDate: "desc" }],
     }),
     prisma.ongoingReport.findMany({
-      include: { client: { select: { id: true, name: true, logoUrl: true } } },
+      include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
       orderBy: [{ clientId: "asc" }, { date: "desc" }],
     }),
   ]);
@@ -47,6 +47,9 @@ export default async function CampaignReportingPage() {
     whatsNotWorking: r.whatsNotWorking,
     nextWeekFocus: r.nextWeekFocus,
     campaignLink: r.campaignLink ?? null,
+    campaignId: r.campaignId ?? null,
+    amountSpent: r.amountSpent ?? null,
+    campaign: r.campaign ? { id: r.campaign.id, name: r.campaign.name, totalBudget: r.campaign.totalBudget } : null,
     published: r.published,
     publishedAt: r.publishedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
@@ -69,6 +72,9 @@ export default async function CampaignReportingPage() {
     status: r.status as "Strong" | "Normal" | "NeedsAttention",
     viewsTotal: r.viewsTotal,
     viewsToday: r.viewsToday,
+    campaignId: r.campaignId ?? null,
+    amountSpent: r.amountSpent ?? null,
+    campaign: r.campaign ? { id: r.campaign.id, name: r.campaign.name, totalBudget: r.campaign.totalBudget } : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   }));
@@ -78,7 +84,7 @@ export default async function CampaignReportingPage() {
       <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
       <main className="flex-1 overflow-y-auto ml-56">
         <CampaignReporting
-          clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null }))}
+          clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null, campaigns: c.campaigns.map((cp) => ({ id: cp.id, name: cp.name, totalBudget: cp.totalBudget })) }))}
           initialReports={serializedReports}
           initialOngoingReports={serializedOngoing}
         />

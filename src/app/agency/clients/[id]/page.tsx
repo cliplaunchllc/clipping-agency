@@ -14,6 +14,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     where: { id },
     include: {
       links: { orderBy: { createdAt: "asc" } },
+      campaigns: { orderBy: { order: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
       users: { where: { role: "client" }, select: { id: true, name: true, email: true, status: true } },
       _count: { select: { clips: true } },
@@ -39,6 +40,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     createdAt: client.createdAt.toISOString(),
     clipCount: client._count.clips,
     links: client.links.map((l) => ({ id: l.id, label: l.label, url: l.url })),
+    campaigns: client.campaigns.map((c) => ({ id: c.id, name: c.name, totalBudget: c.totalBudget, order: c.order })),
     onboardingSteps: client.onboardingSteps.map((s) => ({
       id: s.id, title: s.title, description: s.description, linkUrl: s.linkUrl ?? null, order: s.order, completed: s.completed,
     })),

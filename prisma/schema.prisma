@@ -115,6 +115,7 @@ model Client {
   clips            Clip[]
   links            ClientLink[]
   onboardingSteps  ClientOnboardingStep[]
+  campaigns        ClientCampaign[]
   campaignReports  CampaignReport[]
   ongoingReports   OngoingReport[]
 }
@@ -127,6 +128,19 @@ model ClientLink {
   createdAt DateTime @default(now())
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientCampaign {
+  id          String    @id @default(cuid())
+  clientId    String
+  name        String
+  totalBudget Float     @default(0)
+  order       Int       @default(1)
+  createdAt   DateTime  @default(now())
+
+  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaignReports CampaignReport[]
+  ongoingReports  OngoingReport[]
 }
 
 model ClientOnboardingStep {
@@ -190,12 +204,15 @@ model CampaignReport {
   whatsNotWorking String?
   nextWeekFocus   String?
   campaignLink    String?
+  campaignId      String?
+  amountSpent     Float?
   published       Boolean   @default(false)
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaign ClientCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 }
 
 model OngoingReport {
@@ -213,10 +230,13 @@ model OngoingReport {
   status           OngoingStatus @default(Normal)
   viewsTotal       Int           @default(0)
   viewsToday       Int           @default(0)
+  campaignId       String?
+  amountSpent      Float?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaign ClientCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 }
 
 model Clip {

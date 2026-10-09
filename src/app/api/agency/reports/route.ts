@@ -25,7 +25,7 @@ export async function GET() {
   if (!agencyOnly(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const reports = await prisma.campaignReport.findMany({
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
     orderBy: [{ clientId: "asc" }, { weekEndDate: "desc" }],
   });
 
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
+    campaignId, amountSpent,
   } = body;
 
   if (!clientId || !weekStartDate || !weekEndDate) {
@@ -68,8 +69,10 @@ export async function POST(req: NextRequest) {
       whatsNotWorking: whatsNotWorking || null,
       nextWeekFocus: nextWeekFocus || null,
       campaignLink: campaignLink || null,
+      campaignId: campaignId || null,
+      amountSpent: amountSpent != null ? parseFloat(amountSpent) : null,
     },
-    include: { client: { select: { id: true, name: true, logoUrl: true } } },
+    include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });
 
   return NextResponse.json(serialize(report), { status: 201 });
