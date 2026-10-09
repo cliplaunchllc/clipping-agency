@@ -5,6 +5,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink,
   TrendingUp, TrendingDown, Activity, ChevronDown, ChevronRight, CalendarDays,
+  DollarSign, FileText, CheckCircle, Layers, Wallet,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -467,19 +468,26 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
                     const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
 
+                    const totalPaidOut = (client.campaignReports ?? []).reduce((s, r) => s + (r.paidOut ?? 0), 0);
+                    const totalBudget = (client.campaigns ?? []).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
+
                     return (
                       <div className="space-y-4">
                         {/* Summary cards */}
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {[
-                            { label: "Total Reports",  value: reports.length.toString(),        sub: "all time",      color: "var(--text-primary)" },
-                            { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
-                            { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)" },
+                            { label: "Total Reports",  value: reports.length.toString(),        sub: "all time",      color: "var(--text-primary)", Icon: FileText },
+                            { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
+                            { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
+                            { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),        sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
                           ].map((s) => (
                             <div key={s.label} style={card} className="p-4">
-                              <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                                {s.label}
-                              </p>
+                              <div className="flex items-center gap-2 mb-2">
+                                <s.Icon size={13} style={{ color: s.color, opacity: 0.7 }} />
+                                <p className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                                  {s.label}
+                                </p>
+                              </div>
                               <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
                                 {s.value}
                               </p>
@@ -487,6 +495,26 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                             </div>
                           ))}
                         </div>
+
+                        {/* Paid out vs budget bar */}
+                        {totalBudget > 0 && (
+                          <div style={card} className="p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Wallet size={13} style={{ color: "var(--danger)", opacity: 0.8 }} />
+                              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Budget Usage</p>
+                              <span className="ml-auto text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                                {fmtCurrency(totalPaidOut)} <span style={{ color: "var(--text-tertiary)" }}>/ {fmtCurrency(totalBudget)}</span>
+                              </span>
+                            </div>
+                            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
+                              <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)", transition: "width 0.6s ease" }} />
+                            </div>
+                            <div className="flex items-center justify-between mt-2">
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(Math.max(0, totalBudget - totalPaidOut))} remaining</p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Views chart */}
                         {reports.length > 1 && (() => {
@@ -989,6 +1017,11 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 10px rgba(61,255,162,0.5); }
                   50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 22px rgba(61,255,162,0.55); }
                 }
+                @keyframes paidBarGlow {
+                  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,59,59,0.55); }
+                  50%      { box-shadow: 0 0 14px 3px rgba(255,59,59,0.85); }
+                }
+                .paid-bar { animation: paidBarGlow 1.8s ease-in-out infinite; }
                 /*
                   Continuous flow cascade — 9.8s cycle (7 steps × 1.4s each).
                   Dot i delay = i×1.4 − 9.8  →  fires at t = i×1.4s

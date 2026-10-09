@@ -5,6 +5,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import {
   ExternalLink, ChevronDown,
   Activity, CalendarDays, ChevronRight,
+  Users, CheckCircle, Clock, AlertCircle, FileText, Eye, DollarSign, Wallet,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -140,6 +141,11 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                 50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 18px rgba(61,255,162,0.5); }
               }
               .live-orb { animation: liveOrbPulse 2.4s ease-in-out infinite; }
+              @keyframes paidBarGlow {
+                0%, 100% { box-shadow: 0 0 6px 1px rgba(255,59,59,0.55); }
+                50%      { box-shadow: 0 0 14px 3px rgba(255,59,59,0.85); }
+              }
+              .paid-bar { animation: paidBarGlow 1.8s ease-in-out infinite; }
             `}</style>
 
             <div className="flex items-center justify-between mb-6">
@@ -186,25 +192,40 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                           <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Active Clients</p>
                         </div>
                         <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{activeClients.length}</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{clients.filter((c) => c.status !== "active").length} archived</p>
+                        <div className="flex items-center gap-1.5">
+                          <Users size={11} style={{ color: "var(--text-tertiary)" }} />
+                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{clients.filter((c) => c.status !== "active").length} archived</p>
+                        </div>
                       </div>
                       {/* On Track */}
                       <div style={card} className="p-5">
-                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>On Track</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle size={12} style={{ color: "var(--success)", opacity: 0.7 }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>On Track</p>
+                        </div>
                         <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{goodCount}</p>
                         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>report in last 7 days</p>
                       </div>
                       {/* Quiet */}
                       <div style={card} className="p-5">
-                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Quiet</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock size={12} style={{ color: "var(--warning)", opacity: 0.7 }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Quiet</p>
+                        </div>
                         <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--warning)", fontFamily: "var(--font-display)" }}>{neutralCount}</p>
                         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>no report in 7–14 days</p>
                       </div>
                       {/* Needs Attention */}
                       <div style={card} className="p-5">
-                        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Needs Attention</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle size={12} style={{ color: "var(--danger)", opacity: 0.7 }} />
+                          <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Needs Attention</p>
+                        </div>
                         <p className="text-3xl font-semibold tabular-nums mb-0.5" style={{ color: "var(--danger)", fontFamily: "var(--font-display)" }}>{attnCount}</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{totalReports} total reports filed</p>
+                        <div className="flex items-center gap-1.5">
+                          <FileText size={11} style={{ color: "var(--text-tertiary)" }} />
+                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{totalReports} total reports filed</p>
+                        </div>
                       </div>
                     </div>
 
@@ -484,19 +505,49 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                     ) : (
                       <div className="space-y-4">
                         {/* Summary cards */}
-                        <div className="grid grid-cols-3 gap-3">
-                          {[
-                            { label: "Total Reports", value: ongoingReports.length.toString(), sub: "all time", color: "var(--text-primary)" },
-                            { label: "Clips Approved", value: totalApproved.toLocaleString(), sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)" },
-                            { label: "Total Views", value: fmt(ongoingReports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)" },
-                          ].map((s) => (
-                            <div key={s.label} style={card} className="p-4">
-                              <p className="text-xs mb-2 uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em" }}>{s.label}</p>
-                              <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
-                            </div>
-                          ))}
-                        </div>
+                        {(() => {
+                          const totalPaidOut = campaignReports.reduce((s, r) => s + (r.paidOut ?? 0), 0);
+                          const totalBudget = ((selectedClient?.campaigns ?? []) as {totalBudget: number}[]).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
+                          return (
+                            <>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                  { label: "Total Reports",  value: ongoingReports.length.toString(),       sub: "all time",      color: "var(--text-primary)", Icon: FileText },
+                                  { label: "Clips Approved", value: totalApproved.toLocaleString(),          sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
+                                  { label: "Total Views",    value: fmt(ongoingReports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
+                                  { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),               sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
+                                ].map((s) => (
+                                  <div key={s.label} style={card} className="p-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <s.Icon size={12} style={{ color: s.color, opacity: 0.7 }} />
+                                      <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em" }}>{s.label}</p>
+                                    </div>
+                                    <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              {totalBudget > 0 && (
+                                <div style={card} className="p-4">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Wallet size={13} style={{ color: "var(--danger)", opacity: 0.8 }} />
+                                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Budget Usage</p>
+                                    <span className="ml-auto text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                                      {fmtCurrency(totalPaidOut)} <span style={{ color: "var(--text-tertiary)" }}>/ {fmtCurrency(totalBudget)}</span>
+                                    </span>
+                                  </div>
+                                  <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
+                                    <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)", transition: "width 0.6s ease" }} />
+                                  </div>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
+                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(Math.max(0, totalBudget - totalPaidOut))} remaining</p>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {/* Daily views chart */}
                         {cpmChartData.length > 1 && (
@@ -778,12 +829,12 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                         .map(([date, views]) => ({ date, views }));
 
                       const statItems = [
-                        { label: "Views",    value: fmt(totalViews),              color: "var(--accent)" },
-                        { label: "Likes",    value: fmt(totalLikes),              color: "var(--text-primary)" },
-                        { label: "Comments", value: fmt(totalComments),           color: "var(--text-primary)" },
-                        { label: "Shares",   value: fmt(totalShares),             color: "var(--text-primary)" },
-                        { label: "Saves",    value: fmt(totalSaves),              color: "var(--text-primary)" },
-                        { label: "Clips",    value: clientClips.length.toString(), color: "var(--text-primary)" },
+                        { label: "Views",    value: fmt(totalViews),               color: "var(--accent)",        icon: "👁" },
+                        { label: "Likes",    value: fmt(totalLikes),               color: "var(--text-primary)",  icon: "♥" },
+                        { label: "Comments", value: fmt(totalComments),            color: "var(--text-primary)",  icon: "💬" },
+                        { label: "Shares",   value: fmt(totalShares),              color: "var(--text-primary)",  icon: "↗" },
+                        { label: "Saves",    value: fmt(totalSaves),               color: "var(--text-primary)",  icon: "⬇" },
+                        { label: "Clips",    value: clientClips.length.toString(), color: "var(--text-primary)",  icon: "▶" },
                       ];
 
                       return (
@@ -806,8 +857,9 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                 <div className="grid grid-cols-6">
                                   {statItems.map((s, i) => (
                                     <div key={s.label}
-                                      className="flex flex-col items-center justify-center gap-1.5 px-3 py-4"
+                                      className="flex flex-col items-center justify-center gap-1 px-3 py-4"
                                       style={{ borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none" }}>
+                                      <span className="text-sm leading-none mb-0.5" style={{ opacity: 0.5 }}>{s.icon}</span>
                                       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.label}</p>
                                       <span className="text-lg font-semibold leading-none tabular-nums"
                                         style={{ color: s.color, fontFamily: "var(--font-display)" }}>
