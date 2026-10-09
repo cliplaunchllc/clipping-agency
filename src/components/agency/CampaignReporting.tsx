@@ -1157,7 +1157,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   // Navigation
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
-  const [clientTab, setClientTab] = useState<"weekly" | "ongoing">("weekly");
+  const [clientTab, setClientTab] = useState<"weekly" | "ongoing">("ongoing");
   const [overviewFilter, setOverviewFilter] = useState<"all" | "attention">("all");
 
   // Weekly report modal state
@@ -1854,18 +1854,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           {/* Tabs */}
           <div className="flex items-center gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
             <button
-              onClick={() => setClientTab("weekly")}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{
-                background: clientTab === "weekly" ? `rgba(61,255,162,0.12)` : "transparent",
-                color: clientTab === "weekly" ? WEEKLY_COLOR : "var(--text-tertiary)",
-                border: clientTab === "weekly" ? `1px solid rgba(61,255,162,0.25)` : "1px solid transparent",
-              }}
-            >
-              <Calendar size={13} />
-              Weekly (F)
-            </button>
-            <button
               onClick={() => setClientTab("ongoing")}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
@@ -1875,7 +1863,19 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               }}
             >
               <Activity size={13} />
-              Ongoing (M/W)
+              M/W Reports
+            </button>
+            <button
+              onClick={() => setClientTab("weekly")}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                background: clientTab === "weekly" ? `rgba(61,255,162,0.12)` : "transparent",
+                color: clientTab === "weekly" ? WEEKLY_COLOR : "var(--text-tertiary)",
+                border: clientTab === "weekly" ? `1px solid rgba(61,255,162,0.25)` : "1px solid transparent",
+              }}
+            >
+              <Calendar size={13} />
+              Weekly Reports
             </button>
           </div>
 
