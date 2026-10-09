@@ -57,7 +57,7 @@ const WEEKLY_SECTIONS: Section[] = [
     id: "w-fill",
     title: "What to fill in",
     steps: [
-      { id: "w5", label: "Set the week date range (Mon–Sun of the previous week)" },
+      { id: "w5", label: "Set the week date range (Mon–Fri of the current week)" },
       { id: "w6", label: "Enter total views and per-platform breakdown" },
       { id: "w7", label: "Enter Paid Out amount and Budget Remaining" },
       { id: "w8", label: "Enter clips submitted and approved" },
@@ -203,7 +203,7 @@ export default function ReportingGuide() {
           <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.15)" }}>
             <Clock size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
             <p className="metric-sub">
-              Log every <strong style={{ color: "var(--text-primary)" }}>Monday morning</strong> covering the previous Mon–Sun for every active client.
+              Log every <strong style={{ color: "var(--text-primary)" }}>Friday</strong> for every active client.
             </p>
           </div>
           {WEEKLY_SECTIONS.map((s) => <CheckSection key={s.id} section={s} />)}
