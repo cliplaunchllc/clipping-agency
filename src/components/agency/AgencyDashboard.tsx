@@ -539,9 +539,9 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                   ) : (
                                     <>
                                       <div className="grid grid-cols-2 gap-2 pt-3">
-                                        {/* Daily reports column */}
+                                        {/* M/W Reports column (left) */}
                                         <div className="space-y-1">
-                                          <p className="label-mono px-1 pb-1">Daily Reports</p>
+                                          <p className="label-mono px-1 pb-1">M/W Reports</p>
                                           {allReports.filter((r) => r.kind === "daily").length === 0 && (
                                             <p className="metric-sub px-1">None</p>
                                           )}
@@ -566,9 +566,9 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                             );
                                           })}
                                         </div>
-                                        {/* Weekly summaries column */}
+                                        {/* Weekly Reports column (right) */}
                                         <div className="space-y-1">
-                                          <p className="label-mono px-1 pb-1">Weekly Summaries</p>
+                                          <p className="label-mono px-1 pb-1">Weekly Reports</p>
                                           {allReports.filter((r) => r.kind === "weekly").length === 0 && (
                                             <p className="metric-sub px-1">None</p>
                                           )}
@@ -832,11 +832,11 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
                                   {isOpen && (
                                     <div className="px-3 pb-3 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                      {/* Two-column: daily left, weekly right */}
+                                      {/* Two-column: M/W left, weekly right */}
                                       <div className="grid grid-cols-2 gap-3">
-                                        {/* Left — Daily / Ongoing */}
+                                        {/* Left — M/W / Ongoing */}
                                         <div className="space-y-1.5">
-                                          <p className="label-mono px-1 pt-1">Daily Reports</p>
+                                          <p className="label-mono px-1 pt-1">M/W Reports</p>
                                           {sortedDailyRows.length === 0 && (
                                             <p className="metric-sub px-2 py-3">No daily reports</p>
                                           )}
@@ -910,11 +910,11 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                                           })}
                                         </div>
 
-                                        {/* Right — Weekly Summaries */}
+                                        {/* Right — Weekly Reports */}
                                         <div className="space-y-1.5">
-                                          <p className="label-mono px-1 pt-1">Weekly Summaries</p>
+                                          <p className="label-mono px-1 pt-1">Weekly Reports</p>
                                           {sortedWeeklyRows.length === 0 && (
-                                            <p className="text-xs px-2 py-3" style={{ color: "var(--text-tertiary)" }}>No weekly summaries</p>
+                                            <p className="metric-sub px-2 py-3">No weekly reports</p>
                                           )}
                                           {sortedWeeklyRows.map((wr) => {
                                             const isExpanded = expandedWeekReportId === wr.id;
