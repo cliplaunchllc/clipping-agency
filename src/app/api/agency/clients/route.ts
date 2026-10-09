@@ -25,10 +25,16 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!agencyOnly(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, email, password, existingUserId } = await req.json();
+  const { name, email, password, existingUserId, welcomeVideoUrl, intakeFormUrl } = await req.json();
   if (!name) return NextResponse.json({ error: "Missing client name" }, { status: 400 });
 
-  const client = await prisma.client.create({ data: { name } });
+  const client = await prisma.client.create({
+    data: {
+      name,
+      welcomeVideoUrl: welcomeVideoUrl || null,
+      intakeFormUrl: intakeFormUrl || null,
+    },
+  });
 
   if (existingUserId) {
     // Link an existing pending client user to this new client record

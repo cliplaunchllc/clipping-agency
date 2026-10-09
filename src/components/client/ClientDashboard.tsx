@@ -114,6 +114,8 @@ interface ClientData {
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
   welcomePageUrl?: string | null;
+  welcomeVideoUrl?: string | null;
+  intakeFormUrl?: string | null;
   campaigns?: { id: string; name: string; totalBudget: number }[];
   logoUrl: string | null;
   dealLengthDays: number | null; dealStartDate: string | null; dealEndDate: string | null;
@@ -1082,52 +1084,65 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     Welcome to ClipLaunch
                   </h2>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 560 }}>
-                    To get started, head to your Welcome Page. There you&apos;ll find the welcome video, your intake form, and these next steps (also listed on your dashboard for easy reference).
+                    Read below for your exact next steps — starting with the welcome video and intake form.
                   </p>
                 </div>
 
-                {/* Welcome Page link */}
-                {client.welcomePageUrl ? (
-                  <a
-                    href={client.welcomePageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4 group"
-                    style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
-                  >
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
+                {/* Resource cards: Welcome Video + Intake Form */}
+                {(() => {
+                  const videoUrl = client.welcomeVideoUrl ?? "https://youtu.be/TEpGyDS-h_I";
+                  const formUrl = client.intakeFormUrl ?? "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor";
+                  return (
+                    <div className="ob-header grid grid-cols-2 gap-3 mb-8" style={{ animationDelay: "60ms" }}>
+                      {/* Welcome Video */}
+                      <a
+                        href={videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl px-4 py-4 flex items-center gap-3 group"
+                        style={{ background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
+                      >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)" }}>
+                          {/* YouTube play icon */}
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,80,80,0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Video</p>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>Watch to get started</p>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+                        </svg>
+                      </a>
+                      {/* Intake Form */}
+                      <a
+                        href={formUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl px-4 py-4 flex items-center gap-3 group"
+                        style={{ background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
+                      >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Intake Form</p>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>Tell us about your brand</p>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+                        </svg>
+                      </a>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
-                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--accent)" }}>{client.welcomePageUrl}</p>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
-                    </svg>
-                  </a>
-                ) : (
-                  <div
-                    className="ob-header mb-10 rounded-xl px-5 py-4 flex items-center gap-4"
-                    style={{ animationDelay: "60ms", background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
-                  >
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)" }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Page</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Link will be added here by your team</p>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Steps */}
                 {([

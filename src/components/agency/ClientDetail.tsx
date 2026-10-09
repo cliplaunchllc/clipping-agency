@@ -17,6 +17,8 @@ interface ClientData {
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
   welcomePageUrl: string | null;
+  welcomeVideoUrl: string | null;
+  intakeFormUrl: string | null;
   dealLengthDays: number | null;
   dealStartDate: string | null;
   dealEndDate: string | null;
@@ -57,6 +59,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const contractFileRef = useRef<HTMLInputElement>(null);
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
   const [welcomeUrl, setWelcomeUrl] = useState(initial.welcomePageUrl ?? "");
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState(initial.welcomeVideoUrl ?? "https://youtu.be/TEpGyDS-h_I");
+  const [intakeFormUrl, setIntakeFormUrl] = useState(initial.intakeFormUrl ?? "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
@@ -157,6 +161,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
       body: JSON.stringify({
         campaignTrackerUrl: trackerUrl,
         welcomePageUrl: welcomeUrl,
+        welcomeVideoUrl: welcomeVideoUrl,
+        intakeFormUrl: intakeFormUrl,
         dealStartDate: startDate || null,
       }),
     });
@@ -316,15 +322,28 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             />
           </div>
 
-          {/* Welcome Page URL */}
+          {/* Welcome Video URL */}
           <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Welcome Page URL</p>
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>The onboarding welcome page link shown to the client in their Onboarding tab.</p>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Welcome Video URL</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>YouTube link shown on the client&apos;s Onboarding tab as their welcome video.</p>
             <input
               type="url"
-              value={welcomeUrl}
-              onChange={(e) => setWelcomeUrl(e.target.value)}
-              placeholder="https://..."
+              value={welcomeVideoUrl}
+              onChange={(e) => setWelcomeVideoUrl(e.target.value)}
+              placeholder="https://youtu.be/..."
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Intake Form URL */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Intake Form URL</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>Google Form link shown on the client&apos;s Onboarding tab for intake completion.</p>
+            <input
+              type="url"
+              value={intakeFormUrl}
+              onChange={(e) => setIntakeFormUrl(e.target.value)}
+              placeholder="https://docs.google.com/forms/..."
               style={inputStyle}
             />
           </div>

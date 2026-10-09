@@ -108,6 +108,8 @@ model Client {
   campaignType        CampaignType @default(manual)
   campaignTrackerUrl  String?
   welcomePageUrl      String?
+  welcomeVideoUrl     String?
+  intakeFormUrl       String?
   contractUrl         String?
   createdAt           DateTime     @default(now())
 

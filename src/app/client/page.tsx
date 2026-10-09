@@ -39,6 +39,8 @@ export default async function ClientPage() {
     contractUrl: client.contractUrl ?? null,
     campaignTrackerUrl: client.campaignTrackerUrl ?? null,
     welcomePageUrl: client.welcomePageUrl ?? null,
+    welcomeVideoUrl: client.welcomeVideoUrl ?? null,
+    intakeFormUrl: client.intakeFormUrl ?? null,
     campaigns: client.campaigns.map((c) => ({ id: c.id, name: c.name, totalBudget: c.totalBudget })),
     logoUrl: client.logoUrl ?? null,
     dealLengthDays: client.dealLengthDays ?? null,

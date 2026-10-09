@@ -53,6 +53,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.contractUrl !== undefined) data.contractUrl = body.contractUrl || null;
   if (body.campaignTrackerUrl !== undefined) data.campaignTrackerUrl = body.campaignTrackerUrl || null;
   if (body.welcomePageUrl !== undefined) data.welcomePageUrl = body.welcomePageUrl || null;
+  if (body.welcomeVideoUrl !== undefined) data.welcomeVideoUrl = body.welcomeVideoUrl || null;
+  if (body.intakeFormUrl !== undefined) data.intakeFormUrl = body.intakeFormUrl || null;
 
   const client = await prisma.client.update({ where: { id }, data });
   return NextResponse.json(client);

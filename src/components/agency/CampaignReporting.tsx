@@ -410,11 +410,16 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
 
 // ─── NewClientModal ───────────────────────────────────────────────────────────
 
+const DEFAULT_WELCOME_VIDEO = "https://youtu.be/TEpGyDS-h_I";
+const DEFAULT_INTAKE_FORM = "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor";
+
 function NewClientModal({ onCreated, onClose }: {
   onCreated: (client: ClientOption) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState(DEFAULT_WELCOME_VIDEO);
+  const [intakeFormUrl, setIntakeFormUrl] = useState(DEFAULT_INTAKE_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -426,7 +431,11 @@ function NewClientModal({ onCreated, onClose }: {
     const res = await fetch("/api/agency/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
+      body: JSON.stringify({
+        name: name.trim(),
+        welcomeVideoUrl: welcomeVideoUrl || null,
+        intakeFormUrl: intakeFormUrl || null,
+      }),
     });
     if (res.ok) {
       const client = await res.json();
@@ -438,6 +447,10 @@ function NewClientModal({ onCreated, onClose }: {
     setSaving(false);
   }
 
+  const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
+  const inputSt = { background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)" };
+  const labelSt: React.CSSProperties = { color: "var(--text-secondary)", fontSize: 11, fontWeight: 500, marginBottom: 6, display: "block" };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)" }}>
       <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
@@ -447,14 +460,29 @@ function NewClientModal({ onCreated, onClose }: {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Client name</label>
+            <label style={labelSt}>Client name</label>
             <input
               autoFocus type="text" value={name} onChange={e => setName(e.target.value)}
               placeholder="e.g. Acme Corp"
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
+              className={inputCls} style={inputSt}
             />
             {error && <p className="text-xs mt-1.5" style={{ color: "var(--accent)" }}>{error}</p>}
+          </div>
+          <div>
+            <label style={labelSt}>Welcome Video URL</label>
+            <input
+              type="url" value={welcomeVideoUrl} onChange={e => setWelcomeVideoUrl(e.target.value)}
+              placeholder="https://youtu.be/..."
+              className={inputCls} style={inputSt}
+            />
+          </div>
+          <div>
+            <label style={labelSt}>Intake Form URL</label>
+            <input
+              type="url" value={intakeFormUrl} onChange={e => setIntakeFormUrl(e.target.value)}
+              placeholder="https://docs.google.com/forms/..."
+              className={inputCls} style={inputSt}
+            />
           </div>
           <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Login credentials can be added later from the Clients page.</p>
           <div className="flex gap-3 pt-1">
