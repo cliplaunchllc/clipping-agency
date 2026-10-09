@@ -129,6 +129,56 @@ interface ClientData {
 
 interface Props { client: ClientData; userName: string; previewMode?: boolean; }
 
+/* ── YouTube helpers ─────────────────────────────────────────────── */
+function getYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function VideoEmbed({ videoId, url }: { videoId: string; url: string }) {
+  const [playing, setPlaying] = useState(false);
+  const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  return (
+    <div className="mt-4" style={{ maxWidth: 460 }}>
+      {playing ? (
+        <div className="rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+          />
+        </div>
+      ) : (
+        <div
+          onClick={() => setPlaying(true)}
+          className="relative rounded-xl overflow-hidden cursor-pointer"
+          style={{ aspectRatio: "16/9", background: "var(--bg-active)" }}
+        >
+          <img src={thumbUrl} alt="Welcome video" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.25)" }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#111" stroke="none">
+                <polygon points="6 3 20 12 6 21 6 3"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+      <a href={url} target="_blank" rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-xs"
+        style={{ color: "var(--text-tertiary)", textDecoration: "none" }}>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+        </svg>
+        Watch on YouTube
+      </a>
+    </div>
+  );
+}
+
 /* ── Shared style fragments ──────────────────────────────────────── */
 const card: React.CSSProperties = {
   background: "var(--bg-surface)",
@@ -1079,70 +1129,14 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 </div>
 
                 {/* Header */}
-                <div className="ob-header mb-6" style={{ animationDelay: "30ms" }}>
+                <div className="ob-header mb-8" style={{ animationDelay: "30ms" }}>
                   <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                    Welcome to ClipLaunch
+                    Welcome to ClipLaunch!
                   </h2>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 560 }}>
-                    Read below for your exact next steps — starting with the welcome video and intake form.
+                    Follow the steps below carefully — each one gets your campaign set up and live. Pay close attention to what&apos;s assigned to you.
                   </p>
                 </div>
-
-                {/* Resource cards: Welcome Video + Intake Form */}
-                {(() => {
-                  const videoUrl = client.welcomeVideoUrl ?? "https://youtu.be/TEpGyDS-h_I";
-                  const formUrl = client.intakeFormUrl ?? "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor";
-                  return (
-                    <div className="ob-header grid grid-cols-2 gap-3 mb-8" style={{ animationDelay: "60ms" }}>
-                      {/* Welcome Video */}
-                      <a
-                        href={videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl px-4 py-4 flex items-center gap-3 group"
-                        style={{ background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
-                      >
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)" }}>
-                          {/* YouTube play icon */}
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,80,80,0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Welcome Video</p>
-                          <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>Watch to get started</p>
-                        </div>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
-                        </svg>
-                      </a>
-                      {/* Intake Form */}
-                      <a
-                        href={formUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl px-4 py-4 flex items-center gap-3 group"
-                        style={{ background: "var(--bg-surface)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "var(--shadow-inset-top)", textDecoration: "none" }}
-                      >
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)" }}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Intake Form</p>
-                          <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>Tell us about your brand</p>
-                        </div>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
-                        </svg>
-                      </a>
-                    </div>
-                  );
-                })()}
 
                 {/* Steps */}
                 {([
@@ -1221,6 +1215,33 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           {step.description}
                         </p>
+
+                        {/* Step 01: YouTube embed */}
+                        {step.number === "01" && (() => {
+                          const videoUrl = client.welcomeVideoUrl ?? "https://youtu.be/TEpGyDS-h_I";
+                          const videoId = getYouTubeId(videoUrl);
+                          return videoId ? <VideoEmbed videoId={videoId} url={videoUrl} /> : null;
+                        })()}
+
+                        {/* Step 02: Intake form button */}
+                        {step.number === "02" && (() => {
+                          const formUrl = client.intakeFormUrl ?? "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor";
+                          return (
+                            <a
+                              href={formUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
+                              style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)", color: "var(--accent)", textDecoration: "none" }}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                              </svg>
+                              Open Intake Form
+                            </a>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
