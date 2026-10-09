@@ -1794,20 +1794,20 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   <div className="grid grid-cols-2 gap-3 px-6 pb-5">
                     <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                       <p className="label-mono mb-1.5 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: WEEKLY_COLOR }} />
-                        Weekly Report
-                      </p>
-                      <p className="metric-sub font-semibold" style={{ color: lastWeeklyDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                        {lastWeeklyDate ? fmtDate(lastWeeklyDate) : "Not filed yet"}
-                      </p>
-                    </div>
-                    <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                      <p className="label-mono mb-1.5 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: ONGOING_COLOR }} />
                         M/W Report
                       </p>
                       <p className="metric-sub font-semibold" style={{ color: lastOngoingDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
                         {lastOngoingDate ? fmtDate(lastOngoingDate) : "Not filed yet"}
+                      </p>
+                    </div>
+                    <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <p className="label-mono mb-1.5 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: WEEKLY_COLOR }} />
+                        Weekly Report
+                      </p>
+                      <p className="metric-sub font-semibold" style={{ color: lastWeeklyDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                        {lastWeeklyDate ? fmtDate(lastWeeklyDate) : "Not filed yet"}
                       </p>
                     </div>
                   </div>
