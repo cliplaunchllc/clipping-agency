@@ -137,7 +137,7 @@ function getYouTubeId(url: string): string | null {
 
 function VideoEmbed({ videoId, url }: { videoId: string; url: string }) {
   const [playing, setPlaying] = useState(false);
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const [thumbSrc, setThumbSrc] = useState(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
   return (
     <div className="mt-4" style={{ maxWidth: 460 }}>
       {playing ? (
@@ -153,13 +153,18 @@ function VideoEmbed({ videoId, url }: { videoId: string; url: string }) {
         <div
           onClick={() => setPlaying(true)}
           className="relative rounded-xl overflow-hidden cursor-pointer"
-          style={{ aspectRatio: "16/9", background: "var(--bg-active)" }}
+          style={{ aspectRatio: "16/9", background: "#000" }}
         >
-          <img src={thumbUrl} alt="Welcome video" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.25)" }} />
+          <img
+            src={thumbSrc}
+            alt="Welcome video"
+            onError={() => setThumbSrc(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.2)" }} />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+              style={{ background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 24px rgba(0,0,0,0.5)" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#111" stroke="none">
                 <polygon points="6 3 20 12 6 21 6 3"/>
               </svg>
