@@ -76,7 +76,7 @@ function wow(curr: number, prev: number | null | undefined, inverted = false) {
   return { pct: `${sign}${rounded.toFixed(1)}%`, positive, neutral, firstWeek: false };
 }
 
-function TrendIcon({ positive, neutral, size = 12 }: { positive: boolean; neutral: boolean; size?: number }) {
+function TrendIcon({ positive, neutral, size = 9 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
   if (positive) return <TrendingUp size={size} color="#3DD68C" />;
   return <TrendingDown size={size} color="#FF3B3B" />;
@@ -88,26 +88,26 @@ function WowBadge({ curr, prev, inverted, grey }: {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
 
   if (firstWeek && !pct) return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>
+    <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First week</span>
   );
   if (firstWeek) return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First week</span>
+    <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First week</span>
   );
 
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
     return (
-      <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-        <Minus size={11} />{`${sign}${fmtCurrency(delta)}`}
+      <span className="label-mono flex items-center gap-0.5" style={{ color: "var(--text-secondary)" }}>
+        <Minus size={9} />{`${sign}${fmtCurrency(delta)}`}
       </span>
     );
   }
 
   const color = neutral ? "var(--text-tertiary)" : positive ? "#3DD68C" : "#FF3B3B";
   return (
-    <span className="text-xs flex items-center gap-1 font-medium" style={{ color }}>
-      <TrendIcon positive={positive} neutral={neutral} />
+    <span className="label-mono flex items-center gap-0.5" style={{ color }}>
+      <TrendIcon positive={positive} neutral={neutral} size={9} />
       {pct}
     </span>
   );
@@ -124,9 +124,9 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <DollarSign size={13} color={ICON_COLOR} />
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Budget Usage</span>
+          <span className="label-mono">Budget Usage</span>
         </div>
-        <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>{paidPct}% spent</span>
+        <span className="label-mono" style={{ color: "var(--accent)" }}>{paidPct}% spent</span>
       </div>
 
       {/* Bar */}
@@ -144,12 +144,12 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
       {/* Labels */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Paid out</p>
-          <p className="text-sm font-bold" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{fmtCurrency(paidOut)}</p>
+          <p className="label-mono">Paid out</p>
+          <p className="metric-value text-sm" style={{ color: "var(--accent)" }}>{fmtCurrency(paidOut)}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Remaining</p>
-          <p className="text-sm font-bold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{fmtCurrency(budgetRemaining)}</p>
+          <p className="label-mono">Remaining</p>
+          <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{fmtCurrency(budgetRemaining)}</p>
         </div>
       </div>
     </div>
@@ -192,7 +192,7 @@ function DonutChart({ report }: { report: Report }) {
     <div className="rounded-xl p-5" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-4">
         <BarChart2 size={13} color={ICON_COLOR} />
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Platform Breakdown</p>
+        <p className="label-mono">Platform Breakdown</p>
       </div>
       <div className="flex items-center gap-5">
         <div className="relative flex-shrink-0" style={{ width: 120, height: 120 }}>
@@ -220,8 +220,8 @@ function DonutChart({ report }: { report: Report }) {
             </Pie>
           </PieChart>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-sm font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmt(total)}</span>
-            <span className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>views</span>
+            <span className="metric-value text-sm leading-none" style={{ color: "var(--text-primary)" }}>{fmt(total)}</span>
+            <span className="label-mono mt-0.5">views</span>
           </div>
         </div>
         <div className="flex-1 space-y-2.5 min-w-0">
@@ -234,11 +234,11 @@ function DonutChart({ report }: { report: Report }) {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <PlatformIcon platform={p} size={12} />
-                    <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
+                    <span className="metric-sub truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(val)}</span>
-                    <span className="text-xs font-semibold w-8 text-right" style={{ color }}>{pct}%</span>
+                    <span className="metric-sub">{fmt(val)}</span>
+                    <span className="metric-sub font-semibold w-8 text-right" style={{ color }}>{pct}%</span>
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
@@ -274,10 +274,10 @@ function StatCard({
     >
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)" }}>{label}</p>
+        <p className="label-mono leading-tight">{label}</p>
       </div>
-      <p className="text-xl font-bold mb-1 leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{value}</p>
-      {sublabel && <p className="text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>{sublabel}</p>}
+      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{value}</p>
+      {sublabel && <p className="metric-sub mb-1.5">{sublabel}</p>}
       <WowBadge curr={curr} prev={prev} inverted={inverted} grey={grey} />
     </div>
   );
@@ -312,9 +312,9 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               <Link2 size={13} color="#FF3B3B" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>Live Campaign Tracker</p>
-              <p className="text-xs mb-1" style={{ color: "var(--text-primary)" }}>View all clips, live stats, platform breakdown & real-time performance</p>
-              <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{report.campaignLink}</p>
+              <p className="label-mono mb-0.5" style={{ color: "var(--accent)" }}>Live Campaign Tracker</p>
+              <p className="metric-sub mb-1" style={{ color: "var(--text-primary)" }}>View all clips, live stats, platform breakdown & real-time performance</p>
+              <p className="metric-sub truncate">{report.campaignLink}</p>
             </div>
           </div>
           <ExternalLink size={14} color="#FF3B3B" className="flex-shrink-0 ml-3 opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -353,7 +353,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
             <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <AlignLeft size={13} color="#8A93A6" />
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>Weekly Overview</p>
+                <p className="label-mono">Weekly Overview</p>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             </div>
@@ -363,7 +363,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsUp size={13} color="#3DD68C" />
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>What&apos;s Working</p>
+                  <p className="label-mono" style={{ color: "var(--success)" }}>What&apos;s Working</p>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
               </div>
@@ -372,7 +372,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
               <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.2)", boxShadow: "0 0 16px rgba(255,59,59,0.06)" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsDown size={13} color="#FF3B3B" />
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>What&apos;s Not Working</p>
+                  <p className="label-mono" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
                 </div>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
               </div>
@@ -382,7 +382,7 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
             <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
               <div className="flex items-center gap-2 mb-3">
                 <Rocket size={13} color="var(--warning)" />
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--warning)", fontFamily: "var(--font-display)" }}>Next Week&apos;s Focus</p>
+                <p className="label-mono" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
             </div>
@@ -475,7 +475,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
             )}
             <div className="min-w-0">
               <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{clientName}</p>
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Campaign Reports</p>
+              <p className="label-mono">Campaign Reports</p>
             </div>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">

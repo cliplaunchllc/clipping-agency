@@ -86,7 +86,7 @@ export default function AgencyAnalytics({ submissions }: { submissions: AnyRecor
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{m.label}</span>
+                <span className="label-mono">{m.label}</span>
                 <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: "var(--accent-muted)" }}>
                   <Icon size={14} style={{ color: m.cssColor }} />
                 </div>

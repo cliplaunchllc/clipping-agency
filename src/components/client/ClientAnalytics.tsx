@@ -53,7 +53,7 @@ export default function ClientAnalytics({ submissions, clientName }: { submissio
           return (
             <div key={s.label} className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</span>
+                <span className="label-mono">{s.label}</span>
                 <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: "var(--accent-muted)" }}>
                   <Icon size={14} style={{ color: s.cssColor }} />
                 </div>

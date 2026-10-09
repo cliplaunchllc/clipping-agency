@@ -59,7 +59,7 @@ const selectStyle: React.CSSProperties = {
 export default function ClientManagement({ initialClients, pendingClientUsers: initialPending = [], allClients: allClientOptions = [] }: Props) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [pendingUsers, setPendingUsers] = useState<PendingClientUser[]>(initialPending);
-  const [tab, setTab] = useState<"active" | "prelaunch" | "archived" | "pending">("active");
+  const [tab, setTab] = useState<"active" | "justlaunched" | "prelaunch" | "archived" | "pending">("active");
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<"connect" | "create">("connect");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -135,6 +135,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
 
   const visible = clients.filter((c) =>
     tab === "active" ? c.status === "active" :
+    tab === "justlaunched" ? c.status === "justlaunched" :
     tab === "prelaunch" ? c.status === "prelaunch" :
     tab === "archived" ? c.status === "archived" : false
   );
@@ -182,7 +183,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
     setLoading(false);
   }
 
-  async function handleSetStatus(id: string, action: "archive" | "unarchive" | "prelaunch" | "activate") {
+  async function handleSetStatus(id: string, action: "archive" | "unarchive" | "prelaunch" | "activate" | "justlaunched") {
     const res = await fetch(`/api/agency/clients/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -401,10 +402,11 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       {/* Tabs */}
       <div className="flex gap-1 mb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         {([
-          { id: "active",    label: `Active (${clients.filter((c) => c.status === "active").length})` },
-          { id: "prelaunch", label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
-          { id: "archived",  label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
-          { id: "pending",   label: `Pending Signup (${pendingUsers.length})` },
+          { id: "active",        label: `Active (${clients.filter((c) => c.status === "active").length})` },
+          { id: "justlaunched",  label: `Just Launched (${clients.filter((c) => c.status === "justlaunched").length})` },
+          { id: "prelaunch",     label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
+          { id: "archived",      label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
+          { id: "pending",       label: `Pending Signup (${pendingUsers.length})` },
         ] as const).map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="px-4 py-2.5 text-sm font-medium relative"
@@ -422,7 +424,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {["Client User", "Email", "Status", "Assign to Client", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
+                  <th key={h} className="px-6 py-4 text-left label-mono">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -480,7 +482,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 </tr>
               ))}
               {pendingUsers.length === 0 && (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
+                <tr><td colSpan={3} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
                   No pending client signups
                 </td></tr>
               )}
@@ -489,14 +491,14 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         </div>
       )}
 
-      {/* ACTIVE / PRE-LAUNCH / ARCHIVED TABLE */}
-      {(tab === "active" || tab === "prelaunch" || tab === "archived") && (
+      {/* ACTIVE / JUST LAUNCHED / PRE-LAUNCH / ARCHIVED TABLE */}
+      {(tab === "active" || tab === "justlaunched" || tab === "prelaunch" || tab === "archived") && (
         <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {["Client", "Clippers", "Clips", tab === "archived" ? "Archived" : "Created", "Actions"].map((h) => (
-                  <th key={h} className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{h}</th>
+                {["Client", tab === "archived" ? "Archived" : "Created", "Actions"].map((h) => (
+                  <th key={h} className="px-6 py-4 text-left label-mono">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -536,18 +538,24 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                             </div>
                           )}
                         </button>
-                        <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "var(--text-tertiary)" : "var(--text-primary)" }}>{c.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium" style={{ color: c.status === "archived" ? "var(--text-tertiary)" : "var(--text-primary)" }}>{c.name}</span>
+                          {c.status === "active" && (
+                            <span className="relative flex h-2 w-2 flex-shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: "var(--success)" }} />
+                              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "var(--success)" }} />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-primary)" }}>{c.users.length}</td>
-                  <td className="px-6 py-4 text-xs" style={{ color: "var(--text-primary)" }}>{c._count.clips}</td>
                   <td className="px-6 py-4 text-xs" style={{ color: "var(--text-secondary)" }}>
                     {new Date(c.archivedAt ?? c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {(c.status === "active" || c.status === "prelaunch") && (
+                      {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
                         <Link href={`/agency/clients/${c.id}`}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
                           style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
@@ -555,6 +563,20 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                         </Link>
                       )}
                       {c.status === "active" && (
+                        <button onClick={() => handleSetStatus(c.id, "justlaunched")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
+                          Just Launched
+                        </button>
+                      )}
+                      {c.status === "justlaunched" && (
+                        <button onClick={() => handleSetStatus(c.id, "activate")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
+                          Set Active
+                        </button>
+                      )}
+                      {(c.status === "active" || c.status === "justlaunched") && (
                         <button onClick={() => handleSetStatus(c.id, "prelaunch")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
                           style={{ background: "rgba(245,185,74,0.08)", border: "1px solid rgba(245,185,74,0.2)", color: "var(--warning)" }}>
@@ -568,7 +590,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                           Set Active
                         </button>
                       )}
-                      {(c.status === "active" || c.status === "prelaunch") && (
+                      {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
                         <button onClick={() => handleSetStatus(c.id, "archive")}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium"
                           style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--text-tertiary)" }}>
@@ -597,9 +619,10 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 </tr>
               ))}
               {visible.length === 0 && (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-                  {tab === "archived" ? "No archived clients" : tab === "prelaunch" ? "No pre-launch clients" : "No clients yet — add your first client"}
+                <tr><td colSpan={3} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
+                  {tab === "archived" ? "No archived clients" : tab === "prelaunch" ? "No pre-launch clients" : tab === "justlaunched" ? "No just launched clients" : "No clients yet — add your first client"}
                 </td></tr>
+
               )}
             </tbody>
           </table>

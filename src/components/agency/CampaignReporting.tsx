@@ -5,7 +5,7 @@ import {
   Plus, X, Edit2, Trash2, Eye, EyeOff, TrendingUp, TrendingDown,
   Minus, BarChart2, ChevronDown, Link2, Check, ChevronLeft, ChevronRight,
   UserPlus, DollarSign, Target, Wallet, CheckCircle, Scissors,
-  Folder, FolderOpen, AlertTriangle, ArrowLeft, Activity, Calendar,
+  Folder, FolderOpen, AlertTriangle, ArrowLeft, Activity, Calendar, MessageCircle,
 } from "lucide-react";
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "@/components/shared/PlatformIcon";
@@ -49,6 +49,17 @@ interface ClientOption {
   name: string;
   logoUrl: string | null;
   campaigns: ClientCampaign[];
+  lastContactedAt?: string | null;
+}
+
+function contactDays(lastContactedAt: string | null | undefined): number {
+  if (!lastContactedAt) return 999;
+  return Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000);
+}
+function contactColor(days: number): { bg: string; border: string; text: string; label: string; pulse: boolean } {
+  if (days <= 2) return { bg: "rgba(61,214,140,0.12)", border: "rgba(61,214,140,0.3)", text: "var(--success)", label: days === 0 ? "Today" : days === 1 ? "Yesterday" : "2 days ago", pulse: false };
+  if (days <= 3) return { bg: "rgba(245,185,74,0.12)", border: "rgba(245,185,74,0.35)", text: "var(--warning)", label: `${days}d ago`, pulse: false };
+  return { bg: "rgba(255,59,59,0.12)", border: "rgba(255,59,59,0.35)", text: "var(--accent)", label: days >= 999 ? "Never messaged" : `${days}d ago`, pulse: true };
 }
 
 interface Report {
@@ -98,6 +109,7 @@ interface OngoingReport {
   viewsToday: number;
   campaignId: string | null;
   amountSpent: number | null;
+  effectiveCpm: number | null;
   campaign: ClientCampaign | null;
   createdAt: string;
   updatedAt: string;
@@ -135,6 +147,7 @@ interface OngoingFormState {
   approved: string;
   campaignId: string;
   amountSpent: string;
+  effectiveCpm: string;
   viewsTotal: string;
   viewsToday: string;
   mainTrend: string;
@@ -195,7 +208,7 @@ function wow(curr: number, prev: number | null | undefined, inverted = false): {
   return { pct: `${sign}${rounded.toFixed(1)}%`, positive, neutral, firstWeek: false };
 }
 
-function TrendIcon({ positive, neutral, size = 12 }: { positive: boolean; neutral: boolean; size?: number }) {
+function TrendIcon({ positive, neutral, size = 9 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
   if (positive) return <TrendingUp size={size} color="var(--success)" />;
   return <TrendingDown size={size} color="var(--accent)" />;
@@ -205,21 +218,21 @@ function WowBadge({ curr, prev, inverted, grey }: {
   curr: number; prev: number | null | undefined; inverted?: boolean; grey?: boolean;
 }) {
   const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
-  if (firstWeek && !pct) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First</span>;
-  if (firstWeek) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First</span>;
+  if (firstWeek && !pct) return <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First</span>;
+  if (firstWeek) return <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First</span>;
   if (grey) {
     const delta = prev != null ? curr - prev : 0;
     const sign = delta >= 0 ? "+" : "";
     return (
-      <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-        <Minus size={11} />{`${sign}${fmtCurrency(delta)}`}
+      <span className="label-mono flex items-center gap-0.5" style={{ color: "var(--text-secondary)" }}>
+        <Minus size={9} />{`${sign}${fmtCurrency(delta)}`}
       </span>
     );
   }
   const color = neutral ? "var(--text-tertiary)" : positive ? "var(--success)" : "var(--accent)";
   return (
-    <span className="text-xs flex items-center gap-1" style={{ color }}>
-      <TrendIcon positive={positive} neutral={neutral} />{pct}
+    <span className="label-mono flex items-center gap-0.5" style={{ color }}>
+      <TrendIcon positive={positive} neutral={neutral} size={9} />{pct}
     </span>
   );
 }
@@ -271,8 +284,8 @@ function StatusBadge({ status, size = "sm" }: {
   const meta = STATUS_META[status];
   return (
     <span
-      className={`font-semibold rounded-lg inline-flex items-center ${size === "xs" ? "px-1.5 py-0.5 text-xs" : "px-2 py-0.5 text-xs"}`}
-      style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}`, fontFamily: "var(--font-display)" }}
+      className={`label-mono rounded-lg inline-flex items-center ${size === "xs" ? "px-1.5 py-0.5" : "px-2 py-0.5"}`}
+      style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}` }}
     >
       {meta.label}
     </span>
@@ -368,7 +381,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
             <button type="button" onClick={prevMonth} className="p-1 rounded-lg hover:bg-white/5">
               <ChevronLeft size={14} color="#8A93A6" />
             </button>
-            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{MONTHS[viewMonth]} {viewYear}</span>
+            <span className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{MONTHS[viewMonth]} {viewYear}</span>
             <button type="button" onClick={nextMonth} className="p-1 rounded-lg hover:bg-white/5">
               <ChevronRight size={14} color="#8A93A6" />
             </button>
@@ -536,7 +549,7 @@ function ReportDonut({ report }: { report: Report }) {
 
   return (
     <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-      <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-secondary)" }}>Platform Breakdown</p>
+      <p className="label-mono mb-4">Platform Breakdown</p>
       <div className="flex items-center gap-5">
         <div className="relative flex-shrink-0" style={{ width: 110, height: 110 }}>
           <PieChart width={110} height={110}>
@@ -555,8 +568,8 @@ function ReportDonut({ report }: { report: Report }) {
             </Pie>
           </PieChart>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xs font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmt(total)}</span>
-            <span className="text-xs mt-0.5" style={{ color: "var(--text-secondary)", fontSize: "0.65rem" }}>views</span>
+            <span className="metric-value text-xs leading-none" style={{ color: "var(--text-primary)" }}>{fmt(total)}</span>
+            <span className="label-mono mt-0.5">views</span>
           </div>
         </div>
         <div className="flex-1 space-y-2 min-w-0">
@@ -569,11 +582,11 @@ function ReportDonut({ report }: { report: Report }) {
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <PlatformIcon platform={p} size={11} />
-                    <span className="text-xs truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
+                    <span className="metric-sub truncate" style={{ color: "var(--text-primary)" }}>{PLATFORM_LABELS[p] ?? p}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(val)}</span>
-                    <span className="text-xs font-semibold w-7 text-right" style={{ color }}>{pct}%</span>
+                    <span className="metric-sub">{fmt(val)}</span>
+                    <span className="metric-sub font-semibold w-7 text-right" style={{ color }}>{pct}%</span>
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
@@ -606,11 +619,11 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
       <div className="grid grid-cols-3 gap-3 mb-4">
         {statCards.map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-            <div className="flex items-center gap-2 mb-2">{c.icon}<p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p></div>
-            <p className="text-xl font-bold mb-1 leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
-            {c.sublabel && <p className="text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
+            <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
+            <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
+            {c.sublabel && <p className="metric-sub mb-1.5">{c.sublabel}</p>}
             <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
-            {c.lastWeek && <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Last week: {c.lastWeek}</p>}
+            {c.lastWeek && <p className="metric-sub mt-1">Last week: {c.lastWeek}</p>}
           </div>
         ))}
       </div>
@@ -618,8 +631,8 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
       {report.campaign && report.campaign.totalBudget > 0 && report.amountSpent != null && (
         <div className="mb-4 rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>{report.campaign.name} — Budget</p>
-            <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            <p className="label-mono">{report.campaign.name} — Budget</p>
+            <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>
               {fmtCurrency(report.amountSpent)} <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>/ {fmtCurrency(report.campaign.totalBudget)}</span>
             </p>
           </div>
@@ -629,7 +642,7 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
               background: (report.amountSpent / report.campaign.totalBudget) > 0.9 ? "var(--danger)" : (report.amountSpent / report.campaign.totalBudget) > 0.7 ? "var(--warning)" : "var(--success)",
             }} />
           </div>
-          <p className="text-xs mt-1.5" style={{ color: "var(--text-tertiary)" }}>
+          <p className="metric-sub mt-1.5">
             {fmtCurrency(Math.max(0, report.campaign.totalBudget - report.amountSpent))} remaining this week
           </p>
         </div>
@@ -639,27 +652,27 @@ function ReportPreview({ report, prev }: { report: Report; prev: Report | null }
         <div className="space-y-3">
           {report.weeklySummary && (
             <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-secondary)" }}>Weekly Summary</p>
+              <p className="label-mono mb-2">Weekly Summary</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             {report.whatsWorking && (
               <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--success)" }}>What&apos;s Working</p>
+                <p className="label-mono mb-2" style={{ color: "var(--success)" }}>What&apos;s Working</p>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
               </div>
             )}
             {report.whatsNotWorking && (
               <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.12)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
+                <p className="label-mono mb-2" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
               </div>
             )}
           </div>
           {report.nextWeekFocus && (
             <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.15)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
+              <p className="label-mono mb-2" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
             </div>
           )}
@@ -690,7 +703,7 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
           { label: "Pending", value: report.pending, prev: prev?.pending ?? null, color: "var(--text-secondary)" },
         ].map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-            <p className="text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
+            <p className="label-mono mb-1.5">{c.label}</p>
             <p className="text-xl font-bold" style={{ color: c.color, fontFamily: "var(--font-display)" }}>{c.value}</p>
             <WowBadge curr={c.value} prev={c.prev} />
           </div>
@@ -702,7 +715,7 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
         { key: "mainOptimization", label: "Main Optimization", value: report.mainOptimization, color: "var(--warning)" },
       ].filter((s) => s.value).map((s) => (
         <div key={s.key} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: s.color }}>{s.label}</p>
+          <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{s.value}</p>
         </div>
       ))}
@@ -775,7 +788,7 @@ function WeeklyReportForm({
           >
             <div className="flex items-center gap-2">
               <Activity size={13} color={ONGOING_COLOR} />
-              <span className="text-xs font-semibold" style={{ color: ONGOING_COLOR }}>
+              <span className="label-mono" style={{ color: ONGOING_COLOR }}>
                 {weekOngoing.length} Ongoing Report{weekOngoing.length !== 1 ? "s" : ""} This Week
               </span>
             </div>
@@ -786,15 +799,15 @@ function WeeklyReportForm({
               {weekOngoing.map((r) => (
                 <div key={r.id} className="rounded-lg p-3" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{dayOfWeekName(r.date)} · {fmtDate(r.date)}</span>
+                    <span className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{dayOfWeekName(r.date)} · {fmtDate(r.date)}</span>
                     <StatusBadge status={r.status} size="xs" />
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-2">
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Submitted: <strong style={{ color: "var(--text-primary)" }}>{r.totalSubmissions}</strong></span>
-                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Approved: <strong style={{ color: "var(--success)" }}>{r.approved}</strong></span>
+                    <span className="metric-sub">Submitted: <strong style={{ color: "var(--text-primary)" }}>{r.totalSubmissions}</strong></span>
+                    <span className="metric-sub">Approved: <strong style={{ color: "var(--success)" }}>{r.approved}</strong></span>
                   </div>
-                  {r.mainTrend && <p className="text-xs" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
-                  {r.mainOptimization && <p className="text-xs mt-1" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)" }}>Optimization: </span>{r.mainOptimization}</p>}
+                  {r.mainTrend && <p className="metric-sub" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
+                  {r.mainOptimization && <p className="metric-sub mt-1" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)" }}>Optimization: </span>{r.mainOptimization}</p>}
                 </div>
               ))}
             </div>
@@ -948,7 +961,7 @@ const EMPTY_ONGOING: OngoingFormState = {
   totalSubmissions: "", pending: "", approved: "",
   viewsTotal: "", viewsToday: "",
   mainTrend: "", clipperFeedback: "", mainOptimization: "", status: "",
-  campaignId: "", amountSpent: "",
+  campaignId: "", amountSpent: "", effectiveCpm: "",
 };
 
 function OngoingReportForm({
@@ -1063,10 +1076,16 @@ function OngoingReportForm({
         </div>
       </div>
 
-      {/* Amount Paid Out */}
-      <div>
-        <label style={labelStyle}>Amount Paid Out — Total to Date ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>running total vs. campaign budget</span></label>
-        <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
+      {/* Amount Paid Out + Effective CPM */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label style={labelStyle}>Amount Paid Out — Total to Date ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>running total</span></label>
+          <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Effective CPM ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>optional</span></label>
+          <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
+        </div>
       </div>
 
       {/* Text sections */}
@@ -1169,6 +1188,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
   const [copyingLink, setCopyingLink] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingFormState, setPendingFormState] = useState<FormState | null>(null);
+  const [contactingClientId, setContactingClientId] = useState<string | null>(null);
+  const [contactDate, setContactDate] = useState("");
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
@@ -1315,6 +1336,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       status: r.status,
       campaignId: r.campaignId ?? "",
       amountSpent: r.amountSpent?.toString() ?? "",
+      effectiveCpm: r.effectiveCpm?.toString() ?? "",
     };
   }
 
@@ -1343,6 +1365,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       status: form.status,
       campaignId: form.campaignId || null,
       amountSpent: form.amountSpent ? parseFloat(form.amountSpent) : null,
+      effectiveCpm: form.effectiveCpm ? parseFloat(form.effectiveCpm) : null,
     };
   }
 
@@ -1383,6 +1406,20 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
     if (res.ok) setOngoingReports((prev) => prev.filter((r) => r.id !== id));
     setDeletingId(null);
     setConfirmDeleteId(null);
+  }
+
+  // ── Last contacted ──────────────────────────────────────────────────────────
+
+  async function updateLastContacted(clientId: string, date: string) {
+    const res = await fetch(`/api/agency/clients/${clientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lastContactedAt: date }),
+    });
+    if (res.ok) {
+      setClients((prev) => prev.map((c) => c.id === clientId ? { ...c, lastContactedAt: new Date(date).toISOString() } : c));
+    }
+    setContactingClientId(null);
   }
 
   // ── Share link ──────────────────────────────────────────────────────────────
@@ -1586,7 +1623,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{previewReport.client.name}</h2>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Client preview — {fmtWeek(previewReport.weekStartDate, previewReport.weekEndDate)}</p>
+                <p className="metric-sub">Client preview — {fmtWeek(previewReport.weekStartDate, previewReport.weekEndDate)}</p>
               </div>
               <button onClick={() => setPreviewReport(null)}><X size={16} color="#8A93A6" /></button>
             </div>
@@ -1657,72 +1694,128 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {visibleClientCards.map(({ client, latestOngoingStatus, lastWeeklyDate, lastOngoingDate, missingFlags }) => (
-                <button
+            <>
+              <style>{`
+                @keyframes contactPulse {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.4); }
+                  50% { box-shadow: 0 0 0 4px rgba(255,59,59,0.1); }
+                }
+                .contact-btn-pulse { animation: contactPulse 2s ease-in-out infinite; }
+                @keyframes cardGlowAttn {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.08); }
+                  50% { box-shadow: 0 0 18px 4px rgba(255,59,59,0.12); }
+                }
+                .card-attn { animation: cardGlowAttn 2.4s ease-in-out infinite; }
+                .client-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+                .client-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+              `}</style>
+              <div className="space-y-4">
+              {visibleClientCards.map(({ client, latestOngoingStatus, lastWeeklyDate, lastOngoingDate, missingFlags }) => {
+                const days = contactDays(client.lastContactedAt);
+                const cc = contactColor(days);
+                const isOverdue = days >= 4;
+                const isContacting = contactingClientId === client.id;
+                return (
+                <div
                   key={client.id}
-                  onClick={() => { setSelectedClientId(client.id); setClientTab("weekly"); setOngoingMonthFilter(""); }}
-                  className="text-left rounded-xl p-5 transition-all group"
+                  onClick={() => { if (isContacting) return; setSelectedClientId(client.id); setClientTab("weekly"); setOngoingMonthFilter(""); }}
+                  className={`client-card text-left rounded-2xl cursor-pointer${isOverdue ? " card-attn" : ""}`}
                   style={{
                     background: "var(--bg-surface)",
-                    border: `1px solid ${latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "var(--border-subtle)"}`,
+                    border: `1px solid ${isOverdue ? "rgba(255,59,59,0.22)" : latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,59,59,0.14)" : "var(--border-subtle)"}`,
                   }}
                 >
-                  {/* Client name + status */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {client.logoUrl ? (
-                        <img src={client.logoUrl} alt={client.name} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--border-subtle)" }}>
-                          <span className="text-sm font-bold" style={{ color: "var(--text-secondary)" }}>{client.name.charAt(0)}</span>
-                        </div>
-                      )}
-                      <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{client.name}</p>
-                    </div>
-                    {latestOngoingStatus ? (
-                      <StatusBadge status={latestOngoingStatus} size="xs" />
+                  {/* Top row: identity + status + contact */}
+                  <div className="flex items-center gap-4 px-6 pt-6 pb-4">
+                    {client.logoUrl ? (
+                      <img src={client.logoUrl} alt={client.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" style={{ border: "1px solid var(--border-default)" }} />
                     ) : (
-                      <span className="text-xs px-1.5 py-0.5 rounded-lg flex-shrink-0" style={{ background: "var(--border-subtle)", color: "var(--text-tertiary)" }}>No status</span>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-base font-bold" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                        {client.name.charAt(0)}
+                      </div>
                     )}
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-bold truncate mb-1.5" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{client.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {latestOngoingStatus ? (
+                          <StatusBadge status={latestOngoingStatus} size="xs" />
+                        ) : (
+                          <span className="label-mono px-2 py-0.5 rounded-lg" style={{ background: "var(--border-subtle)" }}>No status</span>
+                        )}
+                        {missingFlags.map((flag) => (
+                          <span key={flag} className="label-mono flex items-center gap-1 px-2 py-0.5 rounded-lg" style={{ background: "rgba(245,185,74,0.1)", color: "var(--warning)", border: "1px solid rgba(245,185,74,0.2)" }}>
+                            <AlertTriangle size={10} />{flag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Contact button top-right */}
+                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isContacting ? (
+                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.2)" }}>
+                          <input
+                            type="date"
+                            value={contactDate}
+                            onChange={(e) => setContactDate(e.target.value)}
+                            className="text-xs px-2 py-1.5 rounded-lg outline-none"
+                            style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }}
+                          />
+                          <button
+                            onClick={() => contactDate && updateLastContacted(client.id, contactDate)}
+                            disabled={!contactDate}
+                            className="text-xs px-3 py-1.5 rounded-lg font-semibold flex-shrink-0"
+                            style={{ background: "rgba(61,214,140,0.15)", border: "1px solid rgba(61,214,140,0.3)", color: "var(--success)", opacity: !contactDate ? 0.5 : 1 }}>
+                            Save
+                          </button>
+                          <button onClick={() => setContactingClientId(null)} className="text-sm flex-shrink-0 px-1" style={{ color: "var(--text-tertiary)" }}>×</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setContactingClientId(client.id); setContactDate(new Date().toISOString().slice(0, 10)); }}
+                          className={`flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all${cc.pulse ? " contact-btn-pulse" : ""}`}
+                          style={{ background: cc.bg, border: `1px solid ${cc.border}`, cursor: "pointer" }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <MessageCircle size={13} style={{ color: cc.text, flexShrink: 0 }} />
+                            <div className="text-left">
+                              <p className="label-mono" style={{ lineHeight: 1.2 }}>Last contacted</p>
+                              <p className="metric-sub font-bold" style={{ color: cc.text, lineHeight: 1.3 }}>{cc.label}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs px-2 py-0.5 rounded-lg font-medium" style={{ background: "rgba(255,255,255,0.07)", color: "var(--text-tertiary)" }}>Log</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Dates */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                  {/* Bottom row: report date tiles */}
+                  <div className="grid grid-cols-2 gap-3 px-6 pb-5">
+                    <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <p className="label-mono mb-1.5 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: WEEKLY_COLOR }} />
-                        Last Weekly
+                        Weekly Report
                       </p>
-                      <p className="text-xs font-medium" style={{ color: lastWeeklyDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                        {lastWeeklyDate ? fmtDate(lastWeeklyDate) : "—"}
+                      <p className="metric-sub font-semibold" style={{ color: lastWeeklyDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                        {lastWeeklyDate ? fmtDate(lastWeeklyDate) : "Not filed yet"}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                    <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <p className="label-mono mb-1.5 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: ONGOING_COLOR }} />
-                        Last Ongoing
+                        M/W Report
                       </p>
-                      <p className="text-xs font-medium" style={{ color: lastOngoingDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                        {lastOngoingDate ? fmtDate(lastOngoingDate) : "—"}
+                      <p className="metric-sub font-semibold" style={{ color: lastOngoingDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                        {lastOngoingDate ? fmtDate(lastOngoingDate) : "Not filed yet"}
                       </p>
                     </div>
                   </div>
-
-                  {/* Missing flags */}
-                  {missingFlags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {missingFlags.map((flag) => (
-                        <span key={flag} className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-lg" style={{ background: "rgba(255,136,0,0.1)", color: "var(--warning)", border: "1px solid rgba(255,136,0,0.2)" }}>
-                          <AlertTriangle size={10} />
-                          {flag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
+                </div>
+                );
+              })}
+              </div>
+            </>
           )}
         </>
       ) : (
@@ -1791,7 +1884,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           {clientTab === "weekly" && (
             <>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: WEEKLY_COLOR }}>
+                <p className="label-mono flex items-center gap-2" style={{ color: WEEKLY_COLOR }}>
                   <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: WEEKLY_COLOR }} />
                   Weekly Reports (F)
                 </p>
@@ -1833,7 +1926,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                         <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
-                    <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                    <p className="metric-sub mt-3 text-center">
                       Manual (weekly reports) · Live tracking available via campaign link
                     </p>
                   </div>
@@ -1856,18 +1949,18 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{label}</p>
-                            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                            <p className="metric-sub">
                               {monthReports.length} {monthReports.length === 1 ? "report" : "reports"} · {publishedCount} published
                             </p>
                           </div>
                           <div className="hidden md:flex items-center gap-6 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Total views</p>
-                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(mViews)}</p>
+                              <p className="label-mono">Total views</p>
+                              <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(mViews)}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Total paid</p>
-                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(mPaid)}</p>
+                              <p className="label-mono">Total paid</p>
+                              <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(mPaid)}</p>
                             </div>
                           </div>
                           <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: monthOpen ? "rotate(180deg)" : "none", color: "var(--text-secondary)" }}>
@@ -1886,17 +1979,17 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                     <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(61,255,162,0.15)" }} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</span>
+                                        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</span>
                                         {report.published ? (
-                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)" }}>Published</span>
+                                          <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)" }}>Published</span>
                                         ) : (
-                                          <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>Draft</span>
+                                          <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)" }}>Draft</span>
                                         )}
                                       </div>
                                       <div className="hidden md:flex items-center gap-4 mt-1">
-                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Views: <strong style={{ color: "var(--text-primary)" }}>{fmt(report.totalViews)}</strong></span>
-                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Paid: <strong style={{ color: "var(--text-primary)" }}>{fmtCurrency(report.paidOut)}</strong></span>
-                                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Clips: <strong style={{ color: "var(--text-primary)" }}>{report.clipsApproved}/{report.clipsSubmitted}</strong></span>
+                                        <span className="metric-sub">Views: <strong style={{ color: "var(--accent)" }}>{fmt(report.totalViews)}</strong></span>
+                                        <span className="metric-sub">Paid: <strong style={{ color: "var(--success)" }}>{fmtCurrency(report.paidOut)}</strong></span>
+                                        <span className="metric-sub">Clips: <strong style={{ color: "var(--text-primary)" }}>{report.clipsApproved}/{report.clipsSubmitted}</strong></span>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -1948,7 +2041,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           {clientTab === "ongoing" && (
             <>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: ONGOING_COLOR }}>
+                <p className="label-mono flex items-center gap-2" style={{ color: ONGOING_COLOR }}>
                   <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: ONGOING_COLOR }} />
                   Ongoing Reports (M/W)
                 </p>
@@ -2012,7 +2105,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                         <Area type="monotone" dataKey="views" stroke="#DC2626" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#DC2626", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#DC2626", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
-                    <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                    <p className="metric-sub mt-3 text-center">
                       Manual (ongoing reports) · Live tracking available via campaign link
                     </p>
                   </div>
@@ -2021,7 +2114,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               {clientOngoing(selectedClientId).length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <Activity size={30} style={{ color: ONGOING_COLOR, opacity: 0.35 }} className="mb-3" />
-                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No ongoing reports yet.</p>
+                  <p className="metric-sub">No ongoing reports yet.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -2038,43 +2131,43 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmtDate(report.date)}</span>
-                              <span className="text-xs font-medium" style={{ color: ONGOING_COLOR }}>{dayOfWeekName(report.date)}</span>
+                              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmtDate(report.date)}</span>
+                              <span className="label-mono" style={{ color: ONGOING_COLOR }}>{dayOfWeekName(report.date)}</span>
                               <StatusBadge status={report.status} size="xs" />
                             </div>
                             {report.campaignName && (
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{report.campaignName}</p>
+                              <p className="metric-sub">{report.campaignName}</p>
                             )}
                           </div>
                           <div className="hidden md:flex items-center gap-5 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Submissions</p>
-                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{report.totalSubmissions}</p>
+                              <p className="label-mono">Submissions</p>
+                              <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{report.totalSubmissions}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Approved</p>
+                              <p className="label-mono">Approved</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                <p className="text-sm metric-value" style={{ color: "var(--success)" }}>{report.approved}</p>
                                 {prev && <WowBadge curr={report.approved} prev={prev.approved} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Approval</p>
+                              <p className="label-mono">Approval</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
+                                <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
                                 {prevApprovalRate != null && <WowBadge curr={approvalRate ?? 0} prev={prevApprovalRate} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Views Today</p>
+                              <p className="label-mono">Views Today</p>
                               <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
                                 {prev && <WowBadge curr={report.viewsToday} prev={prev.viewsToday} />}
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Views Total</p>
-                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                              <p className="label-mono">Views Total</p>
+                              <p className="text-sm metric-value" style={{ color: "var(--accent)" }}>{fmt(report.viewsTotal)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">

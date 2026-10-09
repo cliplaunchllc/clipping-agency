@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Settings, BarChart2,
+  LayoutDashboard, Users, Settings, BarChart2, BookOpen,
 } from "lucide-react";
 
 const NAV_ITEMS = {
@@ -13,6 +13,7 @@ const NAV_ITEMS = {
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
     { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
+    { label: "Reporting Guide", href: "/agency/reporting-guide", icon: BookOpen },
     { label: "Settings", href: "/agency/settings", icon: Settings },
   ],
   client: [
@@ -121,10 +122,7 @@ export default function Sidebar({ role, userName }: SidebarProps) {
 
       {/* Section divider + role label */}
       <div className="px-5 pb-1 pt-2">
-        <p
-          className="text-xs uppercase tracking-widest"
-          style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.08em" }}
-        >
+        <p className="label-mono">
           {role}
         </p>
       </div>

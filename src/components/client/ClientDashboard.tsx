@@ -93,6 +93,7 @@ interface OngoingReport {
   approved: number; rejected: number; mainTrend: string | null;
   clipperFeedback: string | null; mainOptimization: string | null; status: string;
   viewsTotal: number; viewsToday: number; amountSpent?: number | null;
+  effectiveCpm?: number | null;
 }
 
 interface CampaignReport {
@@ -200,7 +201,7 @@ const cardElevated: React.CSSProperties = {
 };
 
 export default function ClientDashboard({ client, userName, previewMode }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "contract">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "reports" | "onboarding" | "contract">("overview");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [expandedWeekReportId, setExpandedWeekReportId] = useState<string | null>(null);
   const [highlightedWeekId, setHighlightedWeekId] = useState<string | null>(null);
@@ -254,10 +255,12 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
     { label: "Clips",    value: filteredClips.length.toString(), icon: BarChart2, change: pct(filteredClips.length, prevClipCount) },
   ];
 
-  type TabId = "overview" | "onboarding" | "contract";
-  const tabs: { id: TabId; label: string }[] = [
+  type TabId = "overview" | "reports" | "onboarding" | "contract";
+  const totalReportCount = (client.ongoingReports?.length ?? 0) + (client.campaignReports?.length ?? 0);
+  const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "overview",   label: "Overview" },
     ...(client.campaignType === "cpm" ? [
+      { id: "reports"    as TabId, label: "Reports", count: totalReportCount > 0 ? totalReportCount : undefined },
       { id: "onboarding" as TabId, label: "Onboarding" },
       { id: "contract"   as TabId, label: "Contract" },
     ] : []),
@@ -337,7 +340,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="px-4 py-2.5 text-sm relative tab-btn"
+                className="px-4 py-2.5 text-sm relative tab-btn flex items-center gap-1.5"
                 style={{
                   color: activeTab === tab.id ? "var(--text-primary)" : "var(--text-tertiary)",
                   fontWeight: activeTab === tab.id ? 500 : 400,
@@ -346,6 +349,19 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                 }}
               >
                 {tab.label}
+                {tab.count != null && tab.count > 0 && (
+                  <span
+                    className="text-xs px-1.5 py-0.5 rounded-full font-semibold tabular-nums"
+                    style={{
+                      background: activeTab === tab.id ? "var(--accent-muted)" : "var(--bg-active)",
+                      color: activeTab === tab.id ? "var(--accent)" : "var(--text-tertiary)",
+                      fontSize: 10,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                )}
                 {activeTab === tab.id && (
                   <span
                     className="absolute bottom-0 left-0 right-0 h-px"
@@ -366,15 +382,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     const latest = (client.campaignReports ?? [])[0];
                     if (!latest) return null;
                     function scrollToWeekReport(id: string) {
-                      // expand the month group containing weekEndDate
+                      // Switch to Reports tab, expand the month group, then scroll
                       const monthKey = latest.weekEndDate.slice(0, 7);
                       setExpandedMonths((s) => { const n = new Set(s); n.add(monthKey); return n; });
                       setExpandedWeekReportId(id);
                       setHighlightedWeekId(id);
+                      setActiveTab("reports");
                       setTimeout(() => {
                         weekReportRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
                         setTimeout(() => setHighlightedWeekId(null), 1800);
-                      }, 80);
+                      }, 120);
                     }
                     return (
                       <div
@@ -392,14 +409,11 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span
-                              className="text-xs font-semibold uppercase tracking-widest"
-                              style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.07em" }}
-                            >
+                            <span className="label-mono" style={{ color: "var(--accent)" }}>
                               End of Week Report
                             </span>
                             <span
-                              className="text-xs px-1.5 py-0.5 rounded"
+                              className="label-mono px-1.5 py-0.5 rounded"
                               style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 10 }}
                             >
                               New
@@ -508,8 +522,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
                         >
                           <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
-                          <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No reports yet</p>
-                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your campaign reports will appear here.</p>
+                          <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>No reports yet</p>
+                          <p className="metric-sub">Your campaign reports will appear here.</p>
                         </div>
                       );
                     }
@@ -537,27 +551,37 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     const totalPaidOut = allPaidSnapshots[0]?.value ?? 0;
                     const totalBudget = (client.campaigns ?? []).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
 
+                    // Latest effective CPM from daily or weekly reports
+                    const allCpmSnapshots: { date: string; value: number }[] = [
+                      ...(client.campaignReports ?? [])
+                        .filter((r) => r.effectiveCpm != null)
+                        .map((r) => ({ date: r.weekEndDate, value: r.effectiveCpm as number })),
+                      ...(client.ongoingReports ?? [])
+                        .filter((r) => r.effectiveCpm != null)
+                        .map((r) => ({ date: r.date, value: r.effectiveCpm as number })),
+                    ].sort((a, b) => b.date.localeCompare(a.date));
+                    const latestCpm = allCpmSnapshots[0]?.value ?? null;
+
                     return (
                       <div className="space-y-4">
                         {/* Summary cards */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {[
+                          {([
                             { label: "Total Reports",  value: reports.length.toString(),        sub: "all time",      color: "var(--text-primary)", Icon: FileText },
                             { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
                             { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
                             { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),        sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
-                          ].map((s) => (
+                            ...(latestCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(latestCpm), sub: "latest report", color: "var(--text-secondary)", Icon: TrendingUp }] : []),
+                          ] as { label: string; value: string; sub: string; color: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[]).map((s) => (
                             <div key={s.label} style={card} className="p-4">
                               <div className="flex items-center gap-2 mb-2">
                                 <s.Icon size={13} style={{ color: s.color, opacity: 0.7 }} />
-                                <p className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                                  {s.label}
-                                </p>
+                                <p className="label-mono">{s.label}</p>
                               </div>
-                              <p className="text-2xl font-semibold tabular-nums mb-0.5" style={{ color: s.color, fontFamily: "var(--font-display)" }}>
+                              <p className="metric-value text-2xl mb-0.5" style={{ color: s.color }}>
                                 {s.value}
                               </p>
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
+                              <p className="metric-sub">{s.sub}</p>
                             </div>
                           ))}
                         </div>
@@ -567,8 +591,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           <div style={card} className="p-4">
                             <div className="flex items-center gap-2 mb-3">
                               <Wallet size={13} style={{ color: "var(--danger)", opacity: 0.8 }} />
-                              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Budget Usage</p>
-                              <span className="ml-auto text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                              <p className="label-mono">Budget Usage</p>
+                              <span className="ml-auto metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>
                                 {fmtCurrency(totalPaidOut)} <span style={{ color: "var(--text-tertiary)" }}>/ {fmtCurrency(totalBudget)}</span>
                               </span>
                             </div>
@@ -576,8 +600,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                               <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)", transition: "width 0.6s ease" }} />
                             </div>
                             <div className="flex items-center justify-between mt-2">
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
-                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(Math.max(0, totalBudget - totalPaidOut))} remaining</p>
+                              <p className="metric-sub">{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
+                              <p className="metric-sub">{fmtCurrency(Math.max(0, totalBudget - totalPaidOut))} remaining</p>
                             </div>
                           </div>
                         )}
@@ -614,15 +638,48 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                   />
                                 </AreaChart>
                               </ResponsiveContainer>
-                              <p className="text-xs mt-3 text-center" style={{ color: "var(--text-tertiary)" }}>
+                              <p className="metric-sub mt-3 text-center">
                                 Manual (report data) · Live tracking automated via campaign link
                               </p>
                             </div>
                           );
                         })()}
 
-                        {/* Month groups */}
-                        {(() => {
+                        {/* View all reports CTA */}
+                        {totalReportCount > 0 && (
+                          <button
+                            onClick={() => setActiveTab("reports")}
+                            className="w-full flex items-center justify-between px-5 py-4 rounded-xl transition-colors"
+                            style={{
+                              background: "var(--bg-surface)",
+                              border: "1px solid var(--border-default)",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-surface)")}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                <Layers size={14} style={{ color: "var(--accent)" }} />
+                              </div>
+                              <div className="text-left">
+                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>View All Reports</p>
+                                <p className="metric-sub">{totalReportCount} total report{totalReportCount !== 1 ? "s" : ""} · daily updates &amp; weekly summaries</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                                {totalReportCount}
+                              </span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-tertiary)" }}>
+                                <polyline points="9 18 15 12 9 6"/>
+                              </svg>
+                            </div>
+                          </button>
+                        )}
+                        {/* Month groups (hidden — moved to Reports tab) */}
+                        {false && (() => {
                           const weekReports = (client.campaignReports ?? []);
                           // Build a map of weekEndDate month → campaign reports
                           const weekByMonth = new Map<string, CampaignReport[]>();
@@ -717,27 +774,27 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                         {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
                                                       </span>
                                                       <span
-                                                        className="text-xs px-1.5 py-0.5 rounded font-semibold"
-                                                        style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 9, letterSpacing: "0.06em" }}
+                                                        className="label-mono px-1.5 py-0.5 rounded"
+                                                        style={{ background: "var(--accent-muted)", color: "var(--accent)" }}
                                                       >
-                                                        WEEK SUMMARY
+                                                        Week Summary
                                                       </span>
                                                     </div>
                                                   </div>
                                                   <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
                                                     <div className="text-right">
-                                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Total Views</p>
-                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
+                                                      <p className="label-mono">Total Views</p>
+                                                      <p className="text-sm metric-value" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
                                                     </div>
                                                     {wr.paidOut > 0 && (
                                                       <div className="text-right">
-                                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Paid Out</p>
-                                                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
+                                                        <p className="label-mono">Paid Out</p>
+                                                        <p className="text-sm metric-value" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
                                                       </div>
                                                     )}
                                                     <div className="text-right">
-                                                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Clips</p>
-                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
+                                                      <p className="label-mono">Clips</p>
+                                                      <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
                                                     </div>
                                                   </div>
                                                   <div className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -757,8 +814,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                         { label: "Eff. CPM",     value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
                                                       ].map((s) => (
                                                         <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                          <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                                          <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                          <p className="label-mono mb-1">{s.label}</p>
+                                                          <p className="text-xl metric-value" style={{ color: s.color }}>{s.value}</p>
                                                         </div>
                                                       ))}
                                                     </div>
@@ -773,13 +830,13 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                       return (
                                                         <div className="rounded-lg p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                                                           <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>{campaign.name} — Budget</p>
-                                                            <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmtCurrency(wr.amountSpent)} / {fmtCurrency(campaign.totalBudget)}</p>
+                                                            <p className="label-mono">{campaign.name} — Budget</p>
+                                                            <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(wr.amountSpent)} / {fmtCurrency(campaign.totalBudget)}</p>
                                                           </div>
                                                           <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-subtle)" }}>
                                                             <div style={{ width: `${Math.min(100, ratio * 100)}%`, height: "100%", background: barColor, borderRadius: "9999px", transition: "width 0.4s ease" }} />
                                                           </div>
-                                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{fmtCurrency(remaining)} remaining</p>
+                                                          <p className="metric-sub">{fmtCurrency(remaining)} remaining</p>
                                                         </div>
                                                       );
                                                     })()}
@@ -795,7 +852,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                       return (
                                                         <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
                                                           <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
-                                                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-tertiary)", fontSize: 10, letterSpacing: "0.07em" }}>Platform Breakdown</p>
+                                                            <p className="label-mono">Platform Breakdown</p>
                                                           </div>
                                                           <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
                                                             {platforms.map((p) => (
@@ -819,7 +876,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                       { key: "nextWeekFocus",    label: "Next Week Focus",    value: wr.nextWeekFocus,    border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",     color: "var(--warning)" },
                                                     ].filter((s) => s.value).map((s) => (
                                                       <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                        <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
                                                         <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
                                                       </div>
                                                     ))}
@@ -855,29 +912,29 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                 <div className="flex-1 min-w-0">
                                                   <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
-                                                    <span className="text-xs px-1.5 py-0.5 rounded"
-                                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)", fontSize: 10 }}>{dayName(report.date)}</span>
+                                                    <span className="label-mono px-1.5 py-0.5 rounded"
+                                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)" }}>{dayName(report.date)}</span>
                                                   </div>
                                                 </div>
                                                 <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
                                                   <div className="text-right">
-                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                                    <p className="label-mono">Approved</p>
+                                                    <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{report.approved}</p>
                                                   </div>
                                                   <div className="text-right">
-                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Today</p>
+                                                    <p className="label-mono">Views Today</p>
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                      <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                                      <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
                                                       {viewsTodayChange !== null && (
-                                                        <span className="text-xs font-medium" style={{ color: changeColor }}>
+                                                        <span className="label-mono" style={{ color: changeColor }}>
                                                           {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
                                                         </span>
                                                       )}
                                                     </div>
                                                   </div>
                                                   <div className="text-right">
-                                                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Views Total</p>
-                                                    <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                                                    <p className="label-mono">Views Total</p>
+                                                    <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
                                                   </div>
                                                 </div>
                                                 <div className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -896,8 +953,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                       { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
                                                     ].map((s) => (
                                                       <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                        <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{s.label}</p>
-                                                        <p className="text-xl font-semibold tabular-nums" style={{ color: s.color, fontFamily: "var(--font-display)" }}>{s.value}</p>
+                                                        <p className="label-mono mb-1">{s.label}</p>
+                                                        <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
                                                       </div>
                                                     ))}
                                                   </div>
@@ -907,7 +964,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                                     { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
                                                   ].filter((s) => s.value).map((s) => (
                                                     <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: s.color, fontSize: 10, letterSpacing: "0.07em" }}>{s.label}</p>
+                                                      <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
                                                       <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
                                                     </div>
                                                   ))}
@@ -994,16 +1051,16 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                             style={{ borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none" }}
                           >
                             <Icon size={14} style={{ color: "var(--text-tertiary)" }} />
-                            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{item.label}</p>
+                            <p className="label-mono">{item.label}</p>
                             <span
-                              className="text-lg font-semibold leading-none tabular-nums"
-                              style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+                              className="metric-value text-lg leading-none"
+                              style={{ color: "var(--text-primary)" }}
                             >
                               {item.value}
                             </span>
                             {item.change.ok && (
                               <span
-                                className="flex items-center gap-0.5 text-xs font-medium leading-none"
+                                className="flex items-center gap-0.5 label-mono leading-none"
                                 style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}
                               >
                                 {item.change.pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
@@ -1018,7 +1075,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       className="px-5 py-2"
                       style={{ borderTop: "1px solid var(--border-subtle)" }}
                     >
-                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      <p className="metric-sub">
                         {prevLabel(timePeriod, customStart, customEnd)}
                       </p>
                     </div>
@@ -1070,6 +1127,343 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
               )}
             </>
           )}
+
+          {/* ── REPORTS ──────────────────────────────────────────────── */}
+          {activeTab === "reports" && (() => {
+            const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            const weekReportsAll = (client.campaignReports ?? []);
+
+            function fmtMonthLabel(key: string) {
+              const [y, m] = key.split("-").map(Number);
+              return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+            }
+            function dayName(dateStr: string) {
+              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
+            }
+            function fmtDay(dateStr: string) {
+              return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            }
+            function toggleMonthR(k: string) {
+              setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+            }
+
+            if (reports.length === 0 && weekReportsAll.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center rounded-xl py-20"
+                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                  <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
+                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>No reports yet</p>
+                  <p className="metric-sub">Your campaign reports will appear here.</p>
+                </div>
+              );
+            }
+
+            const monthMap2 = new Map<string, OngoingReport[]>();
+            for (const r of reports) {
+              const key = r.date.slice(0, 7);
+              if (!monthMap2.has(key)) monthMap2.set(key, []);
+              monthMap2.get(key)!.push(r);
+            }
+            const weekByMonth2 = new Map<string, CampaignReport[]>();
+            for (const wr of weekReportsAll) {
+              const mk = wr.weekEndDate.slice(0, 7);
+              if (!weekByMonth2.has(mk)) weekByMonth2.set(mk, []);
+              weekByMonth2.get(mk)!.push(wr);
+            }
+            const allMonths = Array.from(new Set([...Array.from(monthMap2.keys()), ...Array.from(weekByMonth2.keys())])).sort((a, b) => b.localeCompare(a));
+
+            return (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Campaign Reports</h2>
+                    <p className="metric-sub mt-0.5">
+                      {reports.length} daily update{reports.length !== 1 ? "s" : ""} · {weekReportsAll.length} weekly summar{weekReportsAll.length !== 1 ? "ies" : "y"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {allMonths.map((monthKey) => {
+                    const monthReports = monthMap2.get(monthKey) ?? [];
+                    const monthWeekReports = weekByMonth2.get(monthKey) ?? [];
+                    const isOpen = expandedMonths.has(monthKey);
+                    const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
+
+                    type DailyRow = { kind: "daily"; date: string; report: OngoingReport };
+                    type WeeklyRow = { kind: "weekly"; date: string; report: CampaignReport };
+                    type Row = DailyRow | WeeklyRow;
+                    const rows: Row[] = [
+                      ...monthReports.map((r): DailyRow => ({ kind: "daily", date: r.date, report: r })),
+                      ...monthWeekReports.map((r): WeeklyRow => ({ kind: "weekly", date: r.weekEndDate, report: r })),
+                    ].sort((a, b) => b.date.localeCompare(a.date));
+
+                    return (
+                      <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
+                        <button
+                          className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
+                          style={{ background: "transparent" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                          onClick={() => toggleMonthR(monthKey)}
+                        >
+                          <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                            style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                            <Activity size={13} style={{ color: "var(--accent)" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtMonthLabel(monthKey)}</p>
+                            <p className="metric-sub">
+                              {monthReports.length} daily report{monthReports.length !== 1 ? "s" : ""}
+                              {monthWeekReports.length > 0 && ` · ${monthWeekReports.length} week summar${monthWeekReports.length !== 1 ? "ies" : "y"}`}
+                            </p>
+                          </div>
+                          {mApproved > 0 && (
+                            <div className="hidden md:block text-right flex-shrink-0">
+                              <p className="label-mono">Approved</p>
+                              <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
+                            </div>
+                          )}
+                          <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                            style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}>
+                            <ChevronDown size={15} />
+                          </div>
+                        </button>
+
+                        {isOpen && (
+                          <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                            {rows.map((row) => {
+                              if (row.kind === "weekly") {
+                                const wr = row.report;
+                                const isExpanded = expandedWeekReportId === wr.id;
+                                const isHighlighted = highlightedWeekId === wr.id;
+                                return (
+                                  <div key={`week-${wr.id}`}
+                                    ref={(el) => { weekReportRefs.current[wr.id] = el; }}
+                                    className="rounded-lg overflow-hidden"
+                                    style={{
+                                      background: "var(--bg-base)",
+                                      border: `1px solid ${isHighlighted ? "var(--accent)" : "var(--accent-border)"}`,
+                                      transition: "border-color 400ms ease, box-shadow 400ms ease",
+                                      boxShadow: isHighlighted ? "0 0 0 2px var(--accent-muted)" : "none",
+                                    }}>
+                                    <button
+                                      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                      style={{ background: isHighlighted ? "var(--accent-muted)" : "transparent" }}
+                                      onMouseEnter={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; }}
+                                      onMouseLeave={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                                      onClick={() => setExpandedWeekReportId(isExpanded ? null : wr.id)}
+                                    >
+                                      <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                                        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                                        <CalendarDays size={11} style={{ color: "var(--accent)" }} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                                            {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
+                                          </span>
+                                          <span className="label-mono px-1.5 py-0.5 rounded"
+                                            style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
+                                            WEEK SUMMARY
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                        <div className="text-right">
+                                          <p className="label-mono">Total Views</p>
+                                          <p className="metric-value text-sm" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
+                                        </div>
+                                        {wr.paidOut > 0 && (
+                                          <div className="text-right">
+                                            <p className="label-mono">Paid Out</p>
+                                            <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
+                                          </div>
+                                        )}
+                                        <div className="text-right">
+                                          <p className="label-mono">Clips</p>
+                                          <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                        style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                        <ChevronRight size={13} />
+                                      </div>
+                                    </button>
+                                    {isExpanded && (
+                                      <div className="px-5 pb-5 pt-4 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                          {[
+                                            { label: "Total Views", value: fmt(wr.totalViews), color: "var(--accent)" },
+                                            { label: "Paid Out",    value: fmtCurrency(wr.paidOut), color: "var(--success)" },
+                                            { label: "Clips",       value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`, color: "var(--text-primary)" },
+                                            { label: "Eff. CPM",    value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
+                                          ].map((s) => (
+                                            <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                              <p className="label-mono mb-1">{s.label}</p>
+                                              <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {(() => {
+                                          if (!wr.campaignId || wr.amountSpent == null) return null;
+                                          const campaign = client.campaigns?.find((c) => c.id === wr.campaignId);
+                                          if (!campaign || campaign.totalBudget <= 0) return null;
+                                          const ratio = wr.amountSpent / campaign.totalBudget;
+                                          const barColor = ratio > 0.9 ? "var(--danger)" : ratio > 0.7 ? "var(--warning)" : "var(--success)";
+                                          const remaining = Math.max(0, campaign.totalBudget - wr.amountSpent);
+                                          return (
+                                            <div className="rounded-lg p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                              <div className="flex items-center justify-between mb-2">
+                                                <p className="label-mono">{campaign.name} — Budget</p>
+                                                <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(wr.amountSpent)} / {fmtCurrency(campaign.totalBudget)}</p>
+                                              </div>
+                                              <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-subtle)" }}>
+                                                <div style={{ width: `${Math.min(100, ratio * 100)}%`, height: "100%", background: barColor, borderRadius: "9999px", transition: "width 0.4s ease" }} />
+                                              </div>
+                                              <p className="metric-sub">{fmtCurrency(remaining)} remaining</p>
+                                            </div>
+                                          );
+                                        })()}
+                                        {wr.totalViews > 0 && (() => {
+                                          const platforms = [
+                                            { label: "TikTok", views: wr.tiktokViews, color: "var(--accent)" },
+                                            { label: "Instagram", views: wr.instagramViews, color: "#FF8800" },
+                                            { label: "YouTube", views: wr.youtubeViews, color: "#CC1A1A" },
+                                            { label: "X", views: wr.twitterViews, color: "#5B9BD5" },
+                                          ].filter((p) => p.views > 0);
+                                          if (platforms.length === 0) return null;
+                                          return (
+                                            <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+                                              <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
+                                                <p className="label-mono">Platform Breakdown</p>
+                                              </div>
+                                              <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
+                                                {platforms.map((p) => (
+                                                  <div key={p.label} className="flex items-center justify-between px-3 py-2">
+                                                    <span className="metric-sub font-semibold" style={{ color: p.color }}>{p.label}</span>
+                                                    <div className="flex items-center gap-3">
+                                                      <span className="metric-value text-xs" style={{ color: "var(--text-primary)" }}>{fmt(p.views)}</span>
+                                                      <span className="metric-sub">{((p.views / wr.totalViews) * 100).toFixed(1)}%</span>
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
+                                        {[
+                                          { key: "weeklySummary",   label: "Weekly Summary",     value: wr.weeklySummary,   border: "var(--accent-border)", bg: "var(--accent-muted)",  color: "var(--accent)" },
+                                          { key: "whatsWorking",    label: "What's Working",     value: wr.whatsWorking,    border: "rgba(61,214,140,0.3)", bg: "var(--success-bg)",    color: "var(--success)" },
+                                          { key: "whatsNotWorking", label: "What's Not Working", value: wr.whatsNotWorking, border: "rgba(255,59,59,0.2)",  bg: "rgba(255,59,59,0.06)", color: "var(--danger)" },
+                                          { key: "nextWeekFocus",   label: "Next Week Focus",    value: wr.nextWeekFocus,   border: "rgba(245,185,74,0.3)", bg: "var(--warning-bg)",    color: "var(--warning)" },
+                                        ].filter((s) => s.value).map((s) => (
+                                          <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                            <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
+                                            <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              // Daily row
+                              const report = row.report as OngoingReport;
+                              const isExpanded = expandedReportId === report.id;
+                              const globalIdx = reports.indexOf(report);
+                              const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
+                              const viewsTodayChange = prevReport && prevReport.viewsToday > 0
+                                ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
+                                : null;
+                              const changeColor = viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
+
+                              return (
+                                <div key={report.id} className="rounded-lg overflow-hidden"
+                                  style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
+                                  <button
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                                    style={{ background: "transparent" }}
+                                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+                                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                                    onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
+                                  >
+                                    <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
+                                        <span className="label-mono px-1.5 py-0.5 rounded"
+                                          style={{ background: "var(--bg-active)", color: "var(--text-tertiary)" }}>{dayName(report.date)}</span>
+                                      </div>
+                                    </div>
+                                    <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                                      <div className="text-right">
+                                        <p className="label-mono">Approved</p>
+                                        <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="label-mono">Views Today</p>
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                          {viewsTodayChange !== null && (
+                                            <span className="label-mono" style={{ color: changeColor }}>
+                                              {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="label-mono">Views Total</p>
+                                        <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex-shrink-0 ml-2 transition-transform duration-200"
+                                      style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
+                                      <ChevronRight size={13} />
+                                    </div>
+                                  </button>
+                                  {isExpanded && (
+                                    <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {([
+                                          { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
+                                          { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
+                                          { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
+                                          { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
+                                          ...(report.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(report.effectiveCpm), color: "var(--text-secondary)" }] : []),
+                                        ] as { label: string; value: string; color: string }[]).map((s) => (
+                                          <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                            <p className="label-mono mb-1">{s.label}</p>
+                                            <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      {[
+                                        { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
+                                        { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
+                                        { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
+                                      ].filter((s) => s.value).map((s) => (
+                                        <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                                          <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
+                                          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── ONBOARDING ───────────────────────────────────────────── */}
           {activeTab === "onboarding" && (
@@ -1127,10 +1521,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     className="live-dot w-3 h-3 rounded-full flex-shrink-0"
                     style={{ background: "var(--accent)", boxShadow: "0 0 10px rgba(61,255,162,0.7)" }}
                   />
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.13em" }}>
+                  <span className="label-mono" style={{ color: "var(--accent)" }}>
                     Live
                   </span>
-                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>· Campaign portal is active</span>
+                  <span className="metric-sub">· Campaign portal is active</span>
                 </div>
 
                 {/* Header */}
@@ -1174,7 +1568,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           className="step-dot w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10"
                           style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", animationDelay: dotDelay }}
                         >
-                          <span className="text-xs font-bold tabular-nums" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontSize: 11 }}>
+                          <span className="label-mono tabular-nums">
                             {step.number}
                           </span>
                         </div>
@@ -1206,8 +1600,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                             {step.title}
                           </p>
                           <span
-                            className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2 py-1 rounded-md font-semibold mt-0.5"
-                            style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, fontSize: 10, letterSpacing: "0.03em", whiteSpace: "nowrap" }}
+                            className="label-mono flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md mt-0.5"
+                            style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor, whiteSpace: "nowrap" }}
                           >
                             {isTeam ? (
                               <>
@@ -1272,8 +1666,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Signed Agreement</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your executed campaign contract. This is here for viewing purposes if needed.</p>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Signed Agreement</p>
+                        <p className="metric-sub">Your executed campaign contract. This is here for viewing purposes if needed.</p>
                       </div>
                     </div>
                   </div>
@@ -1286,7 +1680,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                       </svg>
-                      <p className="text-xs truncate flex-1" style={{ color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
+                      <p className="metric-sub truncate flex-1">
                         {client.contractUrl}
                       </p>
                     </div>
@@ -1317,8 +1711,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4, marginBottom: 12 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                   </svg>
-                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>No contract on file yet</p>
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Your signed agreement will appear here once shared.</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>No contract on file yet</p>
+                  <p className="metric-sub">Your signed agreement will appear here once shared.</p>
                 </div>
               )}
             </div>

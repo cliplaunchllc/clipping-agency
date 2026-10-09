@@ -31,10 +31,7 @@ export default function StatCard({
       }}
     >
       <div className="flex items-start justify-between">
-        <p
-          className="text-xs font-medium uppercase tracking-widest"
-          style={{ color: "var(--text-tertiary)", fontSize: 11, letterSpacing: "0.07em" }}
-        >
+        <p className="label-mono">
           {label}
         </p>
         {icon && (
@@ -47,8 +44,8 @@ export default function StatCard({
         )}
       </div>
       <p
-        className="text-2xl font-semibold tabular-nums leading-none"
-        style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
+        className="text-2xl metric-value leading-none"
+        style={{ color: "var(--text-primary)" }}
       >
         {value}
       </p>
