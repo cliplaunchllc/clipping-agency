@@ -185,9 +185,8 @@ function dayOfWeekName(dateStr: string) {
   return d.toLocaleDateString("en-US", { weekday: "long" });
 }
 
-function isMonOrWed(dateStr: string) {
-  const dow = new Date(dateStr + "T00:00:00").getDay();
-  return dow === 1 || dow === 3;
+function isTuesday(dateStr: string) {
+  return new Date(dateStr + "T00:00:00").getDay() === 2;
 }
 
 function isoDate(d: Date) {
@@ -245,23 +244,13 @@ function getMissingFlags(
   const flags: string[] = [];
   const dow = today.getDay();
 
-  const daysToMon = dow === 0 ? -6 : 1 - dow;
-  const thisMonday = new Date(today);
-  thisMonday.setDate(today.getDate() + daysToMon);
-
-  const thisWednesday = new Date(thisMonday);
-  thisWednesday.setDate(thisMonday.getDate() + 2);
-
-  if (dow >= 1 && dow <= 6) {
-    const monStr = isoDate(thisMonday);
-    const hasMonReport = clientOngoingReports.some((r) => r.date.slice(0, 10) === monStr);
-    if (!hasMonReport) flags.push("Mon report missing");
-  }
-
-  if (dow >= 3 && dow <= 6) {
-    const wedStr = isoDate(thisWednesday);
-    const hasWedReport = clientOngoingReports.some((r) => r.date.slice(0, 10) === wedStr);
-    if (!hasWedReport) flags.push("Wed report missing");
+  // Check if this week's Tuesday report is missing (if today >= Tue)
+  if (dow >= 2 && dow <= 6) {
+    const thisTuesday = new Date(today);
+    thisTuesday.setDate(today.getDate() - (dow - 2));
+    const tueStr = isoDate(thisTuesday);
+    const hasTueReport = clientOngoingReports.some((r) => r.date.slice(0, 10) === tueStr);
+    if (!hasTueReport) flags.push("Tue report missing");
   }
 
   if (dow === 0 || dow === 6) {
@@ -601,81 +590,136 @@ function ReportDonut({ report }: { report: Report }) {
   );
 }
 
-function ReportPreview({ report, prev }: { report: Report; prev: Report | null }) {
+function ReportPreview({ report, prev, allClientReports = [] }: { report: Report; prev: Report | null; allClientReports?: Report[] }) {
   const approvalRate = report.clipsSubmitted > 0 ? (report.clipsApproved / report.clipsSubmitted) * 100 : null;
   const prevApprovalRate = prev && prev.clipsSubmitted > 0 ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
-  const statCards = [
+
+  // All-time totals across all reports for this client
+  const allTime = allClientReports.reduce(
+    (acc, r) => ({
+      views: acc.views + r.totalViews,
+      tiktok: acc.tiktok + r.tiktokViews,
+      instagram: acc.instagram + r.instagramViews,
+      youtube: acc.youtube + r.youtubeViews,
+      twitter: acc.twitter + r.twitterViews,
+      paidOut: acc.paidOut + r.paidOut,
+      clipsApproved: acc.clipsApproved + r.clipsApproved,
+      clipsSubmitted: acc.clipsSubmitted + r.clipsSubmitted,
+    }),
+    { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
+  );
+  const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
+
+  // Budget remaining auto-calc: campaign budget - all-time paid out
+  const calcBudgetRemaining = report.campaign && report.campaign.totalBudget > 0
+    ? Math.max(0, report.campaign.totalBudget - allTime.paidOut)
+    : null;
+
+  const weeklyStatCards = [
     { icon: <Eye size={12} color="var(--success)" />, label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
     { icon: <DollarSign size={12} color="var(--success)" />, label: "Paid Out", value: fmtCurrency(report.paidOut), curr: report.paidOut, prev: prev?.paidOut ?? null, lastWeek: prev ? fmtCurrency(prev.paidOut) : null },
     { icon: <Target size={12} color="var(--accent)" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
-    { icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: report.budgetRemaining ?? 0, prev: prev?.budgetRemaining ?? null, lastWeek: prev?.budgetRemaining != null ? fmtCurrency(prev.budgetRemaining) : null, grey: true },
+    { icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: calcBudgetRemaining != null ? fmtCurrency(calcBudgetRemaining) : report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: calcBudgetRemaining ?? report.budgetRemaining ?? 0, prev: null, grey: true },
     { icon: <CheckCircle size={12} color="var(--success)" />, label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
-    { icon: <Scissors size={12} color="var(--accent)" />, label: "Clips", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
+    { icon: <Scissors size={12} color="var(--accent)" />, label: "Clips This Week", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
   ];
 
+  const platformsAllTime = [
+    { key: "tiktok", label: "TikTok", value: allTime.tiktok },
+    { key: "instagram", label: "Instagram", value: allTime.instagram },
+    { key: "youtube", label: "YouTube", value: allTime.youtube },
+    { key: "twitter", label: "X / Twitter", value: allTime.twitter },
+  ].filter((p) => p.value > 0);
+
   return (
-    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-      <p className="text-xs font-medium mb-5" style={{ color: "var(--text-secondary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {statCards.map((c) => (
-          <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-            <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
-            <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
-            {c.sublabel && <p className="metric-sub mb-1.5">{c.sublabel}</p>}
-            <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
-            {c.lastWeek && <p className="metric-sub mt-1">Last week: {c.lastWeek}</p>}
-          </div>
-        ))}
+    <div className="rounded-xl p-6 space-y-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+      <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</p>
+
+      {/* ── THIS WEEK ───────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.18)", fontSize: "0.65rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
+          <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+        </div>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {weeklyStatCards.map((c) => (
+            <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+              <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
+              <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
+              {c.sublabel && <p className="metric-sub mb-1.5">{c.sublabel}</p>}
+              <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
+              {c.lastWeek && <p className="metric-sub mt-1">Last week: {c.lastWeek}</p>}
+            </div>
+          ))}
+        </div>
+        <ReportDonut report={report} />
       </div>
-      {/* Budget progress */}
-      {report.campaign && report.campaign.totalBudget > 0 && report.amountSpent != null && (
-        <div className="mb-4 rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="label-mono">{report.campaign.name} — Budget</p>
-            <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>
-              {fmtCurrency(report.amountSpent)} <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>/ {fmtCurrency(report.campaign.totalBudget)}</span>
-            </p>
+
+      {/* ── ALL TIME TOTALS ────────────────────────────────────── */}
+      {allClientReports.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+            <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(138,147,166,0.1)", color: "var(--text-secondary)", border: "1px solid rgba(138,147,166,0.2)", fontSize: "0.65rem", letterSpacing: "0.08em" }}>ALL TIME TOTALS</span>
+            <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
           </div>
-          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-default)" }}>
-            <div className="h-2 rounded-full transition-all" style={{
-              width: `${Math.min(100, (report.amountSpent / report.campaign.totalBudget) * 100).toFixed(1)}%`,
-              background: (report.amountSpent / report.campaign.totalBudget) > 0.9 ? "var(--danger)" : (report.amountSpent / report.campaign.totalBudget) > 0.7 ? "var(--warning)" : "var(--success)",
-            }} />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+            {[
+              { icon: <Eye size={12} color="var(--text-secondary)" />, label: "Total Views (cumulative)", value: fmt(allTime.views) },
+              { icon: <DollarSign size={12} color="var(--success)" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
+              { icon: <CheckCircle size={12} color="var(--success)" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
+              { icon: <Scissors size={12} color="var(--text-secondary)" />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
+              { icon: <CheckCircle size={12} color="var(--text-secondary)" />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
+              ...(calcBudgetRemaining != null ? [{ icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: fmtCurrency(calcBudgetRemaining) }] : []),
+            ].map((c) => (
+              <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+                <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
+                <p className="metric-value text-xl leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
+              </div>
+            ))}
           </div>
-          <p className="metric-sub mt-1.5">
-            {fmtCurrency(Math.max(0, report.campaign.totalBudget - report.amountSpent))} remaining this week
-          </p>
+          {/* Platform totals all time */}
+          {platformsAllTime.length > 0 && (
+            <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+              <p className="label-mono mb-3" style={{ color: "var(--text-secondary)" }}>Platform Totals — All Time</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {platformsAllTime.map((p) => (
+                  <div key={p.key} className="text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <PlatformIcon platform={p.key} size={12} />
+                      <span className="label-mono">{p.label}</span>
+                    </div>
+                    <p className="metric-value text-lg leading-none" style={{ color: "var(--text-primary)" }}>{fmt(p.value)}</p>
+                    <p className="metric-sub mt-0.5">{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
-      <div className="mb-4"><ReportDonut report={report} /></div>
+
+      {/* ── NOTES ─────────────────────────────────────────────── */}
       {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
-        <div className="space-y-3">
-          {report.weeklySummary && (
-            <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-              <p className="label-mono mb-2">Weekly Summary</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            {report.whatsWorking && (
-              <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.12)" }}>
-                <p className="label-mono mb-2" style={{ color: "var(--success)" }}>What&apos;s Working</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
-              </div>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+            <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(245,185,74,0.08)", color: "var(--warning)", border: "1px solid rgba(245,185,74,0.18)", fontSize: "0.65rem", letterSpacing: "0.08em" }}>NOTES</span>
+            <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
+          </div>
+          <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+            {report.weeklySummary && (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap mb-3" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             )}
-            {report.whatsNotWorking && (
-              <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.12)" }}>
-                <p className="label-mono mb-2" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
+            {(report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
+              <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--border-subtle)" }}>
+                {report.whatsWorking && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--success)", fontWeight: 600 }}>Working: </span>{report.whatsWorking}</p>}
+                {report.whatsNotWorking && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--accent)", fontWeight: 600 }}>Not working: </span>{report.whatsNotWorking}</p>}
+                {report.nextWeekFocus && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)", fontWeight: 600 }}>Next week: </span>{report.nextWeekFocus}</p>}
               </div>
             )}
           </div>
-          {report.nextWeekFocus && (
-            <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.15)" }}>
-              <p className="label-mono mb-2" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -886,19 +930,15 @@ function WeeklyReportForm({
       {/* Financial */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label style={labelStyle}>Paid out ($)</label>
+          <label style={labelStyle}>Paid out ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>this week</span></label>
           <input type="number" min={0} step="0.01" value={form.paidOut} onChange={(e) => set("paidOut", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Amount Spent ($) <span style={{ color: "var(--accent)", fontSize: "0.7rem" }}>vs. campaign budget</span></label>
-          <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Effective CPM ($)</label>
           <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="—" className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Budget remaining ($)</label>
+          <label style={labelStyle}>Budget remaining ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>optional override</span></label>
           <input type="number" min={0} step="0.01" value={form.budgetRemaining} onChange={(e) => set("budgetRemaining", e.target.value)} placeholder="—" className={inputCls} style={inputStyle} />
         </div>
       </div>
@@ -915,25 +955,11 @@ function WeeklyReportForm({
         </div>
       </div>
 
-      {/* Narrative */}
+      {/* Notes */}
       <div className="space-y-3">
         <div>
-          <label style={labelStyle}>Weekly summary</label>
-          <textarea rows={3} value={form.weeklySummary} onChange={(e) => set("weeklySummary", e.target.value)} placeholder="Brief overview of this week's performance…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label style={labelStyle}>What&apos;s working</label>
-            <textarea rows={3} value={form.whatsWorking} onChange={(e) => set("whatsWorking", e.target.value)} placeholder="Tactics, content types performing well…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
-          </div>
-          <div>
-            <label style={labelStyle}>What&apos;s not working</label>
-            <textarea rows={3} value={form.whatsNotWorking} onChange={(e) => set("whatsNotWorking", e.target.value)} placeholder="Areas to improve or drop…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Next week&apos;s focus</label>
-          <textarea rows={3} value={form.nextWeekFocus} onChange={(e) => set("nextWeekFocus", e.target.value)} placeholder="Priorities and goals for next week…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+          <label style={labelStyle}>Notes</label>
+          <textarea rows={5} value={form.weeklySummary} onChange={(e) => set("weeklySummary", e.target.value)} placeholder="Weekly summary, what's working, focus areas, optimizations…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
         </div>
         <div>
           <label style={labelStyle}>Campaign link (optional)</label>
@@ -984,7 +1010,7 @@ function OngoingReportForm({
   const pend = parseInt(form.pending || "0", 10);
   const appr = parseInt(form.approved || "0", 10);
   const showSumWarn = total > 0 && pend + appr !== total;
-  const showDayWarn = form.date.length > 0 && !isMonOrWed(form.date);
+  const showDayWarn = form.date.length > 0 && !isTuesday(form.date);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1001,13 +1027,13 @@ function OngoingReportForm({
       {/* Date */}
       <div>
         <label style={labelStyle}>
-          Date <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>Mon/Wed highlighted</span>
+          Date <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>Tue highlighted</span>
         </label>
-        <CalendarPicker label="report date" value={form.date} onChange={(v) => set("date", v)} highlightDows={[1, 3]} />
+        <CalendarPicker label="report date" value={form.date} onChange={(v) => set("date", v)} highlightDows={[2]} />
         {showDayWarn && (
           <div className="flex items-center gap-1.5 mt-1.5">
             <AlertTriangle size={12} color="var(--warning)" />
-            <p className="text-xs" style={{ color: "var(--warning)" }}>Ongoing reports are typically Monday or Wednesday — are you sure?</p>
+            <p className="text-xs" style={{ color: "var(--warning)" }}>Ongoing reports are typically Tuesday — are you sure?</p>
           </div>
         )}
       </div>
@@ -1581,7 +1607,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (M/W)</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (Tue)</span>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingOngoing ? "Edit Report" : "New Ongoing Report"}</h2>
               </div>
               <button onClick={() => { setShowOngoingForm(false); setEditingOngoing(null); }}>
@@ -1606,7 +1632,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (M/W)</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (Tue)</span>
                 </div>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{viewingOngoing.client.name}</h2>
               </div>
@@ -1627,7 +1653,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               </div>
               <button onClick={() => setPreviewReport(null)}><X size={16} color="#8A93A6" /></button>
             </div>
-            <ReportPreview report={previewReport} prev={prevWeeklyReport(previewReport)} />
+            <ReportPreview report={previewReport} prev={prevWeeklyReport(previewReport)} allClientReports={clientReports(previewReport.clientId)} />
           </div>
         </div>
       )}
@@ -1655,7 +1681,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: `var(--accent-muted)`, color: ONGOING_COLOR, border: `1px solid var(--accent-border)` }}
               >
-                <Plus size={15} />Ongoing (M/W)
+                <Plus size={15} />Ongoing (Tue)
               </button>
               <button
                 onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
@@ -1795,7 +1821,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                     <div className="rounded-xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                       <p className="label-mono mb-1.5 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: ONGOING_COLOR }} />
-                        M/W Report
+                        Tue Report
                       </p>
                       <p className="metric-sub font-semibold" style={{ color: lastOngoingDate ? "var(--text-primary)" : "var(--text-tertiary)" }}>
                         {lastOngoingDate ? fmtDate(lastOngoingDate) : "Not filed yet"}
@@ -1851,6 +1877,49 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             </button>
           </div>
 
+          {/* ── CAMPAIGN DASHBOARD STATS ─────────────────────── */}
+          {(() => {
+            const cRpts = clientReports(selectedClientId);
+            const cOngoing = clientOngoing(selectedClientId);
+            const latestWeekly = [...cRpts].sort((a, b) => b.weekEndDate.localeCompare(a.weekEndDate))[0] ?? null;
+            const latestOngoing = [...cOngoing].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+            const allTimePaidOut = cRpts.reduce((s, r) => s + r.paidOut, 0);
+            const allTimeClipsApproved = cRpts.reduce((s, r) => s + r.clipsApproved, 0);
+            const allTimeClipsSubmitted = cRpts.reduce((s, r) => s + r.clipsSubmitted, 0);
+            const approvedViews = latestOngoing?.viewsTotal ?? 0;
+            const latestCpm = latestWeekly?.effectiveCpm ?? null;
+            // Budget spent since last Friday
+            const todayD = new Date();
+            const todayDow = todayD.getDay();
+            const daysSinceFri = (todayDow - 5 + 7) % 7;
+            const lastFri = new Date(todayD);
+            lastFri.setDate(todayD.getDate() - daysSinceFri);
+            const lastFriStr = isoDate(lastFri);
+            const budgetSinceFri = cRpts
+              .filter((r) => r.weekEndDate.slice(0, 10) >= lastFriStr)
+              .reduce((s, r) => s + r.paidOut, 0);
+            const statItems = [
+              { label: "Total Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest week", icon: <Target size={13} color="var(--accent)" /> },
+              { label: "Total Submissions", value: allTimeClipsSubmitted.toString(), sub: "all time", icon: <Scissors size={13} color="var(--text-secondary)" /> },
+              { label: "Approved Videos", value: allTimeClipsApproved.toString(), sub: "all time", icon: <CheckCircle size={13} color="var(--success)" /> },
+              { label: "Approved Views", value: fmt(approvedViews), sub: "cumulative", icon: <Eye size={13} color="var(--success)" /> },
+              { label: "Total Paid Out", value: fmtCurrency(allTimePaidOut), sub: "all time", icon: <DollarSign size={13} color="var(--success)" /> },
+              { label: "Budget Since Last Fri", value: fmtCurrency(budgetSinceFri), sub: "this cycle", icon: <Wallet size={13} color="var(--warning)" /> },
+            ];
+            if (cRpts.length === 0 && cOngoing.length === 0) return null;
+            return (
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+                {statItems.map((s) => (
+                  <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                    <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono leading-tight" style={{ fontSize: "0.65rem" }}>{s.label}</p></div>
+                    <p className="metric-value text-lg leading-none mb-0.5" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                    <p className="label-mono" style={{ color: "var(--text-tertiary)", fontSize: "0.62rem" }}>{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Tabs */}
           <div className="flex items-center gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
             <button
@@ -1863,7 +1932,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               }}
             >
               <Activity size={13} />
-              M/W Reports
+              Tue Reports
             </button>
             <button
               onClick={() => setClientTab("weekly")}
@@ -1897,18 +1966,49 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 </button>
               </div>
 
-              {/* Views chart — manual report data */}
+              {/* Views + stats chart — weekly report data with WoW % changes */}
               {clientReports(selectedClientId).length > 1 && (() => {
-                const chartData = clientReports(selectedClientId)
+                const sorted = clientReports(selectedClientId)
                   .slice()
-                  .sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate))
-                  .map((r) => ({
+                  .sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate));
+                const chartData = sorted.map((r, i) => {
+                  const prev = i > 0 ? sorted[i - 1] : null;
+                  const viewsPct = prev && prev.totalViews > 0 ? Math.round(((r.totalViews - prev.totalViews) / prev.totalViews) * 100) : null;
+                  const paidPct = prev && prev.paidOut > 0 ? Math.round(((r.paidOut - prev.paidOut) / prev.paidOut) * 100) : null;
+                  return {
                     date: r.weekEndDate.slice(0, 10),
                     views: r.totalViews,
-                  }));
+                    paidOut: r.paidOut,
+                    clipsApproved: r.clipsApproved,
+                    viewsPct,
+                    paidPct,
+                  };
+                });
                 return (
                   <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}>
-                    <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</p>
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</p>
+                      {/* WoW summary for latest week */}
+                      {chartData.length >= 2 && (() => {
+                        const latest = chartData[chartData.length - 1];
+                        return (
+                          <div className="flex items-center gap-4 flex-wrap">
+                            {latest.viewsPct != null && (
+                              <span className="label-mono flex items-center gap-1" style={{ color: latest.viewsPct >= 0 ? "var(--success)" : "var(--accent)" }}>
+                                {latest.viewsPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                {latest.viewsPct >= 0 ? "+" : ""}{latest.viewsPct}% views vs prev week
+                              </span>
+                            )}
+                            {latest.paidPct != null && (
+                              <span className="label-mono flex items-center gap-1" style={{ color: latest.paidPct >= 0 ? "var(--success)" : "var(--accent)" }}>
+                                {latest.paidPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                {latest.paidPct >= 0 ? "+" : ""}{latest.paidPct}% paid vs prev week
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <ResponsiveContainer width="100%" height={200}>
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <defs>
@@ -1922,12 +2022,17 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
                         <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                           tickFormatter={(v: number) => fmt(v)} width={46} />
-                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#3DD68C" }} />
+                        <Tooltip
+                          formatter={(v, name) => name === "views" ? fmt(Number(v ?? 0)) : fmtCurrency(Number(v ?? 0))}
+                          contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }}
+                          labelStyle={{ color: "#8A93A6" }}
+                          itemStyle={{ color: "#3DD68C" }}
+                        />
                         <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                     <p className="metric-sub mt-3 text-center">
-                      Manual (weekly reports) · Live tracking available via campaign link
+                      Weekly views · Hover to see details · % change vs prev week shown above
                     </p>
                   </div>
                 );
@@ -2020,7 +2125,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                   </div>
                                   {expanded && (
                                     <div className="px-4 pb-4">
-                                      <ReportPreview report={report} prev={prev} />
+                                      <ReportPreview report={report} prev={prev} allClientReports={clientReports(selectedClientId)} />
                                     </div>
                                   )}
                                 </div>
@@ -2043,7 +2148,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               <div className="flex items-center justify-between mb-4">
                 <p className="label-mono flex items-center gap-2" style={{ color: ONGOING_COLOR }}>
                   <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: ONGOING_COLOR }} />
-                  Ongoing Reports (M/W)
+                  Ongoing Reports (Tue)
                 </p>
                 <div className="flex items-center gap-2">
                   {(() => {

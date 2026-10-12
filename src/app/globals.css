@@ -106,22 +106,22 @@
 
 :root {
   /* ── Backgrounds ──────────────────────────────────────────── */
-  --bg-base:     #060607;
-  --bg-subtle:   #0B0B0D;
-  --bg-surface:  #111114;
-  --bg-elevated: #18181C;
-  --bg-hover:    #1F1F24;
-  --bg-active:   #26262C;
+  --bg-base:     #0D0D11;
+  --bg-subtle:   #121218;
+  --bg-surface:  #1A1A21;
+  --bg-elevated: #202028;
+  --bg-hover:    #28282F;
+  --bg-active:   #30303A;
 
   /* ── Borders ──────────────────────────────────────────────── */
-  --border-subtle:  rgba(255,255,255,0.06);
-  --border-default: rgba(255,255,255,0.09);
-  --border-strong:  rgba(255,255,255,0.15);
+  --border-subtle:  rgba(255,255,255,0.08);
+  --border-default: rgba(255,255,255,0.12);
+  --border-strong:  rgba(255,255,255,0.18);
 
   /* ── Text ─────────────────────────────────────────────────── */
-  --text-primary:   #EDEDEF;
-  --text-secondary: #A1A1AA;
-  --text-tertiary:  #6B6B76;
+  --text-primary:   #EFEFF1;
+  --text-secondary: #ABABBA;
+  --text-tertiary:  #7A7A8A;
   --text-on-accent: #FFFFFF;
 
   /* ── Brand red ────────────────────────────────────────────── */
@@ -155,7 +155,7 @@
   --chart-2: #3DD68C;
   --chart-3: #F5B94A;
   --chart-4: #A1A1AA;
-  --chart-5: #EDEDEF;
+  --chart-5: #EFEFF1;
 }
 
 /* ─────────────────────────────────────────────────────────────────

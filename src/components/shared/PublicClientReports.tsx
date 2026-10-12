@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   TrendingUp, TrendingDown, Minus, ChevronDown, BarChart2,
   Eye, DollarSign, Target, Wallet, CheckCircle, Scissors,
-  Link2, Check, ThumbsUp, ThumbsDown, Rocket, AlignLeft, ExternalLink,
+  Link2, Check, ExternalLink,
 } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "./PlatformIcon";
@@ -285,14 +285,36 @@ function StatCard({
 
 // ─── Report Card ──────────────────────────────────────────────────────────────
 
-function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
+function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: Report | null; allReports?: Report[] }) {
   const approvalRate = report.clipsSubmitted > 0
     ? (report.clipsApproved / report.clipsSubmitted) * 100 : null;
   const prevApprovalRate = prev && prev.clipsSubmitted > 0
     ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
 
+  // All-time totals
+  const allTime = allReports.reduce(
+    (acc, r) => ({
+      views: acc.views + r.totalViews,
+      tiktok: acc.tiktok + r.tiktokViews,
+      instagram: acc.instagram + r.instagramViews,
+      youtube: acc.youtube + r.youtubeViews,
+      twitter: acc.twitter + r.twitterViews,
+      paidOut: acc.paidOut + r.paidOut,
+      clipsApproved: acc.clipsApproved + r.clipsApproved,
+      clipsSubmitted: acc.clipsSubmitted + r.clipsSubmitted,
+    }),
+    { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
+  );
+  const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
+  const platformsAllTime = [
+    { key: "tiktok" as const, label: "TikTok", value: allTime.tiktok },
+    { key: "instagram" as const, label: "Instagram", value: allTime.instagram },
+    { key: "youtube" as const, label: "YouTube", value: allTime.youtube },
+    { key: "twitter" as const, label: "X", value: allTime.twitter },
+  ].filter((p) => p.value > 0);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Campaign link */}
       {report.campaignLink && (
         <a
@@ -321,24 +343,24 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
         </a>
       )}
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatCard icon={<Eye size={13} color={ICON_COLOR} />} label="Views This Week" value={fmt(report.totalViews)} curr={report.totalViews} prev={prev?.totalViews ?? null} />
-        <StatCard icon={<Target size={13} color={ICON_COLOR} />} label="Effective CPM" value={report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—"} curr={report.effectiveCpm ?? 0} prev={prev?.effectiveCpm ?? null} inverted />
-        <StatCard icon={<Wallet size={13} color={ICON_COLOR} />} label="Budget Remaining" value={report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—"} curr={report.budgetRemaining ?? 0} prev={prev?.budgetRemaining ?? null} grey />
-        <StatCard icon={<CheckCircle size={13} color={ICON_COLOR} />} label="Approval Rate" value={approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—"} curr={approvalRate ?? 0} prev={prevApprovalRate} />
-        <StatCard
-          icon={<Scissors size={13} color={ICON_COLOR} />}
-          label="Clips"
-          value={`${report.clipsApproved} approved`}
-          sublabel={`out of ${report.clipsSubmitted} submitted`}
-          curr={report.clipsApproved}
-          prev={prev?.clipsApproved ?? null}
-        />
-        <StatCard icon={<DollarSign size={13} color={ICON_COLOR} />} label="Paid Out" value={fmtCurrency(report.paidOut)} curr={report.paidOut} prev={prev?.paidOut ?? null} />
+      {/* ── THIS WEEK ───────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
+          <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <StatCard icon={<Eye size={13} color={ICON_COLOR} />} label="Views This Week" value={fmt(report.totalViews)} curr={report.totalViews} prev={prev?.totalViews ?? null} />
+          <StatCard icon={<Target size={13} color={ICON_COLOR} />} label="Effective CPM" value={report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—"} curr={report.effectiveCpm ?? 0} prev={prev?.effectiveCpm ?? null} inverted />
+          <StatCard icon={<Wallet size={13} color={ICON_COLOR} />} label="Budget Remaining" value={report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—"} curr={report.budgetRemaining ?? 0} prev={prev?.budgetRemaining ?? null} grey />
+          <StatCard icon={<CheckCircle size={13} color={ICON_COLOR} />} label="Approval Rate" value={approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—"} curr={approvalRate ?? 0} prev={prevApprovalRate} />
+          <StatCard icon={<Scissors size={13} color={ICON_COLOR} />} label="Clips" value={`${report.clipsApproved} approved`} sublabel={`out of ${report.clipsSubmitted} submitted`} curr={report.clipsApproved} prev={prev?.clipsApproved ?? null} />
+          <StatCard icon={<DollarSign size={13} color={ICON_COLOR} />} label="Paid Out" value={fmtCurrency(report.paidOut)} curr={report.paidOut} prev={prev?.paidOut ?? null} />
+        </div>
       </div>
 
-      {/* Budget bar — only shown when budgetRemaining is set */}
+      {/* Budget bar */}
       {report.budgetRemaining != null && (
         <BudgetBar paidOut={report.paidOut} budgetRemaining={report.budgetRemaining} />
       )}
@@ -346,47 +368,70 @@ function ReportCard({ report, prev }: { report: Report; prev: Report | null }) {
       {/* Platform donut */}
       <DonutChart report={report} />
 
-      {/* Narrative sections */}
-      {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
-        <div className="space-y-3">
-          {report.weeklySummary && (
-            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <AlignLeft size={13} color="#8A93A6" />
-                <p className="label-mono">Weekly Overview</p>
+      {/* ── ALL TIME TOTALS ─────────────────────────────────── */}
+      {allReports.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+            <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(138,147,166,0.1)", color: "var(--text-secondary)", border: "1px solid rgba(138,147,166,0.18)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>ALL TIME TOTALS</span>
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+            {[
+              { icon: <Eye size={13} color="#3DD68C" />, label: "Total Views", value: fmt(allTime.views) },
+              { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
+              { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
+              { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
+              { icon: <Target size={13} color={ICON_COLOR} />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
+                <p className="metric-value text-xl leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
+            ))}
+          </div>
+          {platformsAllTime.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "var(--bg-base)" }}>
+                <p className="label-mono">Platform Views — All Time</p>
+              </div>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${platformsAllTime.length}, 1fr)` }}>
+                {platformsAllTime.map((p, i) => (
+                  <div key={p.key} className="px-4 py-3" style={{ borderRight: i < platformsAllTime.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <PlatformIcon platform={p.key} size={11} />
+                      <span className="label-mono" style={{ color: PLATFORM_COLORS[p.key] ?? "var(--text-secondary)" }}>{p.label}</span>
+                    </div>
+                    <p className="metric-value text-lg leading-none" style={{ color: "var(--text-primary)" }}>{fmt(p.value)}</p>
+                    <p className="metric-sub mt-0.5">{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {report.whatsWorking && (
-              <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(61,255,162,0.2)", boxShadow: "0 0 16px rgba(61,255,162,0.06)" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <ThumbsUp size={13} color="#3DD68C" />
-                  <p className="label-mono" style={{ color: "var(--success)" }}>What&apos;s Working</p>
-                </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsWorking}</p>
-              </div>
+        </div>
+      )}
+
+      {/* ── NOTES ──────────────────────────────────────────────── */}
+      {(report.weeklySummary || report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+            <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(245,185,74,0.08)", color: "var(--warning)", border: "1px solid rgba(245,185,74,0.2)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>NOTES</span>
+            <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
+          </div>
+          <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+            {report.weeklySummary && (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap mb-3" style={{ color: "var(--text-primary)" }}>{report.weeklySummary}</p>
             )}
-            {report.whatsNotWorking && (
-              <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,59,59,0.2)", boxShadow: "0 0 16px rgba(255,59,59,0.06)" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <ThumbsDown size={13} color="#FF3B3B" />
-                  <p className="label-mono" style={{ color: "var(--accent)" }}>What&apos;s Not Working</p>
-                </div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.whatsNotWorking}</p>
+            {(report.whatsWorking || report.whatsNotWorking || report.nextWeekFocus) && (
+              <div className="space-y-2 border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+                {report.whatsWorking && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--success)", fontWeight: 600 }}>Working: </span>{report.whatsWorking}</p>}
+                {report.whatsNotWorking && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--accent)", fontWeight: 600 }}>Not working: </span>{report.whatsNotWorking}</p>}
+                {report.nextWeekFocus && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)", fontWeight: 600 }}>Next week: </span>{report.nextWeekFocus}</p>}
               </div>
             )}
           </div>
-          {report.nextWeekFocus && (
-            <div className="rounded-lg p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,136,0,0.25)", boxShadow: "0 0 16px rgba(255,136,0,0.06)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <Rocket size={13} color="var(--warning)" />
-                <p className="label-mono" style={{ color: "var(--warning)" }}>Next Week&apos;s Focus</p>
-              </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.nextWeekFocus}</p>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -452,6 +497,17 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
     return idx < reports.length - 1 ? reports[idx + 1] : null;
   }
 
+  // All-time aggregates for summary
+  const allTime = reports.reduce(
+    (acc, r) => ({
+      views: acc.views + r.totalViews,
+      paidOut: acc.paidOut + r.paidOut,
+      clipsApproved: acc.clipsApproved + r.clipsApproved,
+      clipsSubmitted: acc.clipsSubmitted + r.clipsSubmitted,
+    }),
+    { views: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
+  );
+
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", fontFamily: "var(--font-display)" }}>
 
@@ -491,84 +547,79 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
       {/* Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
         {reports.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center rounded-xl py-24"
-            style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
+          <div className="flex flex-col items-center justify-center rounded-xl py-24" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <BarChart2 size={36} style={{ color: "var(--accent)", opacity: 0.35 }} className="mb-3" />
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No reports published yet.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-xs font-medium pb-2" style={{ color: "var(--text-tertiary)" }}>
+          <>
+            {/* All-time summary */}
+            {reports.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {[
+                  { icon: <Eye size={13} color="#3DD68C" />, label: "Total Views", value: fmt(allTime.views), sub: "all time cumulative" },
+                  { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all campaigns" },
+                  { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
+                  { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Submitted Videos", value: allTime.clipsSubmitted.toString(), sub: "all time" },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                    <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono">{s.label}</p></div>
+                    <p className="metric-value text-xl mb-0.5" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                    <p className="metric-sub">{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="text-xs font-medium pb-3" style={{ color: "var(--text-tertiary)" }}>
               {reports.length} {reports.length === 1 ? "report" : "reports"} · most recent first
             </p>
-            {reports.map((report, idx) => {
-              const expanded = expandedIds.has(report.id);
-              return (
-                <div
-                  key={report.id}
-                  className="rounded-xl overflow-hidden"
-                  style={{
-                    background: "var(--bg-surface)",
-                    border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "var(--border-subtle)"}`,
-                    transition: "border-color 0.2s ease",
-                  }}
-                >
-                  {/* Accordion header */}
-                  <button
-                    className="w-full flex items-center justify-between px-5 py-4 text-left"
-                    style={{ transition: "background 0.15s" }}
-                    onClick={() => toggleExpand(report.id)}
-                  >
-                    <div>
-                      <p className="text-sm font-bold mb-1" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-                        {fmtWeek(report.weekStartDate, report.weekEndDate)}
-                      </p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-                          <Eye size={11} color={ICON_COLOR} />
-                          {fmt(report.totalViews)} views
-                        </span>
-                        <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                        <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-                          <DollarSign size={11} color={ICON_COLOR} />
-                          {fmtCurrency(report.paidOut)} paid
-                        </span>
-                        {report.budgetRemaining != null && (
-                          <>
-                            <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                            <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
-                              <Wallet size={11} color={ICON_COLOR} />
-                              {fmtCurrency(report.budgetRemaining)} left
-                            </span>
-                          </>
-                        )}
+            <div className="space-y-3">
+              {reports.map((report, idx) => {
+                const expanded = expandedIds.has(report.id);
+                const prev = prevReport(idx);
+                const viewsPct = prev && prev.totalViews > 0 ? Math.round(((report.totalViews - prev.totalViews) / prev.totalViews) * 100) : null;
+                return (
+                  <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.08)"}`, transition: "border-color 0.2s ease" }}>
+                    <button className="w-full flex items-center justify-between px-5 py-4 text-left" onClick={() => toggleExpand(report.id)}>
+                      <div>
+                        <p className="text-sm font-bold mb-1" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+                          {fmtWeek(report.weekStartDate, report.weekEndDate)}
+                        </p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
+                            <Eye size={11} color={ICON_COLOR} />{fmt(report.totalViews)} views
+                          </span>
+                          <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
+                          <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-secondary)" }}>
+                            <DollarSign size={11} color={ICON_COLOR} />{fmtCurrency(report.paidOut)} paid
+                          </span>
+                          {viewsPct != null && (
+                            <>
+                              <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
+                              <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: viewsPct >= 0 ? "#3DD68C" : ICON_COLOR }}>
+                                {viewsPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                {viewsPct >= 0 ? "+" : ""}{viewsPct}% views
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div
-                      className="flex-shrink-0"
-                      style={{
-                        color: "var(--text-secondary)",
-                        transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.25s ease",
-                      }}
-                    >
-                      <ChevronDown size={16} />
-                    </div>
-                  </button>
-
-                  {/* Expanded content */}
-                  {expanded && (
-                    <div className="px-5 pb-5">
-                      <div className="h-px mb-4" style={{ background: "var(--accent-muted)" }} />
-                      <ReportCard report={report} prev={prevReport(idx)} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                      <div className="flex-shrink-0" style={{ color: "var(--text-secondary)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s ease" }}>
+                        <ChevronDown size={16} />
+                      </div>
+                    </button>
+                    {expanded && (
+                      <div className="px-5 pb-5">
+                        <div className="h-px mb-4" style={{ background: "var(--accent-muted)" }} />
+                        <ReportCard report={report} prev={prev} allReports={reports} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
