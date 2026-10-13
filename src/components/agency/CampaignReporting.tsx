@@ -778,7 +778,6 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
         {[
           { label: "Total Submissions", value: report.totalSubmissions, prev: prev?.totalSubmissions ?? null, color: "var(--text-primary)" },
           { label: "Approved", value: report.approved, prev: prev?.approved ?? null, color: "var(--success)" },
-          { label: "Pending", value: report.pending, prev: prev?.pending ?? null, color: "var(--text-secondary)" },
         ].map((c) => (
           <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
             <p className="label-mono mb-1.5">{c.label}</p>
@@ -787,16 +786,12 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
           </div>
         ))}
       </div>
-      {[
-        { key: "mainTrend", label: "Main Trend in Approved Clips", value: report.mainTrend, color: ONGOING_COLOR },
-        { key: "clipperFeedback", label: "Clipper Feedback", value: report.clipperFeedback, color: "var(--text-secondary)" },
-        { key: "mainOptimization", label: "Main Optimization", value: report.mainOptimization, color: "var(--warning)" },
-      ].filter((s) => s.value).map((s) => (
-        <div key={s.key} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
-          <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+      {report.mainTrend && (
+        <div className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
+          <p className="label-mono mb-2" style={{ color: ONGOING_COLOR }}>Notes</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>{report.mainTrend}</p>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -886,8 +881,7 @@ function WeeklyReportForm({
                     <span className="metric-sub">Submitted: <strong style={{ color: "var(--text-primary)" }}>{r.totalSubmissions}</strong></span>
                     <span className="metric-sub">Approved: <strong style={{ color: "var(--success)" }}>{r.approved}</strong></span>
                   </div>
-                  {r.mainTrend && <p className="metric-sub" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Trend: </span>{r.mainTrend}</p>}
-                  {r.mainOptimization && <p className="metric-sub mt-1" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--warning)" }}>Optimization: </span>{r.mainOptimization}</p>}
+                  {r.mainTrend && <p className="metric-sub" style={{ color: "var(--text-primary)" }}><span style={{ color: ONGOING_COLOR }}>Notes: </span>{r.mainTrend}</p>}
                 </div>
               ))}
             </div>
@@ -1076,10 +1070,6 @@ function OngoingReportForm({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  const total = parseInt(form.totalSubmissions || "0", 10);
-  const pend = parseInt(form.pending || "0", 10);
-  const appr = parseInt(form.approved || "0", 10);
-  const showSumWarn = total > 0 && pend + appr !== total;
   const showDayWarn = form.date.length > 0 && !isTuesday(form.date);
 
   function handleSubmit(e: React.FormEvent) {
@@ -1136,29 +1126,16 @@ function OngoingReportForm({
       )}
 
       {/* Submission numbers */}
-      <div>
-        <label style={labelStyle}>Total Submissions <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
-        <input type="number" min={0} value={form.totalSubmissions} onChange={(e) => set("totalSubmissions", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label style={labelStyle}>Pending <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>current</span></label>
-          <input type="number" min={0} value={form.pending} onChange={(e) => set("pending", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+          <label style={labelStyle}>Total Submissions <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
+          <input type="number" min={0} value={form.totalSubmissions} onChange={(e) => set("totalSubmissions", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Approved <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
           <input type="number" min={0} value={form.approved} onChange={(e) => set("approved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
       </div>
-
-      {showSumWarn && (
-        <div className="flex items-start gap-2 rounded-lg p-3" style={{ background: "rgba(255,136,0,0.08)", border: "1px solid rgba(255,136,0,0.2)" }}>
-          <AlertTriangle size={13} color="var(--warning)" className="flex-shrink-0 mt-0.5" />
-          <p className="text-xs" style={{ color: "var(--warning)" }}>
-            Pending ({pend}) + Approved ({appr}) = {pend + appr}, but Total is {total}. Double-check the numbers.
-          </p>
-        </div>
-      )}
 
       {/* Views numbers */}
       <div className="grid grid-cols-2 gap-3">
@@ -1179,23 +1156,15 @@ function OngoingReportForm({
           <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Effective CPM ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>optional</span></label>
+          <label style={labelStyle}>Effective CPM ($)</label>
           <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
         </div>
       </div>
 
-      {/* Text sections */}
+      {/* Notes */}
       <div>
-        <label style={labelStyle}>Main Trend in Approved Clips</label>
-        <textarea rows={3} value={form.mainTrend} onChange={(e) => set("mainTrend", e.target.value)} placeholder="What type of content/hooks/formats are working?" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
-      </div>
-      <div>
-        <label style={labelStyle}>Clipper Feedback</label>
-        <textarea rows={3} value={form.clipperFeedback} onChange={(e) => set("clipperFeedback", e.target.value)} placeholder="Any common questions, complaints, or issues?" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
-      </div>
-      <div>
-        <label style={labelStyle}>Main Optimization</label>
-        <textarea rows={3} value={form.mainOptimization} onChange={(e) => set("mainOptimization", e.target.value)} placeholder="What should we push, change, or fix tomorrow?" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+        <label style={labelStyle}>Notes</label>
+        <textarea rows={4} value={form.mainTrend} onChange={(e) => set("mainTrend", e.target.value)} placeholder="Trends, feedback, optimizations…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
       {/* Status */}
@@ -1693,8 +1662,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (Tue)</span>
-                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingOngoing ? "Edit Report" : "New Ongoing Report"}</h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Mid-Week (Tue)</span>
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingOngoing ? "Edit Report" : "New Mid-Week Report"}</h2>
               </div>
               <button onClick={() => { setShowOngoingForm(false); setEditingOngoing(null); }}>
                 <X size={16} color="#8A93A6" />
@@ -1718,7 +1687,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Ongoing (Tue)</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "var(--accent-muted)", color: ONGOING_COLOR, border: "1px solid var(--accent-border)" }}>Mid-Week (Tue)</span>
                 </div>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{viewingOngoing.client.name}</h2>
               </div>
@@ -1767,7 +1736,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: `var(--accent-muted)`, color: ONGOING_COLOR, border: `1px solid var(--accent-border)` }}
               >
-                <Plus size={15} />Ongoing (Tue)
+                <Plus size={15} />Mid-Week (Tue)
               </button>
               <button
                 onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
@@ -2018,7 +1987,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               }}
             >
               <Activity size={13} />
-              Tue Reports
+              Mid-Week Reports
             </button>
             <button
               onClick={() => setClientTab("weekly")}
