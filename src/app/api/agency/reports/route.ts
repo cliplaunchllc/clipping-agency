@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const {
     clientId, weekStartDate, weekEndDate,
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
-    paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
+    paidOut, effectiveCpm, clipsSubmitted, clipsApproved,
     cumViews, cumTiktokViews, cumInstagramViews, cumYoutubeViews, cumTwitterViews,
     cumPaidOut, cumClipsSubmitted, cumClipsApproved,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
@@ -49,6 +49,21 @@ export async function POST(req: NextRequest) {
 
   if (!clientId || !weekStartDate || !weekEndDate) {
     return NextResponse.json({ error: "clientId, weekStartDate, and weekEndDate are required" }, { status: 400 });
+  }
+
+  // Auto-calculate budget remaining from campaign budget - (cumViews / 1000 * CPM)
+  let budgetRemainingCalc: number | null = null;
+  if (campaignId && effectiveCpm != null) {
+    const [campaign, prevSum] = await Promise.all([
+      prisma.clientCampaign.findUnique({ where: { id: campaignId }, select: { totalBudget: true } }),
+      prisma.campaignReport.aggregate({ where: { clientId }, _sum: { totalViews: true } }),
+    ]);
+    if (campaign && campaign.totalBudget > 0) {
+      const effectiveCumViews = (cumViews ?? 0) > 0
+        ? (cumViews ?? 0)
+        : (prevSum._sum.totalViews ?? 0) + (totalViews ?? 0);
+      budgetRemainingCalc = Math.max(0, campaign.totalBudget - (effectiveCumViews / 1000 * effectiveCpm));
+    }
   }
 
   const report = await prisma.campaignReport.create({
@@ -63,7 +78,7 @@ export async function POST(req: NextRequest) {
       twitterViews: twitterViews ?? 0,
       paidOut: paidOut ?? 0,
       effectiveCpm: effectiveCpm ?? null,
-      budgetRemaining: budgetRemaining ?? null,
+      budgetRemaining: budgetRemainingCalc,
       clipsSubmitted: clipsSubmitted ?? 0,
       clipsApproved: clipsApproved ?? 0,
       cumViews: cumViews ?? 0,

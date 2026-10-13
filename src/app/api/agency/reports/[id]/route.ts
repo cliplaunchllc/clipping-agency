@@ -42,12 +42,39 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const {
     weekStartDate, weekEndDate,
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
-    paidOut, effectiveCpm, budgetRemaining, clipsSubmitted, clipsApproved,
+    paidOut, effectiveCpm, clipsSubmitted, clipsApproved,
     cumViews, cumTiktokViews, cumInstagramViews, cumYoutubeViews, cumTwitterViews,
     cumPaidOut, cumClipsSubmitted, cumClipsApproved,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
     campaignId, amountSpent,
   } = body;
+
+  // Fetch existing record to get clientId and fallback values
+  const existing = await prisma.campaignReport.findUnique({
+    where: { id },
+    select: { clientId: true, campaignId: true, effectiveCpm: true, totalViews: true, cumViews: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Auto-calculate budget remaining
+  const resolvedCampaignId = campaignId !== undefined ? (campaignId || null) : existing.campaignId;
+  const resolvedCpm = effectiveCpm !== undefined ? effectiveCpm : existing.effectiveCpm;
+
+  let budgetRemainingCalc: number | null = null;
+  if (resolvedCampaignId && resolvedCpm != null) {
+    const [campaign, otherSum] = await Promise.all([
+      prisma.clientCampaign.findUnique({ where: { id: resolvedCampaignId }, select: { totalBudget: true } }),
+      prisma.campaignReport.aggregate({ where: { clientId: existing.clientId, id: { not: id } }, _sum: { totalViews: true } }),
+    ]);
+    if (campaign && campaign.totalBudget > 0) {
+      const thisWeekViews = totalViews !== undefined ? totalViews : existing.totalViews;
+      const resolvedCumViews = cumViews !== undefined ? cumViews : existing.cumViews;
+      const effectiveCumViews = resolvedCumViews > 0
+        ? resolvedCumViews
+        : (otherSum._sum.totalViews ?? 0) + thisWeekViews;
+      budgetRemainingCalc = Math.max(0, campaign.totalBudget - (effectiveCumViews / 1000 * resolvedCpm));
+    }
+  }
 
   const report = await prisma.campaignReport.update({
     where: { id },
@@ -61,7 +88,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(twitterViews !== undefined && { twitterViews }),
       ...(paidOut !== undefined && { paidOut }),
       ...(effectiveCpm !== undefined && { effectiveCpm }),
-      ...(budgetRemaining !== undefined && { budgetRemaining }),
+      budgetRemaining: budgetRemainingCalc,
       ...(clipsSubmitted !== undefined && { clipsSubmitted }),
       ...(clipsApproved !== undefined && { clipsApproved }),
       ...(cumViews !== undefined && { cumViews }),

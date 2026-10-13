@@ -404,6 +404,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
               { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { icon: <Target size={13} color={ICON_COLOR} />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
+              { icon: <Target size={13} color="var(--warning)" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm != null ? fmtCurrency(allReports.find((r) => r.effectiveCpm != null)!.effectiveCpm!) : "—" },
+              ...(report.budgetRemaining != null ? [{ icon: <Wallet size={13} color="#8A93A6" />, label: "Budget Remaining", value: fmtCurrency(report.budgetRemaining) }] : []),
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>

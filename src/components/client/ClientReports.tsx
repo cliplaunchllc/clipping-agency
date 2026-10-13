@@ -236,6 +236,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
               { label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { label: "All-Time Approval Rate", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
+              { label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm != null ? fmtCurrency(allReports.find((r) => r.effectiveCpm != null)!.effectiveCpm!) : "—" },
+              ...(report.budgetRemaining != null ? [{ label: "Budget Remaining", value: fmtCurrency(report.budgetRemaining) }] : []),
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p>

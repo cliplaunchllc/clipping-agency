@@ -134,7 +134,6 @@ interface FormState {
   twitterViews: string;
   paidOut: string;
   effectiveCpm: string;
-  budgetRemaining: string;
   clipsSubmitted: string;
   clipsApproved: string;
   // All-time cumulative totals (manually entered)
@@ -703,6 +702,7 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
               { icon: <CheckCircle size={12} color="var(--success)" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { icon: <Scissors size={12} color="var(--text-secondary)" />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { icon: <CheckCircle size={12} color="var(--text-secondary)" />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
+              { icon: <Target size={12} color="var(--accent)" />, label: "Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—" },
               ...(calcBudgetRemaining != null ? [{ icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: fmtCurrency(calcBudgetRemaining) }] : []),
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
@@ -804,7 +804,7 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
 const EMPTY_FORM: FormState = {
   clientId: "", weekStartDate: "", weekEndDate: "",
   totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
-  paidOut: "", effectiveCpm: "", budgetRemaining: "", clipsSubmitted: "", clipsApproved: "",
+  paidOut: "", effectiveCpm: "", clipsSubmitted: "", clipsApproved: "",
   cumViews: "", cumTiktokViews: "", cumInstagramViews: "", cumYoutubeViews: "", cumTwitterViews: "",
   cumPaidOut: "", cumClipsSubmitted: "", cumClipsApproved: "",
   weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
@@ -978,10 +978,6 @@ function WeeklyReportForm({
           <label style={labelStyle}>Effective CPM ($)</label>
           <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="—" className={inputCls} style={inputStyle} />
         </div>
-        <div>
-          <label style={labelStyle}>Budget remaining ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>optional override</span></label>
-          <input type="number" min={0} step="0.01" value={form.budgetRemaining} onChange={(e) => set("budgetRemaining", e.target.value)} placeholder="—" className={inputCls} style={inputStyle} />
-        </div>
       </div>
 
       {/* Clips */}
@@ -1020,8 +1016,14 @@ function WeeklyReportForm({
           <label style={labelStyle}>Total clips approved</label>
           <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
+        <div className="col-span-2">
+          <label style={labelStyle}>Effective CPM ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>from this week — used to auto-calc budget remaining</span></label>
+          <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: form.effectiveCpm ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+            {form.effectiveCpm ? `$${parseFloat(form.effectiveCpm).toFixed(2)}` : "Enter CPM above in This Week section"}
+          </div>
+        </div>
       </div>
-      <p className="text-xs -mt-2" style={{ color: "var(--text-tertiary)" }}>Platform views all time are calculated automatically from all weekly reports.</p>
+      <p className="text-xs -mt-2" style={{ color: "var(--text-tertiary)" }}>Platform views and budget remaining are calculated automatically. Budget remaining = campaign budget − (cumulative views ÷ 1000 × CPM).</p>
 
       {/* Notes */}
       <div className="space-y-3">
@@ -1319,7 +1321,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       twitterViews: parseInt(form.twitterViews || "0", 10),
       paidOut: parseFloat(form.paidOut || "0"),
       effectiveCpm: form.effectiveCpm ? parseFloat(form.effectiveCpm) : null,
-      budgetRemaining: form.budgetRemaining ? parseFloat(form.budgetRemaining) : null,
       clipsSubmitted: parseInt(form.clipsSubmitted || "0", 10),
       clipsApproved: parseInt(form.clipsApproved || "0", 10),
       cumViews: parseInt(form.cumViews || "0", 10),
@@ -1352,7 +1353,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       twitterViews: r.twitterViews.toString(),
       paidOut: r.paidOut.toString(),
       effectiveCpm: r.effectiveCpm?.toString() ?? "",
-      budgetRemaining: r.budgetRemaining?.toString() ?? "",
       clipsSubmitted: r.clipsSubmitted.toString(),
       clipsApproved: r.clipsApproved.toString(),
       cumViews: (r.cumViews ?? 0) > 0 ? r.cumViews.toString() : "",
