@@ -1138,15 +1138,9 @@ function OngoingReportForm({
       </div>
 
       {/* Views numbers */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Views Total <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
-          <input type="number" min={0} value={form.viewsTotal} onChange={(e) => set("viewsTotal", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Views This Week <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>new views</span></label>
-          <input type="number" min={0} value={form.viewsToday} onChange={(e) => set("viewsToday", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
+      <div>
+        <label style={labelStyle}>Views Total <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
+        <input type="number" min={0} value={form.viewsTotal} onChange={(e) => set("viewsTotal", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
       </div>
 
       {/* Amount Paid Out + Effective CPM */}
@@ -2316,13 +2310,6 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                               <div className="flex items-center justify-end gap-1">
                                 <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{approvalRate != null ? `${approvalRate.toFixed(0)}%` : "—"}</p>
                                 {prevApprovalRate != null && <WowBadge curr={approvalRate ?? 0} prev={prevApprovalRate} />}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="label-mono">Views This Week</p>
-                              <div className="flex items-center justify-end gap-1">
-                                <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
-                                {prev && <WowBadge curr={report.viewsToday} prev={prev.viewsToday} />}
                               </div>
                             </div>
                             <div className="text-right">
