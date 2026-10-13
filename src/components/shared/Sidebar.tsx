@@ -147,7 +147,7 @@ export default function Sidebar({ role, userName }: SidebarProps) {
           </div>
         </div>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => signOut({ callbackUrl: "/login?out=1" })}
           className="w-full text-xs py-1.5 px-3 rounded-md text-left transition-colors nav-link"
           style={{ color: "var(--text-tertiary)" }}
         >

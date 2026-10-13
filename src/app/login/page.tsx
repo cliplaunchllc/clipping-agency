@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 
 type Role = "agency" | "clipper" | "client";
@@ -65,6 +65,8 @@ const STARS = Array.from({ length: 36 }, (_, i) => ({
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const signedOut = searchParams.get("out") === "1";
   const { data: session, status } = useSession();
   const [step, setStep] = useState<"accounts" | "role" | "login" | "team-signup">("accounts");
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
@@ -91,7 +93,7 @@ export default function LoginPage() {
     const accounts = getSavedAccounts();
     setSavedAccounts(accounts);
     if (accounts.length === 0) setStep("role");
-    else if (accounts.length === 1) handleTapAccount(accounts[0]);
+    else if (accounts.length === 1 && !signedOut) handleTapAccount(accounts[0]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
