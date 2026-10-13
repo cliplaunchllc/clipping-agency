@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, clipsSubmitted, clipsApproved,
     cumViews, cumTiktokViews, cumInstagramViews, cumYoutubeViews, cumTwitterViews,
-    cumPaidOut, cumClipsSubmitted, cumClipsApproved,
+    cumPaidOut, cumClipsSubmitted, cumClipsApproved, cumEffectiveCpm,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
     campaignId, amountSpent,
   } = body;
@@ -52,13 +52,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Fetch existing record to get clientId and fallback values
   const existing = await prisma.campaignReport.findUnique({
     where: { id },
-    select: { clientId: true, campaignId: true, effectiveCpm: true, totalViews: true, cumViews: true },
+    select: { clientId: true, campaignId: true, effectiveCpm: true, cumEffectiveCpm: true, totalViews: true, cumViews: true },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Auto-calculate budget remaining
   const resolvedCampaignId = campaignId !== undefined ? (campaignId || null) : existing.campaignId;
-  const resolvedCpm = effectiveCpm !== undefined ? effectiveCpm : existing.effectiveCpm;
+  const resolvedCumCpm = cumEffectiveCpm !== undefined ? cumEffectiveCpm : existing.cumEffectiveCpm;
+  const resolvedCpm = resolvedCumCpm ?? (effectiveCpm !== undefined ? effectiveCpm : existing.effectiveCpm);
 
   let budgetRemainingCalc: number | null = null;
   if (resolvedCampaignId && resolvedCpm != null) {
@@ -99,6 +100,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(cumPaidOut !== undefined && { cumPaidOut }),
       ...(cumClipsSubmitted !== undefined && { cumClipsSubmitted }),
       ...(cumClipsApproved !== undefined && { cumClipsApproved }),
+      ...(cumEffectiveCpm !== undefined && { cumEffectiveCpm: cumEffectiveCpm != null ? parseFloat(cumEffectiveCpm) : null }),
       ...(weeklySummary !== undefined && { weeklySummary: weeklySummary || null }),
       ...(whatsWorking !== undefined && { whatsWorking: whatsWorking || null }),
       ...(whatsNotWorking !== undefined && { whatsNotWorking: whatsNotWorking || null }),

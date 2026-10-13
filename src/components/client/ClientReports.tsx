@@ -26,6 +26,7 @@ interface Report {
   cumPaidOut: number;
   cumClipsSubmitted: number;
   cumClipsApproved: number;
+  cumEffectiveCpm: number | null;
   publishedAt: string | null;
 }
 
@@ -236,7 +237,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
               { label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { label: "All-Time Approval Rate", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
-              { label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm != null ? fmtCurrency(allReports.find((r) => r.effectiveCpm != null)!.effectiveCpm!) : "—" },
+              { label: "Effective CPM", value: (() => { const cpm = report.cumEffectiveCpm ?? report.effectiveCpm ?? allReports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null; return cpm != null ? fmtCurrency(cpm) : "—"; })() },
               ...(report.budgetRemaining != null ? [{ label: "Budget Remaining", value: fmtCurrency(report.budgetRemaining) }] : []),
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -302,8 +303,8 @@ export default function ClientReports({ reports, clientName }: { reports: Report
     clipsApproved: latestWithCum && latestWithCum.cumClipsApproved > 0 ? latestWithCum.cumClipsApproved : calcAllTime.clipsApproved,
     clipsSubmitted: latestWithCum && latestWithCum.cumClipsSubmitted > 0 ? latestWithCum.cumClipsSubmitted : calcAllTime.clipsSubmitted,
   };
-  // Latest CPM from most recent report that has one
-  const latestCpm = reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  // Latest CPM: prefer cumEffectiveCpm, then effectiveCpm from most recent report
+  const latestCpm = reports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
   // Budget since last Friday
   const todayD = new Date();
   const daysSinceFri = (todayD.getDay() - 5 + 7) % 7;

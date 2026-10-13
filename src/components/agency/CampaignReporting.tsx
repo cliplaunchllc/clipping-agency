@@ -86,6 +86,7 @@ interface Report {
   cumPaidOut: number;
   cumClipsSubmitted: number;
   cumClipsApproved: number;
+  cumEffectiveCpm: number | null;
   weeklySummary: string | null;
   whatsWorking: string | null;
   whatsNotWorking: string | null;
@@ -145,6 +146,7 @@ interface FormState {
   cumPaidOut: string;
   cumClipsSubmitted: string;
   cumClipsApproved: string;
+  cumEffectiveCpm: string;
   weeklySummary: string;
   whatsWorking: string;
   whatsNotWorking: string;
@@ -639,7 +641,7 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
 
   // Budget remaining auto-calc: totalBudget - (cumulative views / 1000 * latest CPM)
-  const latestCpm = report.effectiveCpm ?? allClientReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  const latestCpm = report.cumEffectiveCpm ?? report.effectiveCpm ?? allClientReports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? allClientReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
   const calcBudgetRemaining = report.campaign && report.campaign.totalBudget > 0 && latestCpm != null
     ? Math.max(0, report.campaign.totalBudget - (allTime.views / 1000 * latestCpm))
     : report.campaign && report.campaign.totalBudget > 0
@@ -806,7 +808,7 @@ const EMPTY_FORM: FormState = {
   totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
   paidOut: "", effectiveCpm: "", clipsSubmitted: "", clipsApproved: "",
   cumViews: "", cumTiktokViews: "", cumInstagramViews: "", cumYoutubeViews: "", cumTwitterViews: "",
-  cumPaidOut: "", cumClipsSubmitted: "", cumClipsApproved: "",
+  cumPaidOut: "", cumClipsSubmitted: "", cumClipsApproved: "", cumEffectiveCpm: "",
   weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
   campaignId: "", amountSpent: "",
 };
@@ -1017,10 +1019,8 @@ function WeeklyReportForm({
           <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
         <div className="col-span-2">
-          <label style={labelStyle}>Effective CPM ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>from this week — used to auto-calc budget remaining</span></label>
-          <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: form.effectiveCpm ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-            {form.effectiveCpm ? `$${parseFloat(form.effectiveCpm).toFixed(2)}` : "Enter CPM above in This Week section"}
-          </div>
+          <label style={labelStyle}>Effective CPM ($)</label>
+          <input type="number" min={0} step="0.01" value={form.cumEffectiveCpm} onChange={(e) => set("cumEffectiveCpm", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
         </div>
       </div>
       <p className="text-xs -mt-2" style={{ color: "var(--text-tertiary)" }}>Platform views and budget remaining are calculated automatically. Budget remaining = campaign budget − (cumulative views ÷ 1000 × CPM).</p>
@@ -1137,16 +1137,16 @@ function OngoingReportForm({
 
       {/* Submission numbers */}
       <div>
-        <label style={labelStyle}>Total Submissions</label>
+        <label style={labelStyle}>Total Submissions <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
         <input type="number" min={0} value={form.totalSubmissions} onChange={(e) => set("totalSubmissions", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label style={labelStyle}>Pending</label>
+          <label style={labelStyle}>Pending <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>current</span></label>
           <input type="number" min={0} value={form.pending} onChange={(e) => set("pending", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Approved</label>
+          <label style={labelStyle}>Approved <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
           <input type="number" min={0} value={form.approved} onChange={(e) => set("approved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
       </div>
@@ -1163,11 +1163,11 @@ function OngoingReportForm({
       {/* Views numbers */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label style={labelStyle}>Views Total (cumulative)</label>
+          <label style={labelStyle}>Views Total <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
           <input type="number" min={0} value={form.viewsTotal} onChange={(e) => set("viewsTotal", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Views Today (from approved clips)</label>
+          <label style={labelStyle}>Views This Week <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>new views</span></label>
           <input type="number" min={0} value={form.viewsToday} onChange={(e) => set("viewsToday", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
       </div>
@@ -1331,6 +1331,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       cumPaidOut: parseFloat(form.cumPaidOut || "0"),
       cumClipsSubmitted: parseInt(form.cumClipsSubmitted || "0", 10),
       cumClipsApproved: parseInt(form.cumClipsApproved || "0", 10),
+      cumEffectiveCpm: form.cumEffectiveCpm ? parseFloat(form.cumEffectiveCpm) : null,
       weeklySummary: form.weeklySummary || null,
       whatsWorking: form.whatsWorking || null,
       whatsNotWorking: form.whatsNotWorking || null,
@@ -1363,6 +1364,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       cumPaidOut: (r.cumPaidOut ?? 0) > 0 ? r.cumPaidOut.toString() : "",
       cumClipsSubmitted: (r.cumClipsSubmitted ?? 0) > 0 ? r.cumClipsSubmitted.toString() : "",
       cumClipsApproved: (r.cumClipsApproved ?? 0) > 0 ? r.cumClipsApproved.toString() : "",
+      cumEffectiveCpm: r.cumEffectiveCpm != null ? r.cumEffectiveCpm.toString() : "",
       weeklySummary: r.weeklySummary ?? "",
       whatsWorking: r.whatsWorking ?? "",
       whatsNotWorking: r.whatsNotWorking ?? "",
@@ -1971,7 +1973,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             const allTimeClipsApproved = cRpts.reduce((s, r) => s + r.clipsApproved, 0);
             const allTimeClipsSubmitted = cRpts.reduce((s, r) => s + r.clipsSubmitted, 0);
             const approvedViews = latestOngoing?.viewsTotal ?? 0;
-            const latestCpm = latestWeekly?.effectiveCpm ?? null;
+            const latestCpm = latestWeekly?.cumEffectiveCpm ?? latestWeekly?.effectiveCpm ?? null;
             // Budget spent since last Friday
             const todayD = new Date();
             const todayDow = todayD.getDay();
@@ -2348,7 +2350,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="label-mono">Views Today</p>
+                              <p className="label-mono">Views This Week</p>
                               <div className="flex items-center justify-end gap-1">
                                 <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
                                 {prev && <WowBadge curr={report.viewsToday} prev={prev.viewsToday} />}

@@ -212,6 +212,7 @@ model CampaignReport {
   cumPaidOut      Float     @default(0)
   cumClipsSubmitted Int     @default(0)
   cumClipsApproved  Int     @default(0)
+  cumEffectiveCpm   Float?
   weeklySummary   String?
   whatsWorking    String?
   whatsNotWorking String?

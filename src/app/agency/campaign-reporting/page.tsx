@@ -50,6 +50,7 @@ export default async function CampaignReportingPage() {
     cumPaidOut: r.cumPaidOut,
     cumClipsSubmitted: r.cumClipsSubmitted,
     cumClipsApproved: r.cumClipsApproved,
+    cumEffectiveCpm: r.cumEffectiveCpm ?? null,
     weeklySummary: r.weeklySummary,
     whatsWorking: r.whatsWorking,
     whatsNotWorking: r.whatsNotWorking,

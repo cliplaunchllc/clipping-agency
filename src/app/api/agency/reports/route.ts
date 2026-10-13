@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     totalViews, tiktokViews, instagramViews, youtubeViews, twitterViews,
     paidOut, effectiveCpm, clipsSubmitted, clipsApproved,
     cumViews, cumTiktokViews, cumInstagramViews, cumYoutubeViews, cumTwitterViews,
-    cumPaidOut, cumClipsSubmitted, cumClipsApproved,
+    cumPaidOut, cumClipsSubmitted, cumClipsApproved, cumEffectiveCpm,
     weeklySummary, whatsWorking, whatsNotWorking, nextWeekFocus, campaignLink,
     campaignId, amountSpent,
   } = body;
@@ -51,9 +51,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "clientId, weekStartDate, and weekEndDate are required" }, { status: 400 });
   }
 
+  // Use cumEffectiveCpm if provided, else fall back to weekly effectiveCpm
+  const resolvedCpm = cumEffectiveCpm ?? effectiveCpm;
+
   // Auto-calculate budget remaining from campaign budget - (cumViews / 1000 * CPM)
   let budgetRemainingCalc: number | null = null;
-  if (campaignId && effectiveCpm != null) {
+  if (campaignId && resolvedCpm != null) {
     const [campaign, prevSum] = await Promise.all([
       prisma.clientCampaign.findUnique({ where: { id: campaignId }, select: { totalBudget: true } }),
       prisma.campaignReport.aggregate({ where: { clientId }, _sum: { totalViews: true } }),
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
       const effectiveCumViews = (cumViews ?? 0) > 0
         ? (cumViews ?? 0)
         : (prevSum._sum.totalViews ?? 0) + (totalViews ?? 0);
-      budgetRemainingCalc = Math.max(0, campaign.totalBudget - (effectiveCumViews / 1000 * effectiveCpm));
+      budgetRemainingCalc = Math.max(0, campaign.totalBudget - (effectiveCumViews / 1000 * resolvedCpm));
     }
   }
 
@@ -89,6 +92,7 @@ export async function POST(req: NextRequest) {
       cumPaidOut: cumPaidOut ?? 0,
       cumClipsSubmitted: cumClipsSubmitted ?? 0,
       cumClipsApproved: cumClipsApproved ?? 0,
+      cumEffectiveCpm: cumEffectiveCpm != null ? parseFloat(cumEffectiveCpm) : null,
       weeklySummary: weeklySummary || null,
       whatsWorking: whatsWorking || null,
       whatsNotWorking: whatsNotWorking || null,

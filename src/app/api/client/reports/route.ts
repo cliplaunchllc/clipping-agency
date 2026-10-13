@@ -36,6 +36,7 @@ export async function GET() {
     cumPaidOut: r.cumPaidOut,
     cumClipsSubmitted: r.cumClipsSubmitted,
     cumClipsApproved: r.cumClipsApproved,
+    cumEffectiveCpm: r.cumEffectiveCpm ?? null,
     publishedAt: r.publishedAt?.toISOString() ?? null,
   })));
 }

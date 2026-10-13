@@ -45,6 +45,7 @@ interface Report {
   cumPaidOut: number;
   cumClipsSubmitted: number;
   cumClipsApproved: number;
+  cumEffectiveCpm: number | null;
   weeklySummary: string | null;
   whatsWorking: string | null;
   whatsNotWorking: string | null;
@@ -404,7 +405,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
               { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { icon: <Target size={13} color={ICON_COLOR} />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
-              { icon: <Target size={13} color="var(--warning)" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm != null ? fmtCurrency(allReports.find((r) => r.effectiveCpm != null)!.effectiveCpm!) : "—" },
+              { icon: <Target size={13} color="var(--warning)" />, label: "Effective CPM", value: (() => { const cpm = report.cumEffectiveCpm ?? report.effectiveCpm ?? allReports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null; return cpm != null ? fmtCurrency(cpm) : "—"; })() },
               ...(report.budgetRemaining != null ? [{ icon: <Wallet size={13} color="#8A93A6" />, label: "Budget Remaining", value: fmtCurrency(report.budgetRemaining) }] : []),
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -537,7 +538,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
     clipsApproved: latestWithCum && latestWithCum.cumClipsApproved > 0 ? latestWithCum.cumClipsApproved : calcAllTime.clipsApproved,
     clipsSubmitted: latestWithCum && latestWithCum.cumClipsSubmitted > 0 ? latestWithCum.cumClipsSubmitted : calcAllTime.clipsSubmitted,
   };
-  const latestCpm = reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  const latestCpm = reports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
   const todayD2 = new Date();
   const daysSinceFri2 = (todayD2.getDay() - 5 + 7) % 7;
   const lastFri2 = new Date(todayD2);
