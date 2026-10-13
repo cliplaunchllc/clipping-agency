@@ -103,6 +103,7 @@ export default async function ClientPage() {
       viewsTotal: r.viewsTotal,
       viewsToday: r.viewsToday,
       amountSpent: r.amountSpent ?? null,
+      effectiveCpm: r.effectiveCpm ?? null,
     })),
     clippers: [],
   };

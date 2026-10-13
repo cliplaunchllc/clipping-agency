@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     totalSubmissions, pending, approved, rejected,
     viewsTotal, viewsToday,
     mainTrend, clipperFeedback, mainOptimization, status,
-    campaignId, amountSpent,
+    campaignId, amountSpent, effectiveCpm,
   } = body;
 
   const report = await prisma.ongoingReport.update({
@@ -46,6 +46,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(status && { status }),
       ...(campaignId !== undefined && { campaignId: campaignId || null }),
       ...(amountSpent !== undefined && { amountSpent: amountSpent != null ? parseFloat(amountSpent) : null }),
+      ...(effectiveCpm !== undefined && { effectiveCpm: effectiveCpm != null ? parseFloat(effectiveCpm) : null }),
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });

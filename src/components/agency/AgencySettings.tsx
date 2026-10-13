@@ -18,9 +18,10 @@ interface Props {
   currentUserId: string;
   initialTeam: TeamMember[];
   mustChangePassword: boolean;
+  initialInviteCode: string | null;
 }
 
-export default function AgencySettings({ userName, email, currentUserId, initialTeam, mustChangePassword }: Props) {
+export default function AgencySettings({ userName, email, currentUserId, initialTeam, mustChangePassword, initialInviteCode }: Props) {
   const { update: updateSession } = useSession();
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "branding" | "team">(
     mustChangePassword ? "security" : "profile"
@@ -55,6 +56,14 @@ export default function AgencySettings({ userName, email, currentUserId, initial
   const [memberError, setMemberError] = useState("");
   const [memberLoading, setMemberLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Invite code state
+  const [inviteCode, setInviteCode] = useState(initialInviteCode ?? "");
+  const [inviteCodeInput, setInviteCodeInput] = useState(initialInviteCode ?? "");
+  const [inviteCodeSaving, setInviteCodeSaving] = useState(false);
+  const [inviteCodeError, setInviteCodeError] = useState("");
+  const [inviteCodeSaved, setInviteCodeSaved] = useState(false);
+  const [showInviteCode, setShowInviteCode] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings/logo").then((r) => r.json()).then((d) => setAgencyLogo(d.logoUrl ?? null));
@@ -217,6 +226,30 @@ export default function AgencySettings({ userName, email, currentUserId, initial
       setTeam((prev) => prev.filter((m) => m.id !== id));
     }
     setRemovingId(null);
+  }
+
+  async function handleSaveInviteCode() {
+    setInviteCodeError("");
+    if (inviteCodeInput.trim().length < 4) {
+      setInviteCodeError("Code must be at least 4 characters");
+      return;
+    }
+    setInviteCodeSaving(true);
+    const res = await fetch("/api/settings/invite-code", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: inviteCodeInput.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setInviteCodeError(data.error || "Failed to save invite code");
+    } else {
+      setInviteCode(data.code);
+      setInviteCodeInput(data.code);
+      setInviteCodeSaved(true);
+      setTimeout(() => setInviteCodeSaved(false), 2500);
+    }
+    setInviteCodeSaving(false);
   }
 
   const tabs = [
@@ -490,6 +523,57 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   </button>
                 </div>
               )}
+
+              {/* Invite Code section */}
+              <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <KeyRound size={14} style={{ color: "var(--text-tertiary)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Team Invite Code</p>
+                </div>
+                <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+                  Share this code with team members so they can self-register at{" "}
+                  <span className="font-mono" style={{ color: "var(--text-primary)" }}>/admin/signup</span>.
+                </p>
+
+                {inviteCode && (
+                  <div className="flex items-center gap-2 mb-3 px-4 py-3 rounded-xl"
+                    style={{ background: "rgba(255,59,59,0.05)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                    <span className="flex-1 font-mono text-sm tracking-wider" style={{ color: "var(--text-primary)" }}>
+                      {showInviteCode ? inviteCode : "•".repeat(inviteCode.length)}
+                    </span>
+                    <button
+                      onClick={() => setShowInviteCode((v) => !v)}
+                      className="text-xs px-2 py-1 rounded-lg"
+                      style={{ color: "var(--text-secondary)", background: "rgba(255,255,255,0.05)" }}>
+                      {showInviteCode ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inviteCodeInput}
+                    onChange={(e) => { setInviteCodeInput(e.target.value); setInviteCodeError(""); }}
+                    placeholder={inviteCode ? "Change invite code…" : "Set an invite code…"}
+                    style={{ ...inputStyle, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.05em" }}
+                  />
+                  <button
+                    onClick={handleSaveInviteCode}
+                    disabled={inviteCodeSaving || inviteCodeInput.trim() === inviteCode}
+                    className="px-4 rounded-xl text-sm font-medium flex-shrink-0"
+                    style={{
+                      background: inviteCodeSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.12)",
+                      border: `1px solid ${inviteCodeSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.25)"}`,
+                      color: inviteCodeSaved ? "#3DD68C" : "#FF3B3B",
+                      opacity: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? 0.5 : 1,
+                      cursor: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? "not-allowed" : "pointer",
+                    }}>
+                    {inviteCodeSaving ? "Saving…" : inviteCodeSaved ? "Saved!" : "Save"}
+                  </button>
+                </div>
+                {inviteCodeError && <p className="text-xs mt-1.5" style={{ color: "var(--danger)" }}>{inviteCodeError}</p>}
+              </div>
             </div>
           )}
 

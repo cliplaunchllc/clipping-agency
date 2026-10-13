@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     totalSubmissions, pending, approved, rejected,
     viewsTotal, viewsToday,
     mainTrend, clipperFeedback, mainOptimization, status,
-    campaignId, amountSpent,
+    campaignId, amountSpent, effectiveCpm,
   } = body;
 
   if (!clientId || !date || !status) {
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       status,
       campaignId: campaignId || null,
       amountSpent: amountSpent != null ? parseFloat(amountSpent) : null,
+      effectiveCpm: effectiveCpm != null ? parseFloat(effectiveCpm) : null,
     },
     include: { client: { select: { id: true, name: true, logoUrl: true } }, campaign: { select: { id: true, name: true, totalBudget: true } } },
   });

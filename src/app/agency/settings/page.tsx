@@ -8,11 +8,14 @@ export default async function AgencySettingsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const teamMembers = await prisma.user.findMany({
-    where: { role: "agency" },
-    select: { id: true, name: true, email: true, mustChangePassword: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [teamMembers, inviteCodeSetting] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "agency" },
+      select: { id: true, name: true, email: true, mustChangePassword: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.siteSetting.findUnique({ where: { key: "admin_invite_code" } }),
+  ]);
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
@@ -23,6 +26,7 @@ export default async function AgencySettingsPage() {
           email={session.user.email ?? ""}
           currentUserId={session.user.id}
           mustChangePassword={session.user.mustChangePassword ?? false}
+          initialInviteCode={inviteCodeSetting?.value ?? null}
           initialTeam={teamMembers.map((m) => ({
             ...m,
             createdAt: m.createdAt.toISOString(),

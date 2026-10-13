@@ -15,11 +15,27 @@ export async function GET() {
   });
 
   return NextResponse.json(reports.map((r) => ({
-    ...r,
+    id: r.id,
     weekStartDate: r.weekStartDate.toISOString(),
     weekEndDate: r.weekEndDate.toISOString(),
+    totalViews: r.totalViews,
+    tiktokViews: r.tiktokViews,
+    instagramViews: r.instagramViews,
+    youtubeViews: r.youtubeViews,
+    twitterViews: r.twitterViews,
+    paidOut: r.paidOut,
+    effectiveCpm: r.effectiveCpm,
+    budgetRemaining: r.budgetRemaining,
+    clipsSubmitted: r.clipsSubmitted,
+    clipsApproved: r.clipsApproved,
+    cumViews: r.cumViews,
+    cumTiktokViews: r.cumTiktokViews,
+    cumInstagramViews: r.cumInstagramViews,
+    cumYoutubeViews: r.cumYoutubeViews,
+    cumTwitterViews: r.cumTwitterViews,
+    cumPaidOut: r.cumPaidOut,
+    cumClipsSubmitted: r.cumClipsSubmitted,
+    cumClipsApproved: r.cumClipsApproved,
     publishedAt: r.publishedAt?.toISOString() ?? null,
-    createdAt: r.createdAt.toISOString(),
-    updatedAt: r.updatedAt.toISOString(),
   })));
 }

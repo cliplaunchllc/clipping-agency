@@ -27,6 +27,7 @@ enum UserStatus {
 
 enum ClientStatus {
   active
+  justlaunched
   prelaunch
   archived
 }
@@ -112,6 +113,7 @@ model Client {
   welcomeVideoUrl     String?
   intakeFormUrl       String?
   contractUrl         String?
+  lastContactedAt     DateTime?
   createdAt           DateTime     @default(now())
 
   users            User[]
@@ -202,6 +204,14 @@ model CampaignReport {
   budgetRemaining Float?
   clipsSubmitted  Int       @default(0)
   clipsApproved   Int       @default(0)
+  cumViews        Int       @default(0)
+  cumTiktokViews  Int       @default(0)
+  cumInstagramViews Int     @default(0)
+  cumYoutubeViews Int       @default(0)
+  cumTwitterViews Int       @default(0)
+  cumPaidOut      Float     @default(0)
+  cumClipsSubmitted Int     @default(0)
+  cumClipsApproved  Int     @default(0)
   weeklySummary   String?
   whatsWorking    String?
   whatsNotWorking String?
@@ -235,6 +245,7 @@ model OngoingReport {
   viewsToday       Int           @default(0)
   campaignId       String?
   amountSpent      Float?
+  effectiveCpm     Float?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

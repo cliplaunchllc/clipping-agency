@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Minus, ChevronDown, BarChart2, Eye, DollarSign, CheckCircle, Scissors, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronDown, BarChart2, Eye, DollarSign, CheckCircle, Scissors, Target, Wallet } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Report {
@@ -18,6 +18,14 @@ interface Report {
   budgetRemaining: number | null;
   clipsSubmitted: number;
   clipsApproved: number;
+  cumViews: number;
+  cumTiktokViews: number;
+  cumInstagramViews: number;
+  cumYoutubeViews: number;
+  cumTwitterViews: number;
+  cumPaidOut: number;
+  cumClipsSubmitted: number;
+  cumClipsApproved: number;
   publishedAt: string | null;
 }
 
@@ -103,8 +111,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
     { label: "X", key: "twitterViews" as const, color: "#5B9BD5" },
   ];
 
-  // All-time totals
-  const allTime = allReports.reduce(
+  // All-time totals: use stored cumulative from most recent report if entered, else sum all reports
+  const calcAllTime = allReports.reduce(
     (acc, r) => ({
       views: acc.views + r.totalViews,
       tiktok: acc.tiktok + r.tiktokViews,
@@ -117,6 +125,17 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
     }),
     { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  const latestWithCum = allReports.find((r) => r.cumViews > 0);
+  const allTime = latestWithCum ? {
+    views: latestWithCum.cumViews,
+    tiktok: latestWithCum.cumTiktokViews,
+    instagram: latestWithCum.cumInstagramViews,
+    youtube: latestWithCum.cumYoutubeViews,
+    twitter: latestWithCum.cumTwitterViews,
+    paidOut: latestWithCum.cumPaidOut,
+    clipsApproved: latestWithCum.cumClipsApproved,
+    clipsSubmitted: latestWithCum.cumClipsSubmitted,
+  } : calcAllTime;
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
   const platformsAllTime = [
     { label: "TikTok", key: "tiktok" as const, color: "var(--accent)", value: allTime.tiktok },
@@ -263,8 +282,8 @@ export default function ClientReports({ reports, clientName }: { reports: Report
     return idx < reports.length - 1 ? reports[idx + 1] : null;
   }
 
-  // All-time aggregates
-  const allTime = reports.reduce(
+  // All-time aggregates (use stored cumulative from most recent report if available)
+  const calcAllTime = reports.reduce(
     (acc, r) => ({
       views: acc.views + r.totalViews,
       paidOut: acc.paidOut + r.paidOut,
@@ -273,6 +292,19 @@ export default function ClientReports({ reports, clientName }: { reports: Report
     }),
     { views: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  const latestWithCum = reports.find((r) => r.cumViews > 0);
+  const allTime = latestWithCum
+    ? { views: latestWithCum.cumViews, paidOut: latestWithCum.cumPaidOut, clipsApproved: latestWithCum.cumClipsApproved, clipsSubmitted: latestWithCum.cumClipsSubmitted }
+    : calcAllTime;
+  // Latest CPM from most recent report that has one
+  const latestCpm = reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  // Budget since last Friday
+  const todayD = new Date();
+  const daysSinceFri = (todayD.getDay() - 5 + 7) % 7;
+  const lastFri = new Date(todayD);
+  lastFri.setDate(todayD.getDate() - daysSinceFri);
+  const lastFriStr = lastFri.toISOString().slice(0, 10);
+  const budgetSinceFri = reports.filter((r) => r.weekEndDate.slice(0, 10) >= lastFriStr).reduce((s, r) => s + r.paidOut, 0);
 
   // Chart data for views over time with % change
   const sortedForChart = [...reports].sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate));
@@ -296,18 +328,20 @@ export default function ClientReports({ reports, clientName }: { reports: Report
         </div>
       ) : (
         <>
-          {/* All-time summary stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {/* All-time summary stats — 6 boxes matching agency view */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {[
-              { label: "Total Views", value: fmt(allTime.views), icon: <Eye size={13} color="#3DD68C" />, sub: "all time cumulative" },
-              { label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), icon: <DollarSign size={13} color="#3DD68C" />, sub: "all campaigns" },
-              { label: "Approved Videos", value: allTime.clipsApproved.toString(), icon: <CheckCircle size={13} color="#3DD68C" />, sub: "all time" },
-              { label: "Videos Submitted", value: allTime.clipsSubmitted.toString(), icon: <Scissors size={13} color="#A1A1AA" />, sub: "all time" },
+              { label: "Total Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest week", icon: <Target size={13} color="var(--accent)" /> },
+              { label: "Total Submissions", value: allTime.clipsSubmitted.toString(), sub: "all time", icon: <Scissors size={13} color="var(--text-secondary)" /> },
+              { label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time", icon: <CheckCircle size={13} color="#3DD68C" /> },
+              { label: "Approved Views", value: fmt(allTime.views), sub: "cumulative", icon: <Eye size={13} color="#3DD68C" /> },
+              { label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time", icon: <DollarSign size={13} color="#3DD68C" /> },
+              { label: "Budget Since Last Fri", value: fmtCurrency(budgetSinceFri), sub: "this cycle", icon: <Wallet size={13} color="var(--warning)" /> },
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
-                <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{s.label}</p></div>
-                <p className="text-2xl font-bold mb-0.5" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{s.value}</p>
-                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{s.sub}</p>
+                <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)", fontSize: "0.65rem" }}>{s.label}</p></div>
+                <p className="text-xl font-bold mb-0.5" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{s.value}</p>
+                <p className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: "0.62rem" }}>{s.sub}</p>
               </div>
             ))}
           </div>

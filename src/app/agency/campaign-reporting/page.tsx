@@ -12,8 +12,8 @@ export default async function CampaignReportingPage() {
 
   const [clients, reports, ongoingReports] = await Promise.all([
     prisma.client.findMany({
-      where: { status: "active" },
-      select: { id: true, name: true, logoUrl: true, campaigns: { orderBy: { order: "asc" } } },
+      where: { status: { in: ["active", "justlaunched"] } },
+      select: { id: true, name: true, logoUrl: true, lastContactedAt: true, campaigns: { orderBy: { order: "asc" } } },
       orderBy: { name: "asc" },
     }),
     prisma.campaignReport.findMany({
@@ -42,6 +42,14 @@ export default async function CampaignReportingPage() {
     budgetRemaining: r.budgetRemaining,
     clipsSubmitted: r.clipsSubmitted,
     clipsApproved: r.clipsApproved,
+    cumViews: r.cumViews,
+    cumTiktokViews: r.cumTiktokViews,
+    cumInstagramViews: r.cumInstagramViews,
+    cumYoutubeViews: r.cumYoutubeViews,
+    cumTwitterViews: r.cumTwitterViews,
+    cumPaidOut: r.cumPaidOut,
+    cumClipsSubmitted: r.cumClipsSubmitted,
+    cumClipsApproved: r.cumClipsApproved,
     weeklySummary: r.weeklySummary,
     whatsWorking: r.whatsWorking,
     whatsNotWorking: r.whatsNotWorking,
@@ -74,6 +82,7 @@ export default async function CampaignReportingPage() {
     viewsToday: r.viewsToday,
     campaignId: r.campaignId ?? null,
     amountSpent: r.amountSpent ?? null,
+    effectiveCpm: r.effectiveCpm ?? null,
     campaign: r.campaign ? { id: r.campaign.id, name: r.campaign.name, totalBudget: r.campaign.totalBudget } : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
@@ -84,7 +93,7 @@ export default async function CampaignReportingPage() {
       <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
       <main className="flex-1 overflow-y-auto ml-56">
         <CampaignReporting
-          clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null, campaigns: c.campaigns.map((cp) => ({ id: cp.id, name: cp.name, totalBudget: cp.totalBudget })) }))}
+          clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null, lastContactedAt: c.lastContactedAt?.toISOString() ?? null, campaigns: c.campaigns.map((cp) => ({ id: cp.id, name: cp.name, totalBudget: cp.totalBudget })) }))}
           initialReports={serializedReports}
           initialOngoingReports={serializedOngoing}
         />

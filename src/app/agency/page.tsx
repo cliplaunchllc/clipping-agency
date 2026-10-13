@@ -69,6 +69,7 @@ export default async function AgencyPage() {
     dealStartDate: c.dealStartDate?.toISOString() ?? null,
     dealEndDate: c.dealEndDate?.toISOString() ?? null,
     campaignTrackerUrl: c.campaignTrackerUrl ?? null,
+    lastContactedAt: c.lastContactedAt?.toISOString() ?? null,
     campaigns: c.campaigns.map((camp) => ({ id: camp.id, name: camp.name, totalBudget: camp.totalBudget })),
     campaignReports: c.campaignReports.map((r) => ({
       id: r.id,

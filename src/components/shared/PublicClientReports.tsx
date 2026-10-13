@@ -37,6 +37,14 @@ interface Report {
   budgetRemaining: number | null;
   clipsSubmitted: number;
   clipsApproved: number;
+  cumViews: number;
+  cumTiktokViews: number;
+  cumInstagramViews: number;
+  cumYoutubeViews: number;
+  cumTwitterViews: number;
+  cumPaidOut: number;
+  cumClipsSubmitted: number;
+  cumClipsApproved: number;
   weeklySummary: string | null;
   whatsWorking: string | null;
   whatsNotWorking: string | null;
@@ -291,8 +299,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
   const prevApprovalRate = prev && prev.clipsSubmitted > 0
     ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
 
-  // All-time totals
-  const allTime = allReports.reduce(
+  // All-time totals: use stored cumulative from most recent report if entered, else sum all reports
+  const calcAllTime = allReports.reduce(
     (acc, r) => ({
       views: acc.views + r.totalViews,
       tiktok: acc.tiktok + r.tiktokViews,
@@ -305,6 +313,17 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
     }),
     { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  const latestWithCum = allReports.find((r) => r.cumViews > 0);
+  const allTime = latestWithCum ? {
+    views: latestWithCum.cumViews,
+    tiktok: latestWithCum.cumTiktokViews,
+    instagram: latestWithCum.cumInstagramViews,
+    youtube: latestWithCum.cumYoutubeViews,
+    twitter: latestWithCum.cumTwitterViews,
+    paidOut: latestWithCum.cumPaidOut,
+    clipsApproved: latestWithCum.cumClipsApproved,
+    clipsSubmitted: latestWithCum.cumClipsSubmitted,
+  } : calcAllTime;
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
   const platformsAllTime = [
     { key: "tiktok" as const, label: "TikTok", value: allTime.tiktok },
@@ -498,8 +517,8 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
     return idx < reports.length - 1 ? reports[idx + 1] : null;
   }
 
-  // All-time aggregates for summary
-  const allTime = reports.reduce(
+  // All-time aggregates for summary (use stored cumulative from most recent if available)
+  const calcAllTime = reports.reduce(
     (acc, r) => ({
       views: acc.views + r.totalViews,
       paidOut: acc.paidOut + r.paidOut,
@@ -508,6 +527,17 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
     }),
     { views: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  const latestWithCum = reports.find((r) => r.cumViews > 0);
+  const allTime = latestWithCum
+    ? { views: latestWithCum.cumViews, paidOut: latestWithCum.cumPaidOut, clipsApproved: latestWithCum.cumClipsApproved, clipsSubmitted: latestWithCum.cumClipsSubmitted }
+    : calcAllTime;
+  const latestCpm = reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  const todayD2 = new Date();
+  const daysSinceFri2 = (todayD2.getDay() - 5 + 7) % 7;
+  const lastFri2 = new Date(todayD2);
+  lastFri2.setDate(todayD2.getDate() - daysSinceFri2);
+  const lastFriStr2 = lastFri2.toISOString().slice(0, 10);
+  const budgetSinceFri2 = reports.filter((r) => r.weekEndDate.slice(0, 10) >= lastFriStr2).reduce((s, r) => s + r.paidOut, 0);
 
   // Chart data: sorted oldest-first, with WoW % per week
   const sortedForChart = [...reports].sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate));
@@ -562,19 +592,21 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
           </div>
         ) : (
           <>
-            {/* All-time summary */}
+            {/* All-time summary — 6 boxes matching agency dashboard */}
             {reports.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                 {[
-                  { icon: <Eye size={13} color="#3DD68C" />, label: "Total Views", value: fmt(allTime.views), sub: "all time cumulative" },
-                  { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all campaigns" },
+                  { icon: <Target size={13} color={ICON_COLOR} />, label: "Total Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest week" },
+                  { icon: <Scissors size={13} color="var(--text-secondary)" />, label: "Total Submissions", value: allTime.clipsSubmitted.toString(), sub: "all time" },
                   { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
-                  { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Submitted Videos", value: allTime.clipsSubmitted.toString(), sub: "all time" },
+                  { icon: <Eye size={13} color="#3DD68C" />, label: "Approved Views", value: fmt(allTime.views), sub: "cumulative" },
+                  { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time" },
+                  { icon: <Wallet size={13} color="var(--warning)" />, label: "Budget Since Last Fri", value: fmtCurrency(budgetSinceFri2), sub: "this cycle" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
-                    <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono">{s.label}</p></div>
+                    <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono leading-tight" style={{ fontSize: "0.63rem" }}>{s.label}</p></div>
                     <p className="metric-value text-xl mb-0.5" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                    <p className="metric-sub">{s.sub}</p>
+                    <p className="metric-sub" style={{ fontSize: "0.6rem" }}>{s.sub}</p>
                   </div>
                 ))}
               </div>

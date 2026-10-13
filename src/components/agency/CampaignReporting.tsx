@@ -78,6 +78,14 @@ interface Report {
   budgetRemaining: number | null;
   clipsSubmitted: number;
   clipsApproved: number;
+  cumViews: number;
+  cumTiktokViews: number;
+  cumInstagramViews: number;
+  cumYoutubeViews: number;
+  cumTwitterViews: number;
+  cumPaidOut: number;
+  cumClipsSubmitted: number;
+  cumClipsApproved: number;
   weeklySummary: string | null;
   whatsWorking: string | null;
   whatsNotWorking: string | null;
@@ -129,6 +137,15 @@ interface FormState {
   budgetRemaining: string;
   clipsSubmitted: string;
   clipsApproved: string;
+  // All-time cumulative totals (manually entered)
+  cumViews: string;
+  cumTiktokViews: string;
+  cumInstagramViews: string;
+  cumYoutubeViews: string;
+  cumTwitterViews: string;
+  cumPaidOut: string;
+  cumClipsSubmitted: string;
+  cumClipsApproved: string;
   weeklySummary: string;
   whatsWorking: string;
   whatsNotWorking: string;
@@ -594,8 +611,8 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
   const approvalRate = report.clipsSubmitted > 0 ? (report.clipsApproved / report.clipsSubmitted) * 100 : null;
   const prevApprovalRate = prev && prev.clipsSubmitted > 0 ? (prev.clipsApproved / prev.clipsSubmitted) * 100 : null;
 
-  // All-time totals across all reports for this client
-  const allTime = allClientReports.reduce(
+  // All-time totals: use stored cumulative values from this report if entered, else sum all reports
+  const calcAllTime = allClientReports.reduce(
     (acc, r) => ({
       views: acc.views + r.totalViews,
       tiktok: acc.tiktok + r.tiktokViews,
@@ -608,6 +625,17 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
     }),
     { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  const hasCumData = report.cumViews > 0;
+  const allTime = hasCumData ? {
+    views: report.cumViews,
+    tiktok: report.cumTiktokViews,
+    instagram: report.cumInstagramViews,
+    youtube: report.cumYoutubeViews,
+    twitter: report.cumTwitterViews,
+    paidOut: report.cumPaidOut,
+    clipsApproved: report.cumClipsApproved,
+    clipsSubmitted: report.cumClipsSubmitted,
+  } : calcAllTime;
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
 
   // Budget remaining auto-calc: totalBudget - (cumulative views / 1000 * latest CPM)
@@ -776,6 +804,8 @@ const EMPTY_FORM: FormState = {
   clientId: "", weekStartDate: "", weekEndDate: "",
   totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
   paidOut: "", effectiveCpm: "", budgetRemaining: "", clipsSubmitted: "", clipsApproved: "",
+  cumViews: "", cumTiktokViews: "", cumInstagramViews: "", cumYoutubeViews: "", cumTwitterViews: "",
+  cumPaidOut: "", cumClipsSubmitted: "", cumClipsApproved: "",
   weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
   campaignId: "", amountSpent: "",
 };
@@ -955,6 +985,52 @@ function WeeklyReportForm({
         <div>
           <label style={labelStyle}>Clips approved</label>
           <input type="number" min={0} value={form.clipsApproved} onChange={(e) => set("clipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+        </div>
+      </div>
+
+      {/* ALL TIME TOTALS */}
+      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(138,147,166,0.2)", background: "rgba(138,147,166,0.04)" }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(138,147,166,0.15)" }}>
+          <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.2)" }} />
+          <span style={{ color: "var(--text-secondary)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em" }}>ALL TIME TOTALS</span>
+          <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.2)" }} />
+        </div>
+        <div className="px-4 pb-4 pt-3 space-y-3">
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Enter cumulative totals including all weeks. Leave blank to auto-calculate from reports.</p>
+          <div>
+            <label style={labelStyle}>Total views (cumulative)</label>
+            <input type="number" min={0} value={form.cumViews} onChange={(e) => set("cumViews", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <p style={{ ...labelStyle, marginBottom: "8px" }}>Platform views — all time</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: "cumTiktokViews" as const, label: "TikTok total" },
+                { key: "cumInstagramViews" as const, label: "Instagram total" },
+                { key: "cumYoutubeViews" as const, label: "YouTube total" },
+                { key: "cumTwitterViews" as const, label: "X total" },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label style={labelStyle}>{label}</label>
+                  <input type="number" min={0} value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>Total paid out ($)</label>
+              <input type="number" min={0} step="0.01" value={form.cumPaidOut} onChange={(e) => set("cumPaidOut", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Total clips submitted</label>
+              <input type="number" min={0} value={form.cumClipsSubmitted} onChange={(e) => set("cumClipsSubmitted", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Total clips approved</label>
+              <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1257,6 +1333,14 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       budgetRemaining: form.budgetRemaining ? parseFloat(form.budgetRemaining) : null,
       clipsSubmitted: parseInt(form.clipsSubmitted || "0", 10),
       clipsApproved: parseInt(form.clipsApproved || "0", 10),
+      cumViews: parseInt(form.cumViews || "0", 10),
+      cumTiktokViews: parseInt(form.cumTiktokViews || "0", 10),
+      cumInstagramViews: parseInt(form.cumInstagramViews || "0", 10),
+      cumYoutubeViews: parseInt(form.cumYoutubeViews || "0", 10),
+      cumTwitterViews: parseInt(form.cumTwitterViews || "0", 10),
+      cumPaidOut: parseFloat(form.cumPaidOut || "0"),
+      cumClipsSubmitted: parseInt(form.cumClipsSubmitted || "0", 10),
+      cumClipsApproved: parseInt(form.cumClipsApproved || "0", 10),
       weeklySummary: form.weeklySummary || null,
       whatsWorking: form.whatsWorking || null,
       whatsNotWorking: form.whatsNotWorking || null,
@@ -1282,6 +1366,14 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       budgetRemaining: r.budgetRemaining?.toString() ?? "",
       clipsSubmitted: r.clipsSubmitted.toString(),
       clipsApproved: r.clipsApproved.toString(),
+      cumViews: (r.cumViews ?? 0) > 0 ? r.cumViews.toString() : "",
+      cumTiktokViews: (r.cumTiktokViews ?? 0) > 0 ? r.cumTiktokViews.toString() : "",
+      cumInstagramViews: (r.cumInstagramViews ?? 0) > 0 ? r.cumInstagramViews.toString() : "",
+      cumYoutubeViews: (r.cumYoutubeViews ?? 0) > 0 ? r.cumYoutubeViews.toString() : "",
+      cumTwitterViews: (r.cumTwitterViews ?? 0) > 0 ? r.cumTwitterViews.toString() : "",
+      cumPaidOut: (r.cumPaidOut ?? 0) > 0 ? r.cumPaidOut.toString() : "",
+      cumClipsSubmitted: (r.cumClipsSubmitted ?? 0) > 0 ? r.cumClipsSubmitted.toString() : "",
+      cumClipsApproved: (r.cumClipsApproved ?? 0) > 0 ? r.cumClipsApproved.toString() : "",
       weeklySummary: r.weeklySummary ?? "",
       whatsWorking: r.whatsWorking ?? "",
       whatsNotWorking: r.whatsNotWorking ?? "",

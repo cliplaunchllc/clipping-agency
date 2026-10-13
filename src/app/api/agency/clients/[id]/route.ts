@@ -46,6 +46,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     return NextResponse.json(client);
   }
+  if (body.action === "justlaunched") {
+    const client = await prisma.client.update({
+      where: { id },
+      data: { status: "justlaunched", archivedAt: null },
+    });
+    return NextResponse.json(client);
+  }
 
   // General update: name, deal terms
   const data: Record<string, unknown> = {};
@@ -62,6 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.welcomePageUrl !== undefined) data.welcomePageUrl = body.welcomePageUrl || null;
   if (body.welcomeVideoUrl !== undefined) data.welcomeVideoUrl = body.welcomeVideoUrl || null;
   if (body.intakeFormUrl !== undefined) data.intakeFormUrl = body.intakeFormUrl || null;
+  if (body.lastContactedAt !== undefined) data.lastContactedAt = body.lastContactedAt ? new Date(body.lastContactedAt) : null;
 
   const client = await prisma.client.update({ where: { id }, data });
   return NextResponse.json(client);
