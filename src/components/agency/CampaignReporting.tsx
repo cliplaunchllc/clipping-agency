@@ -625,17 +625,18 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
     }),
     { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  // Platform views always auto-calc from weekly reports; only totals can be overridden
   const hasCumData = report.cumViews > 0;
-  const allTime = hasCumData ? {
-    views: report.cumViews,
-    tiktok: report.cumTiktokViews,
-    instagram: report.cumInstagramViews,
-    youtube: report.cumYoutubeViews,
-    twitter: report.cumTwitterViews,
-    paidOut: report.cumPaidOut,
-    clipsApproved: report.cumClipsApproved,
-    clipsSubmitted: report.cumClipsSubmitted,
-  } : calcAllTime;
+  const allTime = {
+    views: hasCumData ? report.cumViews : calcAllTime.views,
+    tiktok: calcAllTime.tiktok,
+    instagram: calcAllTime.instagram,
+    youtube: calcAllTime.youtube,
+    twitter: calcAllTime.twitter,
+    paidOut: hasCumData && report.cumPaidOut > 0 ? report.cumPaidOut : calcAllTime.paidOut,
+    clipsApproved: hasCumData && report.cumClipsApproved > 0 ? report.cumClipsApproved : calcAllTime.clipsApproved,
+    clipsSubmitted: hasCumData && report.cumClipsSubmitted > 0 ? report.cumClipsSubmitted : calcAllTime.clipsSubmitted,
+  };
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
 
   // Budget remaining auto-calc: totalBudget - (cumulative views / 1000 * latest CPM)
@@ -924,6 +925,13 @@ function WeeklyReportForm({
         </div>
       )}
 
+      {/* ── THIS WEEK divider ── */}
+      <div className="flex items-center gap-2">
+        <span className="h-px flex-1" style={{ background: "rgba(61,255,162,0.25)" }} />
+        <span className="px-2 py-0.5 rounded-md text-xs font-bold tracking-widest" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>THIS WEEK</span>
+        <span className="h-px flex-1" style={{ background: "rgba(61,255,162,0.25)" }} />
+      </div>
+
       {/* Week dates */}
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -988,51 +996,32 @@ function WeeklyReportForm({
         </div>
       </div>
 
-      {/* ALL TIME TOTALS */}
-      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(138,147,166,0.2)", background: "rgba(138,147,166,0.04)" }}>
-        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(138,147,166,0.15)" }}>
-          <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.2)" }} />
-          <span style={{ color: "var(--text-secondary)", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.1em" }}>ALL TIME TOTALS</span>
-          <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.2)" }} />
+      {/* ── ALL TIME TOTALS divider ── */}
+      <div className="flex items-center gap-2">
+        <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.25)" }} />
+        <span className="px-2 py-0.5 rounded-md text-xs font-bold tracking-widest" style={{ background: "rgba(138,147,166,0.1)", color: "var(--text-secondary)", border: "1px solid rgba(138,147,166,0.2)" }}>ALL TIME TOTALS</span>
+        <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.25)" }} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label style={labelStyle}>Total views (cumulative)</label>
+          <input type="number" min={0} value={form.cumViews} onChange={(e) => set("cumViews", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
-        <div className="px-4 pb-4 pt-3 space-y-3">
-          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Enter cumulative totals including all weeks. Leave blank to auto-calculate from reports.</p>
-          <div>
-            <label style={labelStyle}>Total views (cumulative)</label>
-            <input type="number" min={0} value={form.cumViews} onChange={(e) => set("cumViews", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
-          </div>
-          <div>
-            <p style={{ ...labelStyle, marginBottom: "8px" }}>Platform views — all time</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: "cumTiktokViews" as const, label: "TikTok total" },
-                { key: "cumInstagramViews" as const, label: "Instagram total" },
-                { key: "cumYoutubeViews" as const, label: "YouTube total" },
-                { key: "cumTwitterViews" as const, label: "X total" },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <label style={labelStyle}>{label}</label>
-                  <input type="number" min={0} value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={labelStyle}>Total paid out ($)</label>
-              <input type="number" min={0} step="0.01" value={form.cumPaidOut} onChange={(e) => set("cumPaidOut", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Total clips submitted</label>
-              <input type="number" min={0} value={form.cumClipsSubmitted} onChange={(e) => set("cumClipsSubmitted", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Total clips approved</label>
-              <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="auto" className={inputCls} style={inputStyle} />
-            </div>
-          </div>
+        <div>
+          <label style={labelStyle}>Total paid out ($)</label>
+          <input type="number" min={0} step="0.01" value={form.cumPaidOut} onChange={(e) => set("cumPaidOut", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Total clips submitted</label>
+          <input type="number" min={0} value={form.cumClipsSubmitted} onChange={(e) => set("cumClipsSubmitted", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Total clips approved</label>
+          <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
         </div>
       </div>
+      <p className="text-xs -mt-2" style={{ color: "var(--text-tertiary)" }}>Platform views all time are calculated automatically from all weekly reports.</p>
 
       {/* Notes */}
       <div className="space-y-3">

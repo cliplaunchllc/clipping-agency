@@ -125,17 +125,18 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
     }),
     { views: 0, tiktok: 0, instagram: 0, youtube: 0, twitter: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
+  // Platform views always auto-calc from weekly reports; only totals can be overridden
   const latestWithCum = allReports.find((r) => r.cumViews > 0);
-  const allTime = latestWithCum ? {
-    views: latestWithCum.cumViews,
-    tiktok: latestWithCum.cumTiktokViews,
-    instagram: latestWithCum.cumInstagramViews,
-    youtube: latestWithCum.cumYoutubeViews,
-    twitter: latestWithCum.cumTwitterViews,
-    paidOut: latestWithCum.cumPaidOut,
-    clipsApproved: latestWithCum.cumClipsApproved,
-    clipsSubmitted: latestWithCum.cumClipsSubmitted,
-  } : calcAllTime;
+  const allTime = {
+    views: latestWithCum ? latestWithCum.cumViews : calcAllTime.views,
+    tiktok: calcAllTime.tiktok,
+    instagram: calcAllTime.instagram,
+    youtube: calcAllTime.youtube,
+    twitter: calcAllTime.twitter,
+    paidOut: latestWithCum && latestWithCum.cumPaidOut > 0 ? latestWithCum.cumPaidOut : calcAllTime.paidOut,
+    clipsApproved: latestWithCum && latestWithCum.cumClipsApproved > 0 ? latestWithCum.cumClipsApproved : calcAllTime.clipsApproved,
+    clipsSubmitted: latestWithCum && latestWithCum.cumClipsSubmitted > 0 ? latestWithCum.cumClipsSubmitted : calcAllTime.clipsSubmitted,
+  };
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
   const platformsAllTime = [
     { label: "TikTok", key: "tiktok" as const, color: "var(--accent)", value: allTime.tiktok },
@@ -293,9 +294,12 @@ export default function ClientReports({ reports, clientName }: { reports: Report
     { views: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
   const latestWithCum = reports.find((r) => r.cumViews > 0);
-  const allTime = latestWithCum
-    ? { views: latestWithCum.cumViews, paidOut: latestWithCum.cumPaidOut, clipsApproved: latestWithCum.cumClipsApproved, clipsSubmitted: latestWithCum.cumClipsSubmitted }
-    : calcAllTime;
+  const allTime = {
+    views: latestWithCum ? latestWithCum.cumViews : calcAllTime.views,
+    paidOut: latestWithCum && latestWithCum.cumPaidOut > 0 ? latestWithCum.cumPaidOut : calcAllTime.paidOut,
+    clipsApproved: latestWithCum && latestWithCum.cumClipsApproved > 0 ? latestWithCum.cumClipsApproved : calcAllTime.clipsApproved,
+    clipsSubmitted: latestWithCum && latestWithCum.cumClipsSubmitted > 0 ? latestWithCum.cumClipsSubmitted : calcAllTime.clipsSubmitted,
+  };
   // Latest CPM from most recent report that has one
   const latestCpm = reports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
   // Budget since last Friday
