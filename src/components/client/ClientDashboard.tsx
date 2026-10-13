@@ -576,9 +576,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                         </div>
 
                         {/* Summary cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {([
-                            { label: "Total Reports",  value: reports.length.toString(),        sub: "all time",      color: "var(--text-primary)", Icon: FileText },
                             { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
                             { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
                             { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),        sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
