@@ -1932,9 +1932,12 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             const cOngoing = clientOngoing(selectedClientId);
             const latestWeekly = [...cRpts].sort((a, b) => b.weekEndDate.localeCompare(a.weekEndDate))[0] ?? null;
             const latestOngoing = [...cOngoing].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
-            const allTimePaidOut = cRpts.reduce((s, r) => s + r.paidOut, 0);
-            const allTimeClipsApproved = cRpts.reduce((s, r) => s + r.clipsApproved, 0);
-            const allTimeClipsSubmitted = cRpts.reduce((s, r) => s + r.clipsSubmitted, 0);
+            const calcPaidOut = cRpts.reduce((s, r) => s + r.paidOut, 0);
+            const calcClipsApproved = cRpts.reduce((s, r) => s + r.clipsApproved, 0);
+            const calcClipsSubmitted = cRpts.reduce((s, r) => s + r.clipsSubmitted, 0);
+            const allTimePaidOut = latestWeekly && latestWeekly.cumPaidOut > 0 ? latestWeekly.cumPaidOut : calcPaidOut;
+            const allTimeClipsApproved = latestWeekly && latestWeekly.cumClipsApproved > 0 ? latestWeekly.cumClipsApproved : calcClipsApproved;
+            const allTimeClipsSubmitted = latestWeekly && latestWeekly.cumClipsSubmitted > 0 ? latestWeekly.cumClipsSubmitted : calcClipsSubmitted;
             const approvedViews = latestOngoing?.viewsTotal ?? 0;
             const latestCpm = latestWeekly?.cumEffectiveCpm ?? latestWeekly?.effectiveCpm ?? null;
             // Budget spent since last Friday
