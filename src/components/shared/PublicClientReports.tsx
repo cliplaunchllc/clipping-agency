@@ -6,7 +6,7 @@ import {
   Eye, DollarSign, Target, Wallet, CheckCircle, Scissors,
   Link2, Check, ExternalLink,
 } from "lucide-react";
-import { PieChart, Pie, Cell } from "recharts";
+import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "./PlatformIcon";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -355,7 +355,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
           <StatCard icon={<Target size={13} color={ICON_COLOR} />} label="Effective CPM" value={report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—"} curr={report.effectiveCpm ?? 0} prev={prev?.effectiveCpm ?? null} inverted />
           <StatCard icon={<Wallet size={13} color={ICON_COLOR} />} label="Budget Remaining" value={report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—"} curr={report.budgetRemaining ?? 0} prev={prev?.budgetRemaining ?? null} grey />
           <StatCard icon={<CheckCircle size={13} color={ICON_COLOR} />} label="Approval Rate" value={approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—"} curr={approvalRate ?? 0} prev={prevApprovalRate} />
-          <StatCard icon={<Scissors size={13} color={ICON_COLOR} />} label="Clips" value={`${report.clipsApproved} approved`} sublabel={`out of ${report.clipsSubmitted} submitted`} curr={report.clipsApproved} prev={prev?.clipsApproved ?? null} />
+          <StatCard icon={<Scissors size={13} color="var(--text-secondary)" />} label="Clips Submitted" value={report.clipsSubmitted.toString()} curr={report.clipsSubmitted} prev={prev?.clipsSubmitted ?? null} />
+          <StatCard icon={<CheckCircle size={13} color={ICON_COLOR} />} label="Clips Approved" value={report.clipsApproved.toString()} curr={report.clipsApproved} prev={prev?.clipsApproved ?? null} />
           <StatCard icon={<DollarSign size={13} color={ICON_COLOR} />} label="Paid Out" value={fmtCurrency(report.paidOut)} curr={report.paidOut} prev={prev?.paidOut ?? null} />
         </div>
       </div>
@@ -508,6 +509,14 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
     { views: 0, paidOut: 0, clipsApproved: 0, clipsSubmitted: 0 }
   );
 
+  // Chart data: sorted oldest-first, with WoW % per week
+  const sortedForChart = [...reports].sort((a, b) => a.weekEndDate.localeCompare(b.weekEndDate));
+  const chartData = sortedForChart.map((r, i) => {
+    const prev = i > 0 ? sortedForChart[i - 1] : null;
+    const pct = prev && prev.totalViews > 0 ? Math.round(((r.totalViews - prev.totalViews) / prev.totalViews) * 100) : null;
+    return { date: r.weekEndDate.slice(0, 10), views: r.totalViews, pct };
+  });
+
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", fontFamily: "var(--font-display)" }}>
 
@@ -568,6 +577,81 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                     <p className="metric-sub">{s.sub}</p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Week After Week Views chart */}
+            {chartData.length > 1 && (
+              <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <p className="text-sm font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Week After Week Views</p>
+                  {(() => {
+                    const latest = chartData[chartData.length - 1];
+                    if (latest.pct == null) return null;
+                    const positive = latest.pct >= 0;
+                    return (
+                      <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "#3DD68C" : ICON_COLOR }}>
+                        {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        {positive ? "+" : ""}{latest.pct}% this week
+                      </span>
+                    );
+                  })()}
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={chartData} margin={{ top: 28, right: 5, bottom: 5, left: 5 }}>
+                    <defs>
+                      <linearGradient id="pubViewsGradRed" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                      tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
+                    <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
+                      tickFormatter={(v: number) => {
+                        if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                        if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+                        return v.toString();
+                      }} width={46} />
+                    <Tooltip
+                      formatter={(v, _name, item) => {
+                        const pct = (item as { payload?: { pct: number | null } }).payload?.pct;
+                        const n = Number(v ?? 0);
+                        const vStr = n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}K` : n.toString();
+                        const lines: [string, string][] = [[vStr, "Views"]];
+                        if (pct != null) lines.push([`${pct >= 0 ? "+" : ""}${pct}%`, "vs prev week"]);
+                        return lines;
+                      }}
+                      contentStyle={{ background: "rgba(15,10,20,0.95)", border: "1px solid rgba(255,59,59,0.25)", borderRadius: 8 }}
+                      labelStyle={{ color: "#8A93A6" }}
+                      itemStyle={{ color: "#FF6B6B" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="views"
+                      stroke="#FF3B3B"
+                      strokeWidth={2}
+                      fill="url(#pubViewsGradRed)"
+                      dot={(props: any) => {
+                        const { cx, cy, payload, index } = props;
+                        const positive = (payload.pct ?? 0) >= 0;
+                        const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF3B3B";
+                        return (
+                          <g key={index}>
+                            <circle cx={cx} cy={cy} r={3.5} fill="#FF3B3B" strokeWidth={0} />
+                            {payload.pct != null && (
+                              <text x={cx} y={cy - 12} textAnchor="middle" fill={labelColor} fontSize={9} fontWeight="700">
+                                {positive ? "+" : ""}{payload.pct}%
+                              </text>
+                            )}
+                          </g>
+                        );
+                      }}
+                      activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             )}
 

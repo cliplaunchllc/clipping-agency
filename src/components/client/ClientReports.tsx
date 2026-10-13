@@ -131,7 +131,8 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
     { label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
     { label: "Budget Remaining", value: report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: report.budgetRemaining ?? 0, prev: prev?.budgetRemaining ?? null, lastWeek: prev?.budgetRemaining != null ? fmtCurrency(prev.budgetRemaining) : null, grey: true },
     { label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
-    { label: "Clips", value: `${report.clipsApproved} / ${report.clipsSubmitted}`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} / ${prev.clipsSubmitted}` : null, sublabel: "approved / submitted" },
+    { label: "Clips Submitted", value: report.clipsSubmitted.toString(), curr: report.clipsSubmitted, prev: prev?.clipsSubmitted ?? null, lastWeek: prev ? prev.clipsSubmitted.toString() : null },
+    { label: "Clips Approved", value: report.clipsApproved.toString(), curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? prev.clipsApproved.toString() : null },
   ];
 
   return (
@@ -148,8 +149,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
             <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
               <p className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
-              {c.sublabel && <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{c.sublabel}</p>}
-              <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
+              <WowBadge curr={c.curr} prev={c.prev} inverted={"inverted" in c ? c.inverted : undefined} grey={"grey" in c ? c.grey : undefined} />
               {c.lastWeek && (
                 <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Last week: {c.lastWeek}</p>
               )}
@@ -312,29 +312,29 @@ export default function ClientReports({ reports, clientName }: { reports: Report
             ))}
           </div>
 
-          {/* Views over time chart with % WoW */}
+          {/* Week After Week Views chart */}
           {chartData.length > 1 && (
             <div className="rounded-xl p-5 mb-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Over Time</p>
-                {chartData.length >= 2 && (() => {
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Week After Week Views</p>
+                {(() => {
                   const latest = chartData[chartData.length - 1];
                   if (latest.pct == null) return null;
                   const positive = latest.pct >= 0;
                   return (
                     <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "var(--success)" : "#FF3B3B" }}>
                       {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {positive ? "+" : ""}{latest.pct}% vs last week
+                      {positive ? "+" : ""}{latest.pct}% this week
                     </span>
                   );
                 })()}
               </div>
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartData} margin={{ top: 28, right: 5, bottom: 5, left: 5 }}>
                   <defs>
-                    <linearGradient id="clientViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3DD68C" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#3DD68C" stopOpacity={0} />
+                    <linearGradient id="clientViewsGradRed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.03} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -342,8 +342,40 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                     tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
                   <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                     tickFormatter={(v: number) => fmt(v)} width={46} />
-                  <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), "Views"]} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#3DD68C" }} />
-                  <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#clientViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
+                  <Tooltip
+                    formatter={(v, _name, item) => {
+                      const pct = (item as { payload?: { pct: number | null } }).payload?.pct;
+                      const lines: [string, string][] = [[fmt(Number(v ?? 0)), "Views"]];
+                      if (pct != null) lines.push([`${pct >= 0 ? "+" : ""}${pct}%`, "vs prev week"]);
+                      return lines;
+                    }}
+                    contentStyle={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,59,59,0.2)", borderRadius: 8 }}
+                    labelStyle={{ color: "#8A93A6" }}
+                    itemStyle={{ color: "#FF6B6B" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="views"
+                    stroke="#FF3B3B"
+                    strokeWidth={2}
+                    fill="url(#clientViewsGradRed)"
+                    dot={(props: any) => {
+                      const { cx, cy, payload, index } = props;
+                      const positive = (payload.pct ?? 0) >= 0;
+                      const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF3B3B";
+                      return (
+                        <g key={index}>
+                          <circle cx={cx} cy={cy} r={3.5} fill="#FF3B3B" strokeWidth={0} />
+                          {payload.pct != null && (
+                            <text x={cx} y={cy - 12} textAnchor="middle" fill={labelColor} fontSize={9} fontWeight="700">
+                              {positive ? "+" : ""}{payload.pct}%
+                            </text>
+                          )}
+                        </g>
+                      );
+                    }}
+                    activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

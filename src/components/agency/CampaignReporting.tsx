@@ -610,10 +610,13 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
   );
   const allTimeApprovalRate = allTime.clipsSubmitted > 0 ? (allTime.clipsApproved / allTime.clipsSubmitted) * 100 : null;
 
-  // Budget remaining auto-calc: campaign budget - all-time paid out
-  const calcBudgetRemaining = report.campaign && report.campaign.totalBudget > 0
-    ? Math.max(0, report.campaign.totalBudget - allTime.paidOut)
-    : null;
+  // Budget remaining auto-calc: totalBudget - (cumulative views / 1000 * latest CPM)
+  const latestCpm = report.effectiveCpm ?? allClientReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null;
+  const calcBudgetRemaining = report.campaign && report.campaign.totalBudget > 0 && latestCpm != null
+    ? Math.max(0, report.campaign.totalBudget - (allTime.views / 1000 * latestCpm))
+    : report.campaign && report.campaign.totalBudget > 0
+      ? Math.max(0, report.campaign.totalBudget - allTime.paidOut)
+      : null;
 
   const weeklyStatCards = [
     { icon: <Eye size={12} color="var(--success)" />, label: "Views This Week", value: fmt(report.totalViews), curr: report.totalViews, prev: prev?.totalViews ?? null, lastWeek: prev ? fmt(prev.totalViews) : null },
@@ -621,7 +624,8 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
     { icon: <Target size={12} color="var(--accent)" />, label: "Effective CPM", value: report.effectiveCpm != null ? fmtCurrency(report.effectiveCpm) : "—", curr: report.effectiveCpm ?? 0, prev: prev?.effectiveCpm ?? null, lastWeek: prev?.effectiveCpm != null ? fmtCurrency(prev.effectiveCpm) : null, inverted: true },
     { icon: <Wallet size={12} color="#8A93A6" />, label: "Budget Remaining", value: calcBudgetRemaining != null ? fmtCurrency(calcBudgetRemaining) : report.budgetRemaining != null ? fmtCurrency(report.budgetRemaining) : "—", curr: calcBudgetRemaining ?? report.budgetRemaining ?? 0, prev: null, grey: true },
     { icon: <CheckCircle size={12} color="var(--success)" />, label: "Approval Rate", value: approvalRate != null ? `${approvalRate.toFixed(1)}%` : "—", curr: approvalRate ?? 0, prev: prevApprovalRate, lastWeek: prevApprovalRate != null ? `${prevApprovalRate.toFixed(1)}%` : null },
-    { icon: <Scissors size={12} color="var(--accent)" />, label: "Clips This Week", value: `${report.clipsApproved} approved`, sublabel: `out of ${report.clipsSubmitted} submitted`, curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? `${prev.clipsApproved} of ${prev.clipsSubmitted}` : null },
+    { icon: <Scissors size={12} color="var(--text-secondary)" />, label: "Clips Submitted", value: report.clipsSubmitted.toString(), curr: report.clipsSubmitted, prev: prev?.clipsSubmitted ?? null, lastWeek: prev ? prev.clipsSubmitted.toString() : null },
+    { icon: <CheckCircle size={12} color="var(--accent)" />, label: "Clips Approved", value: report.clipsApproved.toString(), curr: report.clipsApproved, prev: prev?.clipsApproved ?? null, lastWeek: prev ? prev.clipsApproved.toString() : null },
   ];
 
   const platformsAllTime = [
@@ -647,8 +651,7 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
             <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", boxShadow: "inset 0 1px 0 var(--bg-hover)" }}>
               <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
               <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
-              {c.sublabel && <p className="metric-sub mb-1.5">{c.sublabel}</p>}
-              <WowBadge curr={c.curr} prev={c.prev} inverted={c.inverted} grey={c.grey} />
+              <WowBadge curr={c.curr} prev={c.prev} inverted={"inverted" in c ? c.inverted : undefined} grey={"grey" in c ? c.grey : undefined} />
               {c.lastWeek && <p className="metric-sub mt-1">Last week: {c.lastWeek}</p>}
             </div>
           ))}
