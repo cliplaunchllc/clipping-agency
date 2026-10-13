@@ -285,7 +285,7 @@ function StatCard({
         {icon}
         <p className="label-mono leading-tight">{label}</p>
       </div>
-      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "var(--text-primary)" }}>{value}</p>
+      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "#3DD68C" }}>{value}</p>
       {sublabel && <p className="metric-sub mb-1.5">{sublabel}</p>}
       <WowBadge curr={curr} prev={prev} inverted={inverted} grey={grey} />
     </div>
@@ -410,7 +410,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
-                <p className="metric-value text-xl leading-none" style={{ color: "var(--text-primary)" }}>{c.value}</p>
+                <p className="metric-value text-xl leading-none" style={{ color: "#3DD68C" }}>{c.value}</p>
               </div>
             ))}
           </div>
@@ -426,7 +426,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
                       <PlatformIcon platform={p.key} size={11} />
                       <span className="label-mono" style={{ color: PLATFORM_COLORS[p.key] ?? "var(--text-secondary)" }}>{p.label}</span>
                     </div>
-                    <p className="metric-value text-lg leading-none" style={{ color: "var(--text-primary)" }}>{fmt(p.value)}</p>
+                    <p className="metric-value text-lg leading-none" style={{ color: "#3DD68C" }}>{fmt(p.value)}</p>
                     <p className="metric-sub mt-0.5">{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"}</p>
                   </div>
                 ))}
@@ -612,7 +612,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
                     <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono leading-tight" style={{ fontSize: "0.63rem" }}>{s.label}</p></div>
-                    <p className="metric-value text-xl mb-0.5" style={{ color: "var(--text-primary)" }}>{s.value}</p>
+                    <p className="metric-value text-xl mb-0.5" style={{ color: "#3DD68C" }}>{s.value}</p>
                     <p className="metric-sub" style={{ fontSize: "0.6rem" }}>{s.sub}</p>
                   </div>
                 ))}

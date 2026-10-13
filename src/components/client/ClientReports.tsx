@@ -169,7 +169,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
           {weeklyCards.map((c) => (
             <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
-              <p className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
+              <p className="text-xl font-bold mb-1" style={{ color: "#3DD68C", fontFamily: "var(--font-display)" }}>{c.value}</p>
               <WowBadge curr={c.curr} prev={c.prev} inverted={"inverted" in c ? c.inverted : undefined} grey={"grey" in c ? c.grey : undefined} />
               {c.lastWeek && (
                 <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Last week: {c.lastWeek}</p>
@@ -242,7 +242,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <p className="text-xs font-medium mb-2 leading-tight" style={{ color: "var(--text-secondary)" }}>{c.label}</p>
-                <p className="text-xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.value}</p>
+                <p className="text-xl font-bold" style={{ color: "#3DD68C", fontFamily: "var(--font-display)" }}>{c.value}</p>
               </div>
             ))}
           </div>
@@ -256,7 +256,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
                 {platformsAllTime.map((p, i) => (
                   <div key={p.key} className="px-4 py-3" style={{ borderRight: i < platformsAllTime.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: p.color }}>{p.label}</p>
-                    <p className="text-lg font-bold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmt(p.value)}</p>
+                    <p className="text-lg font-bold" style={{ color: "#3DD68C", fontFamily: "var(--font-display)" }}>{fmt(p.value)}</p>
                     <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"} of total</p>
                   </div>
                 ))}
@@ -347,7 +347,7 @@ export default function ClientReports({ reports, clientName }: { reports: Report
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
                 <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="text-xs font-medium leading-tight" style={{ color: "var(--text-secondary)", fontSize: "0.65rem" }}>{s.label}</p></div>
-                <p className="text-xl font-bold mb-0.5" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{s.value}</p>
+                <p className="text-xl font-bold mb-0.5" style={{ color: "#3DD68C", fontFamily: "var(--font-display)" }}>{s.value}</p>
                 <p className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: "0.62rem" }}>{s.sub}</p>
               </div>
             ))}
