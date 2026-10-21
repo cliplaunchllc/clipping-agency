@@ -8,6 +8,8 @@ declare module "next-auth" {
       clientId: string | null;
       status: string;
       mustChangePassword: boolean;
+      isTeamMember: boolean;
+      teamRole: string | null;
     } & DefaultSession["user"];
   }
 }

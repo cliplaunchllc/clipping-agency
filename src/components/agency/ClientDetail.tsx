@@ -16,6 +16,7 @@ interface ClientData {
   campaignType: "manual" | "cpm";
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
+  bannerUrl: string | null;
   welcomePageUrl: string | null;
   welcomeVideoUrl: string | null;
   intakeFormUrl: string | null;
@@ -49,7 +50,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const router = useRouter();
   const searchParams = useSearchParams();
   const [client, setClient] = useState(initial);
-  const [activeTab, setActiveTab] = useState<"settings" | "onboarding">("settings");
+  const [activeTab, setActiveTab] = useState<"settings">("settings");
 
   // Deal terms state — auto-open edit if ?edit=1 in URL
   const [startDate, setStartDate] = useState(initial.dealStartDate ? initial.dealStartDate.slice(0, 10) : "");
@@ -58,6 +59,10 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [contractSaved, setContractSaved] = useState(false);
   const contractFileRef = useRef<HTMLInputElement>(null);
   const [trackerUrl, setTrackerUrl] = useState(initial.campaignTrackerUrl ?? "");
+  const [bannerUrl, setBannerUrl] = useState(initial.bannerUrl ?? "");
+  const [savingBanner, setSavingBanner] = useState(false);
+  const [bannerSaved, setBannerSaved] = useState(false);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
   const [welcomeUrl, setWelcomeUrl] = useState(initial.welcomePageUrl ?? "");
   const [welcomeVideoUrl, setWelcomeVideoUrl] = useState(initial.welcomeVideoUrl ?? "https://youtu.be/TEpGyDS-h_I");
   const [intakeFormUrl, setIntakeFormUrl] = useState(initial.intakeFormUrl ?? "https://docs.google.com/forms/d/e/1FAIpQLScSsg14k-6RKzGFvxk6OwWvJ4ifskFK5NaOeOWZWIklvvsk9g/viewform?usp=publish-editor");
@@ -86,13 +91,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [editCampaignName, setEditCampaignName] = useState("");
   const [editCampaignBudget, setEditCampaignBudget] = useState("");
 
-  // Onboarding state
-  const [steps, setSteps] = useState<OnboardingStep[]>(initial.onboardingSteps);
-  const [newStepTitle, setNewStepTitle] = useState("");
-  const [newStepDesc, setNewStepDesc] = useState("");
-  const [newStepLink, setNewStepLink] = useState("");
-  const [stepSaving, setStepSaving] = useState(false);
-
   async function handleContractUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,6 +109,28 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
         setTimeout(() => setContractSaved(false), 2500);
       }
       setSavingContract(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSavingBanner(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const res = await fetch(`/api/agency/clients/${client.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bannerUrl: dataUrl }),
+      });
+      if (res.ok) {
+        setBannerUrl(dataUrl);
+        setBannerSaved(true);
+        setTimeout(() => setBannerSaved(false), 2500);
+      }
+      setSavingBanner(false);
     };
     reader.readAsDataURL(file);
   }
@@ -223,46 +243,8 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     if (res.ok) setLinks((prev) => prev.filter((l) => l.id !== linkId));
   }
 
-  async function addStep() {
-    if (!newStepTitle) return;
-    setStepSaving(true);
-    const res = await fetch(`/api/agency/clients/${client.id}/onboarding`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newStepTitle, description: newStepDesc, linkUrl: newStepLink || null }),
-    });
-    if (res.ok) {
-      const step = await res.json();
-      setSteps((prev) => [...prev, step]);
-      setNewStepTitle(""); setNewStepDesc(""); setNewStepLink("");
-    }
-    setStepSaving(false);
-  }
-
-  async function toggleStep(stepId: string, completed: boolean) {
-    const res = await fetch(`/api/agency/clients/${client.id}/onboarding`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId, completed }),
-    });
-    if (res.ok) setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, completed } : s));
-  }
-
-  async function deleteStep(stepId: string) {
-    const res = await fetch(`/api/agency/clients/${client.id}/onboarding`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId }),
-    });
-    if (res.ok) setSteps((prev) => prev.filter((s) => s.id !== stepId));
-  }
-
-  const completedSteps = steps.filter((s) => s.completed).length;
-  const onboardingPct = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
-
   const tabs = [
     { id: "settings", label: "Settings" },
-    { id: "onboarding", label: `Onboarding (${completedSteps}/${steps.length})` },
   ] as const;
 
   return (
@@ -320,6 +302,53 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
               placeholder="https://..."
               style={inputStyle}
             />
+          </div>
+
+          {/* Banner Image Upload */}
+          <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Dashboard Banner Image</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>16:9 image shown at the top of the client&apos;s overview (YouTube thumbnail size). JPG, PNG, or WebP.</p>
+            <input
+              ref={bannerFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleBannerUpload}
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => bannerFileRef.current?.click()}
+                disabled={savingBanner}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                style={{ background: savingBanner ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${bannerSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: bannerSaved ? "var(--success)" : "var(--accent)" }}
+              >
+                {bannerSaved ? <><Check size={12} /> Uploaded</> : savingBanner ? "Uploading…" : <><Upload size={12} /> Upload Image</>}
+              </button>
+              {bannerUrl && (
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`/api/agency/clients/${client.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ bannerUrl: "" }),
+                    });
+                    if (res.ok) setBannerUrl("");
+                  }}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold"
+                  style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--danger)" }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {bannerUrl && (
+              <img
+                src={bannerUrl}
+                alt="Banner preview"
+                className="mt-3 rounded-lg w-full"
+                style={{ border: "1px solid var(--border-default)", display: "block" }}
+              />
+            )}
           </div>
 
           {/* Welcome Video URL */}
@@ -438,14 +467,24 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 {contractSaved ? <><Check size={12} /> Uploaded</> : savingContract ? "Uploading…" : <><Upload size={12} /> Upload PDF</>}
               </button>
               {contractUrl && contractUrl.startsWith("data:") && (
-                <a
-                  href={contractUrl}
-                  download="contract.pdf"
+                <button
+                  onClick={() => {
+                    const [meta, b64] = contractUrl.split(",");
+                    const mime = meta.split(":")[1].split(";")[0];
+                    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+                    const blob = new Blob([bytes], { type: mime });
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = "contract.pdf";
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  }}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
                   style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
                 >
                   <FileText size={12} /> Download current
-                </a>
+                </button>
               )}
               {contractUrl && !contractUrl.startsWith("data:") && (
                 <a
@@ -535,74 +574,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             >
               {settingsSaved ? <><Check size={14} /> Settings Saved</> : savingSettings ? "Saving…" : <><Save size={14} /> Save Settings</>}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ONBOARDING */}
-      {activeTab === "onboarding" && (
-        <div className="space-y-4">
-          {/* Progress */}
-          {steps.length > 0 && (
-            <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Progress</span>
-                <span className="text-xs font-medium" style={{ color: "var(--success)" }}>{onboardingPct}%</span>
-              </div>
-              <div className="h-2 rounded-full" style={{ background: "var(--border-default)" }}>
-                <div className="h-2 rounded-full transition-all" style={{ width: `${onboardingPct}%`, background: "linear-gradient(90deg, #3DFFA2, #FF3B3B)" }} />
-              </div>
-            </div>
-          )}
-
-          {/* Steps list */}
-          <div className="space-y-2">
-            {steps.map((step, i) => (
-              <div key={step.id} className="flex items-start gap-4 p-4 rounded-xl"
-                style={{ background: "var(--bg-surface)", border: `1px solid ${step.completed ? "rgba(61,255,162,0.15)" : "var(--border-default)"}` }}>
-                <button onClick={() => toggleStep(step.id, !step.completed)}
-                  className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all check-circle"
-                  style={{ background: step.completed ? "color-mix(in srgb, var(--success) 20%, transparent)" : "var(--border-subtle)", border: `1px solid ${step.completed ? "var(--success)" : "rgba(255,255,255,0.15)"}` }}>
-                  {step.completed && <Check size={11} color="var(--success)" />}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium" style={{ color: step.completed ? "var(--text-tertiary)" : "var(--text-primary)", textDecoration: step.completed ? "line-through" : "none" }}>
-                    {i + 1}. {step.title}
-                  </p>
-                  {step.description && (
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{step.description}</p>
-                  )}
-                  {step.linkUrl && (
-                    <a href={step.linkUrl} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs mt-1"
-                      style={{ color: "var(--accent)" }}>
-                      <ExternalLink size={10} /> {step.linkUrl}
-                    </a>
-                  )}
-                </div>
-                <button onClick={() => deleteStep(step.id)} className="p-1 rounded-lg hover:bg-white/5 flex-shrink-0">
-                  <Trash2 size={12} color="var(--danger)" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add step */}
-          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Add Step</h2>
-            <div className="space-y-3">
-              <input value={newStepTitle} onChange={(e) => setNewStepTitle(e.target.value)}
-                placeholder="Step title (e.g. Sign contract)" style={inputStyle} />
-              <input value={newStepDesc} onChange={(e) => setNewStepDesc(e.target.value)}
-                placeholder="Description (optional)" style={inputStyle} />
-              <input type="url" value={newStepLink} onChange={(e) => setNewStepLink(e.target.value)}
-                placeholder="Link URL (optional, e.g. https://welcome.example.com)" style={inputStyle} />
-              <button onClick={addStep} disabled={stepSaving || !newStepTitle}
-                className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg"
-                style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: !newStepTitle ? 0.5 : 1 }}>
-                <Plus size={12} /> {stepSaving ? "Adding..." : "Add Step"}
-              </button>
-            </div>
           </div>
         </div>
       )}

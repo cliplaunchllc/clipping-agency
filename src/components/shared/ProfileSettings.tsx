@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Sidebar from "@/components/shared/Sidebar";
 
@@ -12,6 +13,7 @@ interface Props {
 
 export default function ProfileSettings({ role, userName: initialName, userEmail: initialEmail }: Props) {
   const { update: updateSession } = useSession();
+  const router = useRouter();
 
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
@@ -49,12 +51,13 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
     const data = await res.json();
     if (!res.ok) {
       setProfileMsg({ type: "err", text: data.error || "Failed to save" });
+      setProfileSaving(false);
     } else {
-      setProfileMsg({ type: "ok", text: "Profile updated successfully" });
-      // Refresh session so the name updates in the sidebar
-      await updateSession({ name: data.name, email: data.email });
+      setProfileMsg({ type: "ok", text: "Saved!" });
+      setProfileSaving(false);
+      await updateSession();
+      router.refresh();
     }
-    setProfileSaving(false);
   }
 
   async function handlePasswordSave(e: React.FormEvent) {

@@ -33,6 +33,7 @@ interface Props {
   initialClients: Client[];
   pendingClientUsers?: PendingClientUser[];
   allClients?: ClientOption[];
+  isTeamMember?: boolean;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -56,7 +57,7 @@ const selectStyle: React.CSSProperties = {
   outline: "none",
 };
 
-export default function ClientManagement({ initialClients, pendingClientUsers: initialPending = [], allClients: allClientOptions = [] }: Props) {
+export default function ClientManagement({ initialClients, pendingClientUsers: initialPending = [], allClients: allClientOptions = [], isTeamMember = false }: Props) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [pendingUsers, setPendingUsers] = useState<PendingClientUser[]>(initialPending);
   const [tab, setTab] = useState<"active" | "justlaunched" | "prelaunch" | "archived" | "pending">("active");
@@ -392,23 +393,28 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
             {pendingUsers.length > 0 && <span style={{ color: "var(--warning)" }}> · {pendingUsers.length} pending signup</span>}
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
-          <Plus size={14} /> Add Client
-        </button>
+        {!isTeamMember && (
+          <button onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
+            <Plus size={14} /> Add Client
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        {([
-          { id: "active",        label: `Active (${clients.filter((c) => c.status === "active").length})` },
-          { id: "justlaunched",  label: `Just Launched (${clients.filter((c) => c.status === "justlaunched").length})` },
-          { id: "prelaunch",     label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
-          { id: "archived",      label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
-          { id: "pending",       label: `Pending Signup (${pendingUsers.length})` },
-        ] as const).map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+        {(isTeamMember
+          ? [{ id: "active", label: `Active (${clients.filter((c) => c.status === "active").length})` }]
+          : [
+              { id: "active",        label: `Active (${clients.filter((c) => c.status === "active").length})` },
+              { id: "justlaunched",  label: `Just Launched (${clients.filter((c) => c.status === "justlaunched").length})` },
+              { id: "prelaunch",     label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
+              { id: "archived",      label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
+              { id: "pending",       label: `Pending Signup (${pendingUsers.length})` },
+            ]
+        ).map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
             className="px-4 py-2.5 text-sm font-medium relative"
             style={{ color: tab === t.id ? "var(--text-primary)" : "var(--text-tertiary)" }}>
             {t.label}
@@ -555,65 +561,75 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
-                        <Link href={`/agency/clients/${c.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
+                      {isTeamMember ? (
+                        <Link href={`/agency/preview/client/${c.id}`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center gap-1.5"
                           style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
-                          Edit
+                          <Eye size={12} /> View
                         </Link>
+                      ) : (
+                        <>
+                          {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
+                            <Link href={`/agency/clients/${c.id}`}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center"
+                              style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
+                              Edit
+                            </Link>
+                          )}
+                          {c.status === "active" && (
+                            <button onClick={() => handleSetStatus(c.id, "justlaunched")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
+                              Just Launched
+                            </button>
+                          )}
+                          {c.status === "justlaunched" && (
+                            <button onClick={() => handleSetStatus(c.id, "activate")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
+                              Set Active
+                            </button>
+                          )}
+                          {(c.status === "active" || c.status === "justlaunched") && (
+                            <button onClick={() => handleSetStatus(c.id, "prelaunch")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "rgba(245,185,74,0.08)", border: "1px solid rgba(245,185,74,0.2)", color: "var(--warning)" }}>
+                              Pre-launch
+                            </button>
+                          )}
+                          {c.status === "prelaunch" && (
+                            <button onClick={() => handleSetStatus(c.id, "activate")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
+                              Set Active
+                            </button>
+                          )}
+                          {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
+                            <button onClick={() => handleSetStatus(c.id, "archive")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--text-tertiary)" }}>
+                              Archive
+                            </button>
+                          )}
+                          {c.status === "archived" && (
+                            <button onClick={() => handleSetStatus(c.id, "activate")}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                              style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
+                              Restore
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setDeleteTarget(c); setDeleteConfirmName(""); }}
+                            className="p-1.5 rounded-lg transition-opacity"
+                            title="Delete client"
+                            style={{ background: "transparent", border: "1px solid transparent", color: "var(--text-tertiary)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,59,59,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,59,59,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </>
                       )}
-                      {c.status === "active" && (
-                        <button onClick={() => handleSetStatus(c.id, "justlaunched")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}>
-                          Just Launched
-                        </button>
-                      )}
-                      {c.status === "justlaunched" && (
-                        <button onClick={() => handleSetStatus(c.id, "activate")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
-                          Set Active
-                        </button>
-                      )}
-                      {(c.status === "active" || c.status === "justlaunched") && (
-                        <button onClick={() => handleSetStatus(c.id, "prelaunch")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(245,185,74,0.08)", border: "1px solid rgba(245,185,74,0.2)", color: "var(--warning)" }}>
-                          Pre-launch
-                        </button>
-                      )}
-                      {c.status === "prelaunch" && (
-                        <button onClick={() => handleSetStatus(c.id, "activate")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
-                          Set Active
-                        </button>
-                      )}
-                      {(c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch") && (
-                        <button onClick={() => handleSetStatus(c.id, "archive")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "var(--bg-hover)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--text-tertiary)" }}>
-                          Archive
-                        </button>
-                      )}
-                      {c.status === "archived" && (
-                        <button onClick={() => handleSetStatus(c.id, "activate")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)", color: "var(--success)" }}>
-                          Restore
-                        </button>
-                      )}
-                      <button
-                        onClick={() => { setDeleteTarget(c); setDeleteConfirmName(""); }}
-                        className="p-1.5 rounded-lg transition-opacity"
-                        title="Delete client"
-                        style={{ background: "transparent", border: "1px solid transparent", color: "var(--text-tertiary)" }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,59,59,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,59,59,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
                     </div>
                   </td>
                 </tr>

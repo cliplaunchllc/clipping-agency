@@ -91,7 +91,7 @@ export default async function CampaignReportingPage() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
+      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
       <main className="flex-1 overflow-y-auto ml-56">
         <CampaignReporting
           clients={clients.map((c) => ({ id: c.id, name: c.name, logoUrl: c.logoUrl ?? null, lastContactedAt: c.lastContactedAt?.toISOString() ?? null, campaigns: c.campaigns.map((cp) => ({ id: cp.id, name: cp.name, totalBudget: cp.totalBudget })) }))}

@@ -823,6 +823,13 @@ function WeeklyReportForm({
   const [form, setForm] = useState<FormState>(initial);
   const [refOpen, setRefOpen] = useState(referenceOngoing.length > 0);
 
+  // Auto-select campaign when there is exactly one
+  useEffect(() => {
+    if (campaigns.length === 1 && !form.campaignId) {
+      setForm((f) => ({ ...f, campaignId: campaigns[0].id }));
+    }
+  }, [campaigns]);
+
   function set(k: keyof FormState, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -908,18 +915,24 @@ function WeeklyReportForm({
       </div>
 
       {/* Campaign */}
-      {campaigns.length > 0 && (
-        <div>
-          <label style={labelStyle}>Campaign</label>
+      <div>
+        <label style={labelStyle}>
+          Campaign <span style={{ color: "var(--accent)", fontSize: "0.7rem" }}>required</span>
+        </label>
+        {campaigns.length === 0 ? (
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-tertiary)" }}>
+            No campaigns — add one in client settings first.
+          </p>
+        ) : (
           <select
-            value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
+            required value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
             className={inputCls} style={{ ...inputStyle, appearance: "none" } as React.CSSProperties}
           >
-            <option value="">No campaign / General</option>
+            <option value="">Select campaign…</option>
             {campaigns.map((c) => (<option key={c.id} value={c.id}>{c.name}{c.totalBudget > 0 ? ` — $${c.totalBudget.toLocaleString()} budget` : ""}</option>))}
           </select>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── THIS WEEK divider ── */}
       <div className="flex items-center gap-2">
@@ -1022,8 +1035,8 @@ function WeeklyReportForm({
       {/* Notes */}
       <div className="space-y-3">
         <div>
-          <label style={labelStyle}>Notes</label>
-          <textarea rows={5} value={form.weeklySummary} onChange={(e) => set("weeklySummary", e.target.value)} placeholder="Weekly summary, what's working, focus areas, optimizations…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+          <label style={labelStyle}>Weekly Notes</label>
+          <textarea rows={6} value={form.weeklySummary} onChange={(e) => set("weeklySummary", e.target.value)} placeholder={"Overview: Strong week — approval rate hit 78%, TikTok driving 65% of views.\nWhat worked: Hook-first 15s clips, trending audio overlays.\nWhat didn't: Long-form 30s+ underperforming on TikTok.\nNext week: Shift 80% quota to 15s clips, brief updated.\nClient note: On track for monthly target, budget pacing well."} className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
         </div>
         <div>
           <label style={labelStyle}>Campaign link (optional)</label>
@@ -1065,6 +1078,13 @@ function OngoingReportForm({
   campaigns: ClientCampaign[];
 }) {
   const [form, setForm] = useState<OngoingFormState>(initial);
+
+  // Auto-select campaign when there is exactly one
+  useEffect(() => {
+    if (campaigns.length === 1 && !form.campaignId) {
+      setForm((f) => ({ ...f, campaignId: campaigns[0].id }));
+    }
+  }, [campaigns]);
 
   function set(k: keyof OngoingFormState, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -1112,18 +1132,24 @@ function OngoingReportForm({
       </div>
 
       {/* Campaign */}
-      {campaigns.length > 0 && (
-        <div>
-          <label style={labelStyle}>Campaign</label>
+      <div>
+        <label style={labelStyle}>
+          Campaign <span style={{ color: "var(--accent)", fontSize: "0.7rem" }}>required</span>
+        </label>
+        {campaigns.length === 0 ? (
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: "var(--bg-base)", border: "1px solid var(--border-default)", color: "var(--text-tertiary)" }}>
+            No campaigns — add one in client settings first.
+          </p>
+        ) : (
           <select
-            value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
+            required value={form.campaignId} onChange={(e) => set("campaignId", e.target.value)}
             className={inputCls} style={{ ...inputStyle, appearance: "none" } as React.CSSProperties}
           >
-            <option value="">No campaign / General</option>
+            <option value="">Select campaign…</option>
             {campaigns.map((c) => (<option key={c.id} value={c.id}>{c.name}{c.totalBudget > 0 ? ` — $${c.totalBudget.toLocaleString()} budget` : ""}</option>))}
           </select>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Submission numbers */}
       <div className="grid grid-cols-2 gap-3">
@@ -1158,7 +1184,7 @@ function OngoingReportForm({
       {/* Notes */}
       <div>
         <label style={labelStyle}>Notes</label>
-        <textarea rows={4} value={form.mainTrend} onChange={(e) => set("mainTrend", e.target.value)} placeholder="Trends, feedback, optimizations…" className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+        <textarea rows={3} value={form.mainTrend} onChange={(e) => set("mainTrend", e.target.value)} placeholder={"e.g. Hook-first clips trending up mid-week. Pushing more 15s formats to capitalize. One clipper flagged brief confusion — clarified."} className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
       {/* Status */}
@@ -1793,7 +1819,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 return (
                 <div
                   key={client.id}
-                  onClick={() => { if (isContacting) return; setSelectedClientId(client.id); setClientTab("weekly"); setOngoingMonthFilter(""); }}
+                  onClick={() => { if (isContacting) return; setSelectedClientId(client.id); setClientTab("ongoing"); setOngoingMonthFilter(""); }}
                   className={`client-card text-left rounded-2xl cursor-pointer${isOverdue ? " card-attn" : ""}`}
                   style={{
                     background: "var(--bg-surface)",

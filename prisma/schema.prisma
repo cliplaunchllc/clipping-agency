@@ -52,6 +52,8 @@ model User {
   clientId          String?
   status            UserStatus @default(active)
   mustChangePassword Boolean   @default(false)
+  isTeamMember      Boolean   @default(false)
+  teamRole          String?   // head_campaign | campaign_manager | va | discord_mod | freelance
   createdAt         DateTime   @default(now())
 
   client         Client?        @relation(fields: [clientId], references: [id])
@@ -100,6 +102,7 @@ model Client {
   name           String
   status         ClientStatus @default(active)
   logoUrl        String?
+  bannerUrl      String?
   dealLengthDays Int?
   dealStartDate  DateTime?
   dealEndDate    DateTime?
@@ -254,6 +257,45 @@ model OngoingReport {
   campaign ClientCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 }
 
+model CrmLead {
+  id                String    @id @default(cuid())
+  leadName          String
+  instagram         String?
+  email             String?
+  linkedin          String?
+  x                 String?
+
+  outreachedIg      Boolean   @default(false)
+  outreachedEmail   Boolean   @default(false)
+  outreachedLinkedin Boolean  @default(false)
+  outreachedX       Boolean   @default(false)
+
+  dateMessaged      DateTime?
+  followUp1         DateTime?
+  followUp2         DateTime?
+  followUp3         DateTime?
+
+  replied           Boolean   @default(false)
+  replyMessage      String?
+
+  callBooked        Boolean   @default(false)
+  showedUpToCall    Boolean   @default(false)
+  closedCall        Boolean   @default(false)
+
+  whoMessaged       String?
+
+  notes             String?
+  leadSource        String?   @default("cold_outbound")
+
+  inConvo           Boolean   @default(false)
+  leadLost          Boolean   @default(false)
+  markedDone        Boolean   @default(false)
+  lastFollowUpDate  DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
 model Clip {
   id           String    @id @default(cuid())
   clipperId    String
@@ -274,4 +316,116 @@ model Clip {
   clipper    ClipperProfile    @relation(fields: [clipperId], references: [id])
   client     Client            @relation(fields: [clientId], references: [id])
   subAccount ClipperSubAccount @relation(fields: [subAccountId], references: [id])
+}
+
+model Sop {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  category  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeamPaymentMember {
+  id             String    @id @default(cuid())
+  name           String
+  role           String?
+  category       String
+  payRate        Float?
+  payFrequency   String?
+  lastPaidAt     DateTime?
+  nextPaymentDue DateTime?
+  notes          String?
+  basePay        Float?    // base salary for head_campaign (added to commission total)
+  commissions    Json?     // [{ id, campaignName, budget, commission }] for head_campaign
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+// ─── Lead Factory ────────────────────────────────────────────────────────────
+
+model LeadRun {
+  id         String   @id @default(cuid())
+  prompt     String   @db.Text
+  offer      String?  @db.Text
+  count      Int      @default(25)
+  mode       String   @default("deep")      // deep|bulk
+  status     String   @default("pending")   // pending|planning|discovering|researching|verifying|scoring|building|completed|stopped|failed
+  stage      String?
+  plan       Json?
+  totalCost  Float    @default(0)
+  testMode   Boolean  @default(false)
+  stats      Json?
+  mdFile     String?  @db.Text
+  htmlFile   String?  @db.Text
+  csvFile    String?  @db.Text
+  jsonFile   String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  leads LeadFactoryLead[]
+  logs  LeadRunLog[]
+  costs LeadRunCost[]
+}
+
+model LeadFactoryLead {
+  id              String   @id @default(cuid())
+  runId           String
+  num             Int      @default(0)
+  grade           String?
+  score           Int?
+  segment         String?
+  country         String?
+  company         String
+  website         String
+  whatItIs        String?  @db.Text
+  sisterBrands    Json?
+  decisionMaker   String?
+  dmRole          String?
+  dmRoleCheck     String?
+  bestChannel     String?
+  xHandle         String?
+  xCheck          String?
+  instagramHandle String?
+  instagramCheck  String?
+  linkedinUrl     String?
+  linkedinCheck   String?
+  dmEmail         String?
+  dmEmailCheck    String?
+  companyAccounts Json?
+  whyItFits       Json?
+  otherPeople     Json?
+  signals         Json?
+  sources         Json?
+  checkedAt       String?
+  status          String   @default("active")  // active|deleted|do_not_contact
+  rawData         Json?
+  createdAt       DateTime @default(now())
+
+  run LeadRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+model LeadRunLog {
+  id        String   @id @default(cuid())
+  runId     String
+  stage     String
+  message   String   @db.Text
+  level     String   @default("info")  // info|warn|error|debug
+  createdAt DateTime @default(now())
+
+  run LeadRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+model LeadRunCost {
+  id        String   @id @default(cuid())
+  runId     String
+  provider  String
+  operation String
+  units     Float    @default(0)
+  cost      Float    @default(0)
+  createdAt DateTime @default(now())
+
+  run LeadRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/shared/Sidebar";
 import {
-  ExternalLink, ChevronDown,
+  ExternalLink, ChevronDown, ChevronLeft,
   Activity, CalendarDays, ChevronRight,
   Users, CheckCircle, Clock, AlertCircle, FileText, Eye, DollarSign, Wallet, MessageCircle,
+  TrendingUp, TrendingDown, Minus, Scissors,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -35,6 +37,8 @@ function fmtWeekRange(start: string, end: string) {
   return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
 }
 
+interface ClientCampaign { id: string; name: string; totalBudget: number; }
+
 interface CampaignReport {
   id: string; weekStartDate: string; weekEndDate: string;
   totalViews: number; tiktokViews: number; instagramViews: number;
@@ -43,7 +47,7 @@ interface CampaignReport {
   clipsSubmitted: number; clipsApproved: number;
   weeklySummary: string | null; whatsWorking: string | null;
   whatsNotWorking: string | null; nextWeekFocus: string | null;
-  publishedAt: string | null;
+  publishedAt: string | null; campaign?: ClientCampaign | null;
 }
 
 interface OngoingReport {
@@ -51,10 +55,12 @@ interface OngoingReport {
   approved: number; rejected: number; mainTrend: string | null;
   clipperFeedback: string | null; mainOptimization: string | null; status: string;
   viewsTotal: number; viewsToday: number; amountSpent?: number | null;
+  effectiveCpm?: number | null; campaign?: ClientCampaign | null;
 }
 
 interface Props {
   userName: string;
+  isTeamMember: boolean;
   clients: AnyRecord[];
   allClients: AnyRecord[];
   clips: AnyRecord[];
@@ -82,9 +88,12 @@ function getClientStatus(cFull: AnyRecord): ClientStatus {
   return "needs attention";
 }
 
-export default function AgencyDashboard({ userName, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
+export default function AgencyDashboard({ userName, isTeamMember, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
+  const router = useRouter();
   const [allClips] = useState<AnyRecord[]>(initialClips);
   const [selectedClientId, setSelectedClientId] = useState("all");
+  const [viewMode, setViewMode] = useState<"agency" | "client">("agency");
+  const [previewClientId, setPreviewClientId] = useState("");
   const [clientListTab, setClientListTab] = useState<"active" | "justlaunched" | "prelaunch" | "archived">("active");
   // Per-client inline report breakout
   const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
@@ -132,7 +141,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-      <Sidebar role="agency" userName={userName} />
+      <Sidebar role="agency" userName={userName} isTeamMember={isTeamMember} />
       <main className="flex-1 overflow-y-auto ml-56">
 
 
@@ -191,25 +200,84 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
             `}</style>
 
             <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                  {selectedClient ? selectedClient.name : "Overview"}
-                </h1>
-                <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                  {selectedClient ? "CPM Campaign" : `${activeClients.length} active client${activeClients.length !== 1 ? "s" : ""} · CPM campaigns`}
-                </p>
+              <div className="flex items-center gap-3">
+                {selectedClient && (
+                  <button
+                    onClick={() => setSelectedClientId("all")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-hover)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; }}
+                  >
+                    <ChevronLeft size={12} /> Overview
+                  </button>
+                )}
+                <div>
+                  <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                    {selectedClient ? selectedClient.name : "Overview"}
+                  </h1>
+                  <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {selectedClient ? "CPM Campaign" : `${activeClients.length} active client${activeClients.length !== 1 ? "s" : ""} · CPM campaigns`}
+                  </p>
+                </div>
               </div>
-              {/* Client selector for single-client drilldown */}
-              <div className="relative">
-                <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                  style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
-                  <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
-                  {allClients.filter((c) => c.status === "active" || c.status === "prelaunch").map((c) => (
-                    <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}{c.status === "prelaunch" ? " (Pre-launch)" : ""}</option>
+
+              <div className="flex items-center gap-3">
+                {/* View mode toggle */}
+                <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+                  {(["agency", "client"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        setViewMode(mode);
+                        if (mode === "agency") setPreviewClientId("");
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      style={{
+                        background: viewMode === mode ? "var(--accent)" : "transparent",
+                        color: viewMode === mode ? "var(--text-on-accent)" : "var(--text-secondary)",
+                      }}
+                    >
+                      {mode === "agency" ? "Agency View" : "Client View"}
+                    </button>
                   ))}
-                </select>
-                <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* Client picker — shown when Client View is active */}
+                {viewMode === "client" && (
+                  <div className="relative">
+                    <select
+                      value={previewClientId}
+                      onChange={(e) => {
+                        setPreviewClientId(e.target.value);
+                        if (e.target.value) router.push(`/agency/preview/client/${e.target.value}`);
+                      }}
+                      className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
+                      style={{ background: "var(--border-subtle)", border: "1px solid var(--accent-border)", color: previewClientId ? "var(--text-primary)" : "var(--text-tertiary)", minWidth: 160 }}
+                    >
+                      <option value="" style={{ background: "var(--bg-surface)" }}>Select a client…</option>
+                      {allClients.filter((c) => c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch").map((c) => (
+                        <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
+
+                {/* Agency-view client drilldown selector */}
+                {viewMode === "agency" && (
+                  <div className="relative">
+                    <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
+                      className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
+                      style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
+                      <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
+                      {allClients.filter((c) => c.status === "active" || c.status === "prelaunch").map((c) => (
+                        <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}{c.status === "prelaunch" ? " (Pre-launch)" : ""}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -217,10 +285,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
               /* ── ALL CLIENTS ──────────────────────────────────────── */
               (() => {
                 const activeFullClients = allClients.filter((c) => c.status === "active" || c.status === "justlaunched");
-                const goodCount    = activeFullClients.filter((c) => getClientStatus(c) === "good" || getClientStatus(c) === "just launched").length;
                 const attnCount    = activeFullClients.filter((c) => getClientStatus(c) === "needs attention").length;
-                const neutralCount = activeFullClients.filter((c) => getClientStatus(c) === "neutral").length;
-                const totalReports = activeFullClients.reduce((s: number, c: AnyRecord) => s + (c.campaignReports?.length ?? 0) + (c.ongoingReports?.length ?? 0), 0);
 
                 // Budget data for ranking
                 const budgetClients = allClients
@@ -257,40 +322,77 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                 return (
                   <>
                     {/* ── Stat cards ── */}
-                    <div className="grid grid-cols-4 gap-5 mb-8">
-                      <div style={card} className="stat-card px-6 py-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="live-orb w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--success)", boxShadow: "0 0 8px rgba(61,255,162,0.6)" }} />
-                          <p className="label-mono">Active</p>
+                    {(() => {
+                      const totalRevenue = budgetClients.reduce((s, c) => s + c.totalBudget, 0);
+                      const totalViews = activeFullClients.reduce((s: number, c: AnyRecord) => {
+                        const latest = (c.ongoingReports as AnyRecord[] | undefined)?.[0];
+                        return s + (latest?.viewsTotal ?? 0);
+                      }, 0);
+                      const overdueMsgs = activeClients.filter((c) => {
+                        const cFull = allClients.find((x) => x.id === c.id);
+                        const days = cFull?.lastContactedAt
+                          ? Math.floor((Date.now() - new Date(cFull.lastContactedAt).getTime()) / 86_400_000)
+                          : 999;
+                        return days >= 3;
+                      }).length;
+                      return (
+                        <div className="grid grid-cols-4 gap-5 mb-8">
+                          {/* Active clients */}
+                          <div style={card} className="stat-card px-6 py-5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="live-orb w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)" }} />
+                              <p className="label-mono">Active Clients</p>
+                            </div>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{activeClients.length}</p>
+                            <p className="metric-sub">{justLaunchedClients.length > 0 ? `${justLaunchedClients.length} just launched · ` : ""}{prelaunchClients.length} pre-launch</p>
+                          </div>
+                          {/* Revenue managed */}
+                          <div style={card} className="stat-card px-6 py-5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <DollarSign size={11} style={{ color: "var(--danger)" }} />
+                              <p className="label-mono">Active Revenue Managed</p>
+                            </div>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{fmtCurrency(totalRevenue)}</p>
+                            <p className="metric-sub">total budgets across {budgetClients.length} campaign{budgetClients.length !== 1 ? "s" : ""}</p>
+                          </div>
+                          {/* Total views */}
+                          <div style={card} className="stat-card px-6 py-5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Eye size={11} style={{ color: "var(--danger)" }} />
+                              <p className="label-mono">Total Views</p>
+                            </div>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{fmt(totalViews)}</p>
+                            <p className="metric-sub">cumulative across all active clients</p>
+                          </div>
+                          {/* Needs attention */}
+                          {(() => {
+                            const attnClients = activeFullClients.filter((c) => getClientStatus(c) === "needs attention");
+                            const handleAttnClick = () => {
+                              if (attnClients.length === 0) return;
+                              const currentIdx = attnClients.findIndex((c) => c.id === selectedClientId);
+                              const next = attnClients[(currentIdx + 1) % attnClients.length];
+                              setSelectedClientId(next.id);
+                            };
+                            return (
+                              <div
+                                style={{ ...card, cursor: attnCount > 0 ? "pointer" : "default" }}
+                                className={`stat-card px-6 py-5${attnCount > 0 ? " attn-card" : ""}`}
+                                onClick={attnCount > 0 ? handleAttnClick : undefined}
+                                title={attnCount > 0 ? `Go to ${attnClients[0]?.name}` : undefined}
+                              >
+                                <div className="flex items-center gap-2 mb-3">
+                                  <AlertCircle size={11} style={{ color: "var(--danger)" }} />
+                                  <p className="label-mono">Needs Attention</p>
+                                  {attnCount > 0 && <span className="ml-auto label-mono" style={{ color: "var(--danger)", opacity: 0.6 }}>click →</span>}
+                                </div>
+                                <p className="text-4xl metric-value mb-1.5" style={{ color: "var(--danger)" }}>{attnCount}</p>
+                                <p className="metric-sub">{overdueMsgs} client{overdueMsgs !== 1 ? "s" : ""} overdue for contact</p>
+                              </div>
+                            );
+                          })()}
                         </div>
-                        <p className="text-4xl metric-value mb-1.5" style={{ color: "var(--success)" }}>{activeClients.length}</p>
-                        <p className="metric-sub">{justLaunchedClients.length} launched · {prelaunchClients.length} pre-launch</p>
-                      </div>
-                      <div style={card} className="stat-card px-6 py-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <CheckCircle size={11} style={{ color: "var(--success)" }} />
-                          <p className="label-mono">On Track</p>
-                        </div>
-                        <p className="text-4xl metric-value mb-1.5" style={{ color: "var(--success)" }}>{goodCount}</p>
-                        <p className="metric-sub">report in last 7 days</p>
-                      </div>
-                      <div style={card} className="stat-card px-6 py-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Clock size={11} style={{ color: "var(--warning)" }} />
-                          <p className="label-mono">Quiet</p>
-                        </div>
-                        <p className="text-4xl metric-value mb-1.5" style={{ color: "var(--warning)" }}>{neutralCount}</p>
-                        <p className="metric-sub">no report in 7–14 days</p>
-                      </div>
-                      <div style={card} className="stat-card px-6 py-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertCircle size={11} style={{ color: "var(--danger)" }} />
-                          <p className="label-mono">Needs Attention</p>
-                        </div>
-                        <p className="text-4xl metric-value mb-1.5" style={{ color: "var(--danger)" }}>{attnCount}</p>
-                        <p className="metric-sub">{totalReports} total reports filed</p>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* ── Two-column panels: Budget Ranking + Contact Status ── */}
                     <div className="grid grid-cols-2 gap-5 mb-8">
@@ -392,6 +494,48 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                         )}
                       </div>
                     </div>
+
+                    {/* ── Views Ranking ── */}
+                    {(() => {
+                      const viewsRows = activeFullClients
+                        .map((c: AnyRecord) => {
+                          const latest = (c.ongoingReports as AnyRecord[] | undefined)?.[0];
+                          const views = latest?.viewsTotal ?? 0;
+                          const campaign = (c.campaigns as AnyRecord[] | undefined)?.[0];
+                          return { id: c.id as string, name: c.name as string, logoUrl: c.logoUrl as string | null, views, campaignName: campaign?.name as string | undefined };
+                        })
+                        .filter((r) => r.views > 0)
+                        .sort((a, b) => b.views - a.views);
+                      if (viewsRows.length === 0) return null;
+                      return (
+                        <div style={card} className="overflow-hidden mb-8">
+                          <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <Eye size={14} style={{ color: "var(--danger)" }} />
+                            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Views Ranking</p>
+                            <p className="label-mono ml-1" style={{ letterSpacing: "0.07em" }}>· cumulative by campaign · highest first</p>
+                          </div>
+                          <div className="px-5 py-4 space-y-1.5">
+                            {viewsRows.map((r, i) => (
+                              <button key={r.id} onClick={() => setSelectedClientId(r.id)}
+                                className="w-full rounded-xl px-4 py-3 text-left flex items-center gap-3 transition-colors"
+                                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)")}
+                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)")}
+                              >
+                                <span className="tabular-nums flex-shrink-0 text-xs font-bold w-5 text-right" style={{ color: "var(--text-tertiary)" }}>#{i + 1}</span>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden"
+                                  style={r.logoUrl ? { border: "1px solid var(--border-default)" } : { background: "var(--accent-muted)", color: "var(--accent)" }}>
+                                  {r.logoUrl ? <img src={r.logoUrl} alt="" className="w-full h-full object-cover" /> : r.name[0]}
+                                </div>
+                                <p className="text-sm font-semibold flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{r.name}</p>
+                                {r.campaignName && <span className="label-mono px-2 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(255,59,59,0.08)", color: "var(--danger)", border: "1px solid rgba(255,59,59,0.18)" }}>{r.campaignName}</span>}
+                                <span className="tabular-nums font-bold text-sm flex-shrink-0" style={{ color: "#3DD68C" }}>{fmt(r.views)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* ── Client list tabs ── */}
                     <div className="flex gap-1 mb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -631,6 +775,7 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                 const latestWeekly = campaignReports[0];
                 const totalApproved = ongoingReports.reduce((s, r) => s + r.approved, 0);
                 const totalSubmissions = ongoingReports.reduce((s, r) => s + r.totalSubmissions, 0);
+                const activeCampaign = latestWeekly?.campaign ?? ongoingReports[0]?.campaign ?? (selectedClient?.campaigns?.[0] as ClientCampaign | undefined) ?? null;
 
                 const monthMap = new Map<string, OngoingReport[]>();
                 for (const r of ongoingReports) {
@@ -649,6 +794,21 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
 
                 return (
                   <>
+                    {/* Active campaign banner */}
+                    {activeCampaign && (
+                      <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl"
+                        style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.18)" }}>
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)", boxShadow: "0 0 6px var(--accent)" }} />
+                        <span className="label-mono" style={{ color: "var(--text-tertiary)" }}>LIVE CAMPAIGN</span>
+                        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{activeCampaign.name}</span>
+                        {activeCampaign.totalBudget > 0 && (
+                          <span className="ml-auto label-mono" style={{ color: "var(--text-tertiary)" }}>
+                            {fmtCurrency(activeCampaign.totalBudget)} budget
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Latest weekly banner */}
                     {latestWeekly && (
                       <div className="mb-5 rounded-xl px-4 py-3.5 flex items-center gap-4"
@@ -723,21 +883,71 @@ export default function AgencyDashboard({ userName, clients, allClients, clips: 
                           ].sort((a, b) => b.date.localeCompare(a.date));
                           const totalPaidOut = allPaidSnapshots[0]?.value ?? 0;
                           const totalBudget = ((selectedClient?.campaigns ?? []) as {totalBudget: number}[]).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
+                          const allCpmSnapshots: { date: string; value: number }[] = [
+                            ...campaignReports
+                              .filter((r) => r.effectiveCpm != null)
+                              .map((r) => ({ date: r.weekEndDate, value: r.effectiveCpm as number })),
+                            ...ongoingReports
+                              .filter((r) => (r as OngoingReport).effectiveCpm != null)
+                              .map((r) => ({ date: r.date, value: (r as OngoingReport).effectiveCpm as number })),
+                          ].sort((a, b) => b.date.localeCompare(a.date));
+                          const latestCpm = allCpmSnapshots[0]?.value ?? null;
+                          function wowBadge(curr: number, prev: number | undefined, lowerIsBetter = false) {
+                            if (prev == null || prev === 0) return null;
+                            const pct = ((curr - prev) / Math.abs(prev)) * 100;
+                            const up = pct >= 0;
+                            const good = lowerIsBetter ? !up : up;
+                            const color = good ? "var(--success)" : "var(--danger)";
+                            const Icon = Math.abs(pct) < 0.5 ? Minus : up ? TrendingUp : TrendingDown;
+                            return (
+                              <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color }}>
+                                <Icon size={11} />
+                                {Math.abs(pct) < 0.5 ? "—" : `${Math.abs(pct).toFixed(1)}%`}
+                              </span>
+                            );
+                          }
+                          const r0 = ongoingReports[0], r1 = ongoingReports[1];
+                          const agCards = [
+                            {
+                              label: "Total Views", value: fmt(r0?.viewsTotal ?? 0), sub: "running total",
+                              color: "var(--accent)", Icon: Eye,
+                              badge: wowBadge(r0?.viewsTotal ?? 0, r1?.viewsTotal),
+                            },
+                            {
+                              label: "Total Paid Out", value: fmtCurrency(totalPaidOut),
+                              sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date",
+                              color: "var(--success)", Icon: DollarSign,
+                              badge: wowBadge(allPaidSnapshots[0]?.value ?? 0, allPaidSnapshots[1]?.value),
+                            },
+                            {
+                              label: "Clips Approved", value: totalApproved.toLocaleString(), sub: "all time",
+                              color: "var(--success)", Icon: CheckCircle,
+                              badge: wowBadge(r0?.approved ?? 0, r1?.approved),
+                            },
+                            {
+                              label: "Clips Posted", value: totalSubmissions.toLocaleString(), sub: "all time",
+                              color: "#3DD68C", Icon: Scissors,
+                              badge: wowBadge(r0?.totalSubmissions ?? 0, r1?.totalSubmissions),
+                            },
+                            {
+                              label: "Eff. CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—",
+                              sub: "latest report", color: "var(--text-secondary)", Icon: TrendingUp,
+                              badge: wowBadge(allCpmSnapshots[0]?.value ?? 0, allCpmSnapshots[1]?.value, true),
+                            },
+                          ];
                           return (
                             <>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {[
-                                  { label: "Total Reports",  value: ongoingReports.length.toString(),       sub: "all time",      color: "var(--text-primary)", Icon: FileText },
-                                  { label: "Clips Approved", value: totalApproved.toLocaleString(),          sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
-                                  { label: "Total Views",    value: fmt(ongoingReports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
-                                  { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),               sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
-                                ].map((s) => (
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                {agCards.map((s) => (
                                   <div key={s.label} style={card} className="p-4">
                                     <div className="flex items-center gap-2 mb-2">
                                       <s.Icon size={12} style={{ color: s.color, opacity: 0.7 }} />
                                       <p className="label-mono">{s.label}</p>
                                     </div>
-                                    <p className="text-2xl metric-value mb-0.5" style={{ color: s.color }}>{s.value}</p>
+                                    <div className="flex items-end gap-2 mb-0.5">
+                                      <p className="text-2xl metric-value" style={{ color: "#3DD68C" }}>{s.value}</p>
+                                      {s.badge}
+                                    </div>
                                     <p className="metric-sub">{s.sub}</p>
                                   </div>
                                 ))}

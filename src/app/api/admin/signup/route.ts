@@ -2,11 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
+const VALID_ROLES = ["head_campaign", "campaign_manager", "va", "discord_mod", "freelance"];
+
 export async function POST(req: NextRequest) {
-  const { name, email, password, inviteCode } = await req.json();
+  const { name, email, password, inviteCode, teamRole } = await req.json();
 
   if (!name?.trim() || !email?.trim() || !password || !inviteCode) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+  }
+  if (!teamRole || !VALID_ROLES.includes(teamRole)) {
+    return NextResponse.json({ error: "Please select your role" }, { status: 400 });
   }
   if (password.length < 6) {
     return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
@@ -36,6 +41,8 @@ export async function POST(req: NextRequest) {
       passwordHash,
       role: "agency",
       mustChangePassword: false,
+      isTeamMember: true,
+      teamRole,
     },
     select: { id: true, name: true, email: true, role: true },
   });

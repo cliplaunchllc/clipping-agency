@@ -28,10 +28,19 @@ export default function AdminSignupPage() {
   const { data: session, status } = useSession();
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
 
+  const TEAM_ROLES = [
+    { id: "head_campaign",    label: "Head of Campaign Management" },
+    { id: "campaign_manager", label: "Campaign Manager" },
+    { id: "va",               label: "VA" },
+    { id: "discord_mod",      label: "Discord Moderator" },
+    { id: "freelance",        label: "Freelance" },
+  ];
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [teamRole, setTeamRole] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,6 +65,10 @@ export default function AdminSignupPage() {
       setError("All fields are required");
       return;
     }
+    if (!teamRole) {
+      setError("Please select your role");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -71,7 +84,7 @@ export default function AdminSignupPage() {
     const res = await fetch("/api/admin/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), email: email.trim(), password, inviteCode: inviteCode.trim() }),
+      body: JSON.stringify({ name: name.trim(), email: email.trim(), password, inviteCode: inviteCode.trim(), teamRole }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -214,6 +227,19 @@ export default function AdminSignupPage() {
                 onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
                 onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Your Role</label>
+              <select value={teamRole} onChange={(e) => setTeamRole(e.target.value)} required
+                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
+                onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
+                onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}>
+                <option value="">— Select your role —</option>
+                {TEAM_ROLES.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
             </div>
 
             {/* Divider */}

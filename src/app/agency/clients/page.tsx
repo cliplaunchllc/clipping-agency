@@ -29,10 +29,10 @@ export default async function AgencyClientsPage() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
+      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
       <main className="flex-1 overflow-y-auto ml-56">
         <div className="max-w-5xl mx-auto px-8 py-8">
-          <ClientManagement initialClients={serialized} />
+          <ClientManagement initialClients={serialized} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
         </div>
       </main>
     </div>

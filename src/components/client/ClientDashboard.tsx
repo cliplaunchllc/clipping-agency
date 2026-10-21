@@ -5,7 +5,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import {
   Eye, Heart, Share2, Bookmark, MessageCircle, BarChart2, ExternalLink,
   TrendingUp, TrendingDown, Activity, ChevronDown, ChevronRight, CalendarDays,
-  DollarSign, FileText, CheckCircle, Layers, Wallet,
+  DollarSign, FileText, CheckCircle, Layers, Wallet, Minus, Scissors,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -114,6 +114,7 @@ interface ClientData {
   campaignType: "manual" | "cpm";
   contractUrl: string | null;
   campaignTrackerUrl: string | null;
+  bannerUrl?: string | null;
   welcomePageUrl?: string | null;
   welcomeVideoUrl?: string | null;
   intakeFormUrl?: string | null;
@@ -174,12 +175,13 @@ function VideoEmbed({ videoId, url }: { videoId: string; url: string }) {
         </div>
       )}
       <a href={url} target="_blank" rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-xs"
-        style={{ color: "var(--text-tertiary)", textDecoration: "none" }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+        className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium"
+        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-secondary)", textDecoration: "none" }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
         </svg>
-        Watch on YouTube
+        Watch fullscreen
       </a>
     </div>
   );
@@ -277,39 +279,41 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      {previewMode ? (
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
+      {/* Preview mode: thin agency bar above the normal client layout */}
+      {previewMode && (
         <div
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-2.5"
+          className="flex items-center justify-between px-4 py-1.5 flex-shrink-0 z-50"
           style={{
-            background: "var(--bg-subtle)",
-            borderBottom: "1px solid var(--border-default)",
+            background: "rgba(61,214,140,0.08)",
+            borderBottom: "1px solid rgba(61,214,140,0.25)",
           }}
         >
-          <a href="/agency" className="flex items-center gap-1.5 text-xs transition-colors"
-            style={{ color: "var(--text-tertiary)" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-primary)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)")}
+          <a href="/agency" className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+            style={{ color: "rgb(61,214,140)" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Agency
+            Back to Agency
           </a>
-          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            Viewing as <span style={{ color: "var(--text-primary)" }}>{client.name}</span>
+          <span className="text-xs font-medium" style={{ color: "rgb(61,214,140)" }}>
+            Previewing as {client.name}
           </span>
           <span
             className="text-xs px-2 py-0.5 rounded-md font-medium"
-            style={{ background: "var(--accent-muted)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}
+            style={{ background: "rgba(61,214,140,0.12)", color: "rgb(61,214,140)", border: "1px solid rgba(61,214,140,0.3)" }}
           >
-            Preview
+            Client POV
           </span>
         </div>
-      ) : (
-        <Sidebar role="client" userName={userName} />
       )}
 
-      <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-56"}`}>
-        <div className={`max-w-5xl mx-auto px-8 py-8 ${previewMode ? "pt-14" : ""}`}>
+      {/* Identical layout to real client view */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar role="client" userName={client.name} />
+        <main className="flex-1 overflow-y-auto ml-56">
+          <div className="max-w-5xl mx-auto px-8 py-8">
 
           {/* ── Page header ────────────────────────────────────────── */}
           <div className="flex items-center gap-4 mb-6">
@@ -377,169 +381,13 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
             <>
               {client.campaignType === "cpm" ? (
                 <>
-                  {/* ── Latest weekly report notification banner ──── */}
-                  {(() => {
-                    const latest = (client.campaignReports ?? [])[0];
-                    if (!latest) return null;
-                    function scrollToWeekReport(id: string) {
-                      // Switch to Reports tab, expand the month group, then scroll
-                      const monthKey = latest.weekEndDate.slice(0, 7);
-                      setExpandedMonths((s) => { const n = new Set(s); n.add(monthKey); return n; });
-                      setExpandedWeekReportId(id);
-                      setHighlightedWeekId(id);
-                      setActiveTab("reports");
-                      setTimeout(() => {
-                        weekReportRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
-                        setTimeout(() => setHighlightedWeekId(null), 1800);
-                      }, 120);
-                    }
-                    return (
-                      <div
-                        className="mb-5 rounded-xl px-4 py-3.5 flex items-center gap-4"
-                        style={{
-                          background: "linear-gradient(135deg, rgba(61,255,162,0.07) 0%, rgba(61,255,162,0.03) 100%)",
-                          border: "1px solid var(--accent-border)",
-                        }}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
-                        >
-                          <CalendarDays size={15} style={{ color: "var(--accent)" }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="label-mono" style={{ color: "var(--accent)" }}>
-                              End of Week Report
-                            </span>
-                            <span
-                              className="label-mono px-1.5 py-0.5 rounded"
-                              style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 10 }}
-                            >
-                              New
-                            </span>
-                          </div>
-                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                            {fmtWeekRange(latest.weekStartDate, latest.weekEndDate)}
-                          </p>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                              {fmt(latest.totalViews)} views
-                            </span>
-                            {latest.paidOut > 0 && (
-                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                                · {fmtCurrency(latest.paidOut)} paid out
-                              </span>
-                            )}
-                            {latest.clipsApproved > 0 && (
-                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                                · {latest.clipsApproved} clips approved
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => scrollToWeekReport(latest.id)}
-                          className="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-                          style={{ background: "var(--accent-solid)", color: "var(--text-on-accent)" }}
-                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
-                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
-                        >
-                          View Report
-                        </button>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Campaign Tracker card */}
-                  <div style={card} className="p-5 mb-4">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}
-                      >
-                        <Activity size={15} style={{ color: "var(--accent)" }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-semibold"
-                          style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-                        >
-                          Live Campaign Tracker
-                        </p>
-                        <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                          All clips, live performance stats, platform breakdown, real-time views, CPM, and exact payout — updated continuously.
-                        </p>
-                        {client.campaignTrackerUrl ? (
-                          <a
-                            href={client.campaignTrackerUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-                            style={{
-                              background: "var(--accent-solid)",
-                              color: "var(--text-on-accent)",
-                              textDecoration: "none",
-                              boxShadow: "var(--shadow-inset-top)",
-                            }}
-                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
-                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
-                          >
-                            <ExternalLink size={12} />
-                            Open Live Tracker
-                          </a>
-                        ) : (
-                          <p className="text-xs mt-3" style={{ color: "var(--text-tertiary)" }}>
-                            Tracker link will appear here once set up.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Campaign Reports — merged into overview */}
                   {(() => {
                     const reports = (client.ongoingReports ?? []).slice().sort((a, b) => b.date.localeCompare(a.date));
-
-                    function fmtMonthLabel(key: string) {
-                      const [y, m] = key.split("-").map(Number);
-                      return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-                    }
-                    function dayName(dateStr: string) {
-                      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
-                    }
-                    function fmtDay(dateStr: string) {
-                      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                    }
-                    function toggleMonth(k: string) {
-                      setExpandedMonths((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
-                    }
-
-                    if (reports.length === 0) {
-                      return (
-                        <div
-                          className="flex flex-col items-center justify-center rounded-xl py-16"
-                          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
-                        >
-                          <Activity size={28} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 12 }} />
-                          <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>No reports yet</p>
-                          <p className="metric-sub">Your campaign reports will appear here.</p>
-                        </div>
-                      );
-                    }
-
-                    const monthMap = new Map<string, OngoingReport[]>();
-                    for (const r of reports) {
-                      const key = r.date.slice(0, 7);
-                      if (!monthMap.has(key)) monthMap.set(key, []);
-                      monthMap.get(key)!.push(r);
-                    }
-                    const months = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+                    const latestWeekly = (client.campaignReports ?? [])[0] ?? null;
 
                     const totalApproved    = reports.reduce((s, r) => s + r.approved, 0);
                     const totalSubmissions = reports.reduce((s, r) => s + r.totalSubmissions, 0);
 
-                    // Find most recent report (daily or weekly) that has a paid-out value
                     const allPaidSnapshots: { date: string; value: number }[] = [
                       ...(client.campaignReports ?? [])
                         .filter((r) => r.paidOut > 0)
@@ -551,7 +399,6 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     const totalPaidOut = allPaidSnapshots[0]?.value ?? 0;
                     const totalBudget = (client.campaigns ?? []).reduce((s, c) => s + (c.totalBudget ?? 0), 0);
 
-                    // Latest effective CPM from daily or weekly reports
                     const allCpmSnapshots: { date: string; value: number }[] = [
                       ...(client.campaignReports ?? [])
                         .filter((r) => r.effectiveCpm != null)
@@ -562,41 +409,143 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     ].sort((a, b) => b.date.localeCompare(a.date));
                     const latestCpm = allCpmSnapshots[0]?.value ?? null;
 
+                    const activeCampaign = (reports[0] as { campaignId?: string | null; campaign?: { id: string; name: string; totalBudget: number } | null } | undefined)?.campaign
+                      ?? (client.campaigns as Array<{ id: string; name: string; totalBudget: number }> | undefined)?.[0]
+                      ?? null;
+
+                    const r0 = reports[0], r1 = reports[1];
+
+                    function wowBadge(curr: number, prev: number | undefined, lowerIsBetter = false) {
+                      if (prev == null || prev === 0) return null;
+                      const p = ((curr - prev) / Math.abs(prev)) * 100;
+                      const up = p >= 0;
+                      const good = lowerIsBetter ? !up : up;
+                      const color = good ? "var(--success)" : "var(--danger)";
+                      const Icon = Math.abs(p) < 0.5 ? Minus : up ? TrendingUp : TrendingDown;
+                      return (
+                        <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color }}>
+                          <Icon size={11} />
+                          {Math.abs(p) < 0.5 ? "—" : `${Math.abs(p).toFixed(1)}%`}
+                        </span>
+                      );
+                    }
+
+                    function scrollToWeekReport(id: string) {
+                      if (!latestWeekly) return;
+                      const monthKey = latestWeekly.weekEndDate.slice(0, 7);
+                      setExpandedMonths((s) => { const n = new Set(s); n.add(monthKey); return n; });
+                      setExpandedWeekReportId(id);
+                      setHighlightedWeekId(id);
+                      setActiveTab("reports");
+                      setTimeout(() => {
+                        weekReportRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        setTimeout(() => setHighlightedWeekId(null), 1800);
+                      }, 120);
+                    }
+
+                    const summaryCards = [
+                      { label: "Total Views", value: fmt(r0?.viewsTotal ?? 0), sub: "running total", Icon: Eye, badge: wowBadge(r0?.viewsTotal ?? 0, r1?.viewsTotal) },
+                      { label: "Total Paid Out", value: fmtCurrency(totalPaidOut), sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", Icon: DollarSign, badge: wowBadge(allPaidSnapshots[0]?.value ?? 0, allPaidSnapshots[1]?.value) },
+                      { label: "Clips Approved", value: totalApproved.toLocaleString(), sub: "all time", Icon: CheckCircle, badge: wowBadge(r0?.approved ?? 0, r1?.approved) },
+                      { label: "Clips Posted", value: totalSubmissions.toLocaleString(), sub: "all time", Icon: Scissors, badge: wowBadge(r0?.totalSubmissions ?? 0, r1?.totalSubmissions) },
+                      { label: "Eff. CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest report", Icon: TrendingUp, badge: wowBadge(allCpmSnapshots[0]?.value ?? 0, allCpmSnapshots[1]?.value, true) },
+                    ];
+
                     return (
                       <div className="space-y-4">
-                        {/* Not-live notice */}
-                        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: "rgba(245,185,74,0.06)", border: "1px solid rgba(245,185,74,0.18)" }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                          </svg>
-                          <p className="metric-sub">
-                            These numbers come from <strong style={{ color: "var(--text-primary)" }}>manually filed reports</strong> and are not live.
-                            For real-time views, clips, and payout — use the <strong style={{ color: "var(--text-primary)" }}>Live Tracker</strong> linked above.
-                          </p>
-                        </div>
 
-                        {/* Summary cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {([
-                            { label: "Clips Approved", value: totalApproved.toLocaleString(),   sub: `of ${totalSubmissions.toLocaleString()} submitted`, color: "var(--success)", Icon: CheckCircle },
-                            { label: "Total Views",    value: fmt(reports[0]?.viewsTotal ?? 0), sub: "running total", color: "var(--accent)", Icon: Eye },
-                            { label: "Total Paid Out", value: fmtCurrency(totalPaidOut),        sub: totalBudget > 0 ? `of ${fmtCurrency(totalBudget)} budget` : "to date", color: "var(--success)", Icon: DollarSign },
-                            ...(latestCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(latestCpm), sub: "latest report", color: "var(--text-secondary)", Icon: TrendingUp }] : []),
-                          ] as { label: string; value: string; sub: string; color: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[]).map((s) => (
-                            <div key={s.label} style={card} className="p-4">
-                              <div className="flex items-center gap-2 mb-2">
-                                <s.Icon size={13} style={{ color: s.color, opacity: 0.7 }} />
-                                <p className="label-mono">{s.label}</p>
-                              </div>
-                              <p className="metric-value text-2xl mb-0.5" style={{ color: s.color }}>
-                                {s.value}
+                        {/* ── (1) LIVE CAMPAIGN + tracker — top of overview ── */}
+                        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,59,59,0.28)", background: "rgba(255,59,59,0.06)" }}>
+                          {/* Header row */}
+                          <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,59,59,0.15)" }}>
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: "#FF3B3B", boxShadow: "0 0 8px rgba(255,59,59,0.8)" }} />
+                            <span className="label-mono" style={{ color: "rgba(255,110,110,0.9)" }}>LIVE CAMPAIGN</span>
+                            {activeCampaign && (
+                              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{activeCampaign.name}</span>
+                            )}
+                            {(activeCampaign?.totalBudget ?? 0) > 0 && (
+                              <span className="ml-auto label-mono" style={{ color: "var(--text-tertiary)" }}>
+                                {fmtCurrency(activeCampaign!.totalBudget)} budget
+                              </span>
+                            )}
+                          </div>
+                          {/* Tracker body */}
+                          <div className="flex items-center justify-between px-5 py-4 gap-4">
+                            <div>
+                              <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                                Live Tracking
                               </p>
-                              <p className="metric-sub">{s.sub}</p>
+                              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                                Real-time views, CPM, clips &amp; payout — updated continuously.
+                                <span className="ml-2 font-medium" style={{ color: "rgba(255,110,110,0.85)" }}>This is live data.</span>
+                              </p>
                             </div>
-                          ))}
+                            {client.campaignTrackerUrl ? (
+                              <a
+                                href={client.campaignTrackerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                style={{ background: "#FF3B3B", color: "#fff", textDecoration: "none", boxShadow: "0 0 12px rgba(255,59,59,0.35)" }}
+                                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#e02f2f")}
+                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FF3B3B")}
+                              >
+                                <ExternalLink size={12} /> Open Live Tracker
+                              </a>
+                            ) : (
+                              <span className="flex-shrink-0 text-xs" style={{ color: "var(--text-tertiary)" }}>Tracker link coming soon</span>
+                            )}
+                          </div>
+                          {/* Banner inside the red box */}
+                          {client.bannerUrl && (
+                            <div className="px-5 pb-5" style={{ borderTop: "1px solid rgba(255,59,59,0.15)" }}>
+                              <img
+                                src={client.bannerUrl}
+                                alt="Campaign banner"
+                                className="rounded-lg mt-4"
+                                style={{ maxWidth: 420, width: "100%", display: "block" }}
+                              />
+                            </div>
+                          )}
                         </div>
 
-                        {/* Paid out vs budget bar */}
+                        {/* ── (3) Summary cards (manual report data) ─── */}
+                        {reports.length > 0 ? (
+                          <>
+                            <div className="flex items-center gap-2 px-1">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                              </svg>
+                              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                                Stats below come from <strong style={{ color: "var(--text-secondary)", fontWeight: 500 }}>manually filed reports</strong> — not live. Use the tracker above for real-time data.
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                              {summaryCards.map((s) => (
+                                <div key={s.label} style={card} className="p-4">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <s.Icon size={13} style={{ color: "var(--danger)", opacity: 0.85 }} />
+                                    <p className="label-mono">{s.label}</p>
+                                  </div>
+                                  <div className="flex items-end gap-2 mb-0.5">
+                                    <p className="metric-value text-2xl" style={{ color: "#3DD68C" }}>{s.value}</p>
+                                    {s.badge}
+                                  </div>
+                                  <p className="metric-sub">{s.sub}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center rounded-xl py-12"
+                            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                            <Activity size={24} style={{ color: "var(--text-tertiary)", opacity: 0.4, marginBottom: 10 }} />
+                            <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>No reports yet</p>
+                            <p className="metric-sub">Campaign reports will appear here once filed.</p>
+                          </div>
+                        )}
+
+                        {/* ── (4) Budget bar ─────────────────────────── */}
                         {totalBudget > 0 && (
                           <div style={card} className="p-4">
                             <div className="flex items-center gap-2 mb-3">
@@ -607,7 +556,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                               </span>
                             </div>
                             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                              <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)", transition: "width 0.6s ease" }} />
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.5)", transition: "width 0.6s ease" }} />
                             </div>
                             <div className="flex items-center justify-between mt-2">
                               <p className="metric-sub">{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
@@ -616,18 +565,30 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           </div>
                         )}
 
-                        {/* Views chart */}
+                        {/* ── (5) Views by week chart ────────────────── */}
                         {reports.length > 1 && (() => {
-                          const cpmChartData = reports
-                            .slice()
-                            .sort((a, b) => a.date.localeCompare(b.date))
-                            .map((r) => ({ date: r.date.slice(0, 10), views: r.viewsToday }));
+                          const weekMap = new Map<string, { weekLabel: string; views: number }>();
+                          const sorted = reports.slice().sort((a, b) => a.date.localeCompare(b.date));
+                          for (const r of sorted) {
+                            const d = new Date(r.date + "T00:00:00");
+                            const day = d.getDay();
+                            const diffToMon = day === 0 ? -6 : 1 - day;
+                            const mon = new Date(d);
+                            mon.setDate(d.getDate() + diffToMon);
+                            const key = mon.toISOString().slice(0, 10);
+                            const label = mon.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                            const prev = weekMap.get(key);
+                            weekMap.set(key, { weekLabel: label, views: (prev?.views ?? 0) + r.viewsToday });
+                          }
+                          const cpmChartData = Array.from(weekMap.entries())
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([, v]) => ({ date: v.weekLabel, views: v.views }));
                           return (
                             <div style={card} className="p-5">
                               <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                                Daily Views Over Time
+                                Views by Week
                               </p>
-                              <ResponsiveContainer width="100%" height={200}>
+                              <ResponsiveContainer width="100%" height={190}>
                                 <AreaChart data={cpmChartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                                   <defs>
                                     <linearGradient id="cpmViewsGrad" x1="0" y1="0" x2="0" y2="1">
@@ -636,35 +597,74 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                     </linearGradient>
                                   </defs>
                                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                                  <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                                    tickFormatter={(v: string) => fmtDate(v)} />
-                                  <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                                    tickFormatter={(v: number) => fmt(v)} width={44} />
-                                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--text-primary)" }} />
-                                  <Area name="Views" type="linear" dataKey="views"
+                                  <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                                  <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmt(v)} width={44} />
+                                  <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), "Views"]} {...tooltipStyle} itemStyle={{ color: "var(--text-primary)" }} />
+                                  <Area name="Views" type="monotone" dataKey="views"
                                     stroke="var(--accent)" strokeWidth={1.5}
-                                    fill="url(#cpmViewsGrad)" dot={false}
+                                    fill="url(#cpmViewsGrad)"
                                     activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }}
+                                    dot={(props: { cx?: number; cy?: number; index?: number }) => {
+                                      const cx = props.cx ?? 0;
+                                      const cy = props.cy ?? 0;
+                                      const index = props.index ?? 0;
+                                      const prev = index > 0 ? cpmChartData[index - 1].views : null;
+                                      const curr = cpmChartData[index]?.views ?? 0;
+                                      if (prev == null) return <circle key={index} cx={cx} cy={cy} r={2.5} fill="var(--accent)" stroke="none" />;
+                                      const p2 = ((curr - prev) / prev) * 100;
+                                      const color = p2 >= 0 ? "#3DD68C" : "#FF4444";
+                                      const lbl = `${p2 >= 0 ? "+" : ""}${Math.round(p2)}%`;
+                                      return (
+                                        <g key={index}>
+                                          <circle cx={cx} cy={cy} r={2.5} fill="var(--accent)" stroke="none" />
+                                          <text x={cx} y={cy - 10} textAnchor="middle" fill={color} fontSize={9} fontWeight={700} opacity={0.9}>{lbl}</text>
+                                        </g>
+                                      );
+                                    }}
                                   />
                                 </AreaChart>
                               </ResponsiveContainer>
-                              <p className="metric-sub mt-3 text-center">
-                                Manual (report data) · Live tracking automated via campaign link
-                              </p>
+                              <p className="metric-sub mt-2 text-center">Each bar = total views filed that week · Live tracking via campaign link</p>
                             </div>
                           );
                         })()}
 
-                        {/* View all reports CTA */}
+                        {/* ── (6) Latest week report ─────────────────── */}
+                        {latestWeekly ? (
+                          <div style={{ ...card, background: "linear-gradient(135deg, rgba(61,255,162,0.06) 0%, rgba(61,255,162,0.02) 100%)", border: "1px solid var(--accent-border)" }} className="px-5 py-4 flex items-center gap-4">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
+                              <CalendarDays size={14} style={{ color: "var(--accent)" }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="label-mono" style={{ color: "var(--accent)" }}>End of Week Report</span>
+                                <span className="label-mono px-1.5 py-0.5 rounded" style={{ background: "var(--accent-muted)", color: "var(--accent)", fontSize: 10 }}>New</span>
+                              </div>
+                              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtWeekRange(latestWeekly.weekStartDate, latestWeekly.weekEndDate)}</p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{fmt(latestWeekly.totalViews)} views</span>
+                                {latestWeekly.paidOut > 0 && <span className="text-xs" style={{ color: "var(--text-secondary)" }}>· {fmtCurrency(latestWeekly.paidOut)} paid</span>}
+                                {latestWeekly.clipsApproved > 0 && <span className="text-xs" style={{ color: "var(--text-secondary)" }}>· {latestWeekly.clipsApproved} clips</span>}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => scrollToWeekReport(latestWeekly.id)}
+                              className="flex-shrink-0 px-3 py-2 rounded-md text-xs font-medium transition-colors"
+                              style={{ background: "var(--accent-solid)", color: "var(--text-on-accent)" }}
+                              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
+                              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
+                            >
+                              View Report
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {/* ── (7) View all reports CTA ───────────────── */}
                         {totalReportCount > 0 && (
                           <button
                             onClick={() => setActiveTab("reports")}
                             className="w-full flex items-center justify-between px-5 py-4 rounded-xl transition-colors"
-                            style={{
-                              background: "var(--bg-surface)",
-                              border: "1px solid var(--border-default)",
-                              cursor: "pointer",
-                            }}
+                            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", cursor: "pointer" }}
                             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
                             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-surface)")}
                           >
@@ -679,318 +679,13 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                               </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>
-                                {totalReportCount}
-                              </span>
+                              <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "var(--accent-muted)", color: "var(--accent)" }}>{totalReportCount}</span>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-tertiary)" }}>
                                 <polyline points="9 18 15 12 9 6"/>
                               </svg>
                             </div>
                           </button>
                         )}
-                        {/* Month groups (hidden — moved to Reports tab) */}
-                        {false && (() => {
-                          const weekReports = (client.campaignReports ?? []);
-                          // Build a map of weekEndDate month → campaign reports
-                          const weekByMonth = new Map<string, CampaignReport[]>();
-                          for (const wr of weekReports) {
-                            const mk = wr.weekEndDate.slice(0, 7);
-                            if (!weekByMonth.has(mk)) weekByMonth.set(mk, []);
-                            weekByMonth.get(mk)!.push(wr);
-                          }
-
-                          return (
-                            <div className="space-y-2">
-                              {months.map((monthKey) => {
-                                const monthReports = monthMap.get(monthKey)!;
-                                const monthWeekReports = weekByMonth.get(monthKey) ?? [];
-                                const isOpen = expandedMonths.has(monthKey);
-                                const mApproved = monthReports.reduce((s, r) => s + r.approved, 0);
-
-                                // Combine daily + weekly rows sorted desc by date
-                                type DailyRow = { kind: "daily"; date: string; report: OngoingReport };
-                                type WeeklyRow = { kind: "weekly"; date: string; report: CampaignReport };
-                                type Row = DailyRow | WeeklyRow;
-                                const rows: Row[] = [
-                                  ...monthReports.map((r): DailyRow => ({ kind: "daily", date: r.date, report: r })),
-                                  ...monthWeekReports.map((r): WeeklyRow => ({ kind: "weekly", date: r.weekEndDate, report: r })),
-                                ].sort((a, b) => b.date.localeCompare(a.date));
-
-                                return (
-                                  <div key={monthKey} style={{ ...card, overflow: "hidden", padding: 0 }}>
-                                    <button
-                                      className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
-                                      style={{ background: "transparent" }}
-                                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                      onClick={() => toggleMonth(monthKey)}
-                                    >
-                                      <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                                        style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-                                        <Activity size={13} style={{ color: "var(--accent)" }} />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtMonthLabel(monthKey)}</p>
-                                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                                          {monthReports.length} daily report{monthReports.length !== 1 ? "s" : ""}
-                                          {monthWeekReports.length > 0 && ` · ${monthWeekReports.length} week summar${monthWeekReports.length !== 1 ? "ies" : "y"}`}
-                                        </p>
-                                      </div>
-                                      <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-                                        <div className="text-right">
-                                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Approved</p>
-                                          <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
-                                        </div>
-                                      </div>
-                                      <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                        style={{ transform: isOpen ? "rotate(180deg)" : "none", color: "var(--text-tertiary)" }}>
-                                        <ChevronDown size={15} />
-                                      </div>
-                                    </button>
-
-                                    {isOpen && (
-                                      <div className="px-3 pb-3 space-y-1.5 pt-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                        {rows.map((row) => {
-                                          if (row.kind === "weekly") {
-                                            const wr = row.report;
-                                            const isExpanded = expandedWeekReportId === wr.id;
-                                            const isHighlighted = highlightedWeekId === wr.id;
-                                            return (
-                                              <div
-                                                key={`week-${wr.id}`}
-                                                ref={(el) => { weekReportRefs.current[wr.id] = el; }}
-                                                className="rounded-lg overflow-hidden"
-                                                style={{
-                                                  background: "var(--bg-base)",
-                                                  border: `1px solid ${isHighlighted ? "var(--accent)" : "var(--accent-border)"}`,
-                                                  transition: "border-color 400ms ease, box-shadow 400ms ease",
-                                                  boxShadow: isHighlighted ? "0 0 0 2px var(--accent-muted)" : "none",
-                                                }}
-                                              >
-                                                <button
-                                                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                                  style={{ background: isHighlighted ? "var(--accent-muted)" : "transparent" }}
-                                                  onMouseEnter={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; }}
-                                                  onMouseLeave={(e) => { if (!isHighlighted) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                                                  onClick={() => setExpandedWeekReportId(isExpanded ? null : wr.id)}
-                                                >
-                                                  <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
-                                                    style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-                                                    <CalendarDays size={11} style={{ color: "var(--accent)" }} />
-                                                  </div>
-                                                  <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                                                        {fmtWeekRange(wr.weekStartDate, wr.weekEndDate)}
-                                                      </span>
-                                                      <span
-                                                        className="label-mono px-1.5 py-0.5 rounded"
-                                                        style={{ background: "var(--accent-muted)", color: "var(--accent)" }}
-                                                      >
-                                                        Week Summary
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                  <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                                    <div className="text-right">
-                                                      <p className="label-mono">Total Views</p>
-                                                      <p className="text-sm metric-value" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
-                                                    </div>
-                                                    {wr.paidOut > 0 && (
-                                                      <div className="text-right">
-                                                        <p className="label-mono">Paid Out</p>
-                                                        <p className="text-sm metric-value" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
-                                                      </div>
-                                                    )}
-                                                    <div className="text-right">
-                                                      <p className="label-mono">Clips</p>
-                                                      <p className="text-sm metric-value" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
-                                                    </div>
-                                                  </div>
-                                                  <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                                    style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
-                                                    <ChevronRight size={13} />
-                                                  </div>
-                                                </button>
-
-                                                {isExpanded && (
-                                                  <div className="px-5 pb-5 pt-4 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
-                                                    {/* Stat grid */}
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                      {[
-                                                        { label: "Total Views",  value: fmt(wr.totalViews),                                 color: "var(--accent)" },
-                                                        { label: "Paid Out",     value: fmtCurrency(wr.paidOut),                            color: "var(--success)" },
-                                                        { label: "Clips",        value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`,       color: "var(--text-primary)" },
-                                                        { label: "Eff. CPM",     value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
-                                                      ].map((s) => (
-                                                        <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                          <p className="label-mono mb-1">{s.label}</p>
-                                                          <p className="text-xl metric-value" style={{ color: s.color }}>{s.value}</p>
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                    {/* Budget progress */}
-                                                    {(() => {
-                                                      if (!wr.campaignId || wr.amountSpent == null) return null;
-                                                      const campaign = client.campaigns?.find((c) => c.id === wr.campaignId);
-                                                      if (!campaign || campaign.totalBudget <= 0) return null;
-                                                      const ratio = wr.amountSpent / campaign.totalBudget;
-                                                      const barColor = ratio > 0.9 ? "var(--danger)" : ratio > 0.7 ? "var(--warning)" : "var(--success)";
-                                                      const remaining = Math.max(0, campaign.totalBudget - wr.amountSpent);
-                                                      return (
-                                                        <div className="rounded-lg p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                          <div className="flex items-center justify-between mb-2">
-                                                            <p className="label-mono">{campaign.name} — Budget</p>
-                                                            <p className="metric-sub font-semibold" style={{ color: "var(--text-primary)" }}>{fmtCurrency(wr.amountSpent)} / {fmtCurrency(campaign.totalBudget)}</p>
-                                                          </div>
-                                                          <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-subtle)" }}>
-                                                            <div style={{ width: `${Math.min(100, ratio * 100)}%`, height: "100%", background: barColor, borderRadius: "9999px", transition: "width 0.4s ease" }} />
-                                                          </div>
-                                                          <p className="metric-sub">{fmtCurrency(remaining)} remaining</p>
-                                                        </div>
-                                                      );
-                                                    })()}
-                                                    {/* Platform breakdown */}
-                                                    {wr.totalViews > 0 && (() => {
-                                                      const platforms = [
-                                                        { label: "TikTok", views: wr.tiktokViews, color: "var(--accent)" },
-                                                        { label: "Instagram", views: wr.instagramViews, color: "#FF8800" },
-                                                        { label: "YouTube", views: wr.youtubeViews, color: "#CC1A1A" },
-                                                        { label: "X", views: wr.twitterViews, color: "#5B9BD5" },
-                                                      ].filter((p) => p.views > 0);
-                                                      if (platforms.length === 0) return null;
-                                                      return (
-                                                        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
-                                                          <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-hover)" }}>
-                                                            <p className="label-mono">Platform Breakdown</p>
-                                                          </div>
-                                                          <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
-                                                            {platforms.map((p) => (
-                                                              <div key={p.label} className="flex items-center justify-between px-3 py-2">
-                                                                <span className="text-xs font-semibold" style={{ color: p.color }}>{p.label}</span>
-                                                                <div className="flex items-center gap-3">
-                                                                  <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmt(p.views)}</span>
-                                                                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{((p.views / wr.totalViews) * 100).toFixed(1)}%</span>
-                                                                </div>
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    })()}
-                                                    {/* Text sections */}
-                                                    {[
-                                                      { key: "weeklySummary",    label: "Weekly Summary",     value: wr.weeklySummary,    border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
-                                                      { key: "whatsWorking",     label: "What's Working",     value: wr.whatsWorking,     border: "rgba(61,214,140,0.3)",  bg: "var(--success-bg)",     color: "var(--success)" },
-                                                      { key: "whatsNotWorking",  label: "What's Not Working", value: wr.whatsNotWorking,  border: "rgba(255,59,59,0.2)",   bg: "rgba(255,59,59,0.06)",  color: "var(--danger)" },
-                                                      { key: "nextWeekFocus",    label: "Next Week Focus",    value: wr.nextWeekFocus,    border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",     color: "var(--warning)" },
-                                                    ].filter((s) => s.value).map((s) => (
-                                                      <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                        <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
-                                                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          }
-
-                                          // Daily row
-                                          const report = row.report as OngoingReport;
-                                          const isExpanded = expandedReportId === report.id;
-                                          const globalIdx = reports.indexOf(report);
-                                          const prevReport = globalIdx >= 0 && globalIdx + 1 < reports.length ? reports[globalIdx + 1] : null;
-                                          const viewsTodayChange = prevReport && prevReport.viewsToday > 0
-                                            ? Math.round(((report.viewsToday - prevReport.viewsToday) / prevReport.viewsToday) * 100)
-                                            : null;
-                                          const changeColor = viewsTodayChange === null
-                                            ? "var(--text-tertiary)"
-                                            : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)";
-
-                                          return (
-                                            <div key={report.id} className="rounded-lg overflow-hidden"
-                                              style={{ background: "var(--bg-base)", border: `1px solid ${isExpanded ? "var(--accent-border)" : "var(--border-subtle)"}`, transition: "border-color 120ms ease" }}>
-                                              <button
-                                                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                                                style={{ background: "transparent" }}
-                                                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                                                onClick={() => setExpandedReportId(isExpanded ? null : report.id)}
-                                              >
-                                                <div className="w-0.5 self-stretch flex-shrink-0 rounded-full" style={{ background: "var(--accent-border)" }} />
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{fmtDay(report.date)}</span>
-                                                    <span className="label-mono px-1.5 py-0.5 rounded"
-                                                      style={{ background: "var(--bg-active)", color: "var(--text-tertiary)" }}>{dayName(report.date)}</span>
-                                                  </div>
-                                                </div>
-                                                <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
-                                                  <div className="text-right">
-                                                    <p className="label-mono">Approved</p>
-                                                    <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{report.approved}</p>
-                                                  </div>
-                                                  <div className="text-right">
-                                                    <p className="label-mono">Views Today</p>
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                      <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
-                                                      {viewsTodayChange !== null && (
-                                                        <span className="label-mono" style={{ color: changeColor }}>
-                                                          {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                  <div className="text-right">
-                                                    <p className="label-mono">Views Total</p>
-                                                    <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
-                                                  </div>
-                                                </div>
-                                                <div className="flex-shrink-0 ml-2 transition-transform duration-200"
-                                                  style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "var(--text-tertiary)" }}>
-                                                  <ChevronRight size={13} />
-                                                </div>
-                                              </button>
-
-                                              {isExpanded && (
-                                                <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                    {[
-                                                      { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
-                                                      { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
-                                                      { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
-                                                      { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
-                                                    ].map((s) => (
-                                                      <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-                                                        <p className="label-mono mb-1">{s.label}</p>
-                                                        <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                  {[
-                                                    { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",   color: "var(--accent)" },
-                                                    { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",   bg: "var(--warning-bg)",     color: "var(--warning)" },
-                                                    { key: "clipperFeedback",  label: "Clipper Feedback",   value: report.clipperFeedback,  border: "var(--border-default)", bg: "var(--bg-hover)",       color: "var(--text-secondary)" },
-                                                  ].filter((s) => s.value).map((s) => (
-                                                    <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-                                                      <p className="label-mono mb-2" style={{ color: s.color }}>{s.label}</p>
-                                                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{s.value}</p>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
                       </div>
                     );
                   })()}
@@ -1232,7 +927,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           {mApproved > 0 && (
                             <div className="hidden md:block text-right flex-shrink-0">
                               <p className="label-mono">Approved</p>
-                              <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{mApproved.toLocaleString()}</p>
+                              <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{mApproved.toLocaleString()}</p>
                             </div>
                           )}
                           <div className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -1283,17 +978,17 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                       <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
                                         <div className="text-right">
                                           <p className="label-mono">Total Views</p>
-                                          <p className="metric-value text-sm" style={{ color: "var(--accent)" }}>{fmt(wr.totalViews)}</p>
+                                          <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{fmt(wr.totalViews)}</p>
                                         </div>
                                         {wr.paidOut > 0 && (
                                           <div className="text-right">
                                             <p className="label-mono">Paid Out</p>
-                                            <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{fmtCurrency(wr.paidOut)}</p>
+                                            <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{fmtCurrency(wr.paidOut)}</p>
                                           </div>
                                         )}
                                         <div className="text-right">
                                           <p className="label-mono">Clips</p>
-                                          <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
+                                          <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{wr.clipsApproved}/{wr.clipsSubmitted}</p>
                                         </div>
                                       </div>
                                       <div className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -1305,14 +1000,14 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                       <div className="px-5 pb-5 pt-4 space-y-3" style={{ borderTop: "1px solid var(--accent-border)" }}>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                           {[
-                                            { label: "Total Views", value: fmt(wr.totalViews), color: "var(--accent)" },
-                                            { label: "Paid Out",    value: fmtCurrency(wr.paidOut), color: "var(--success)" },
-                                            { label: "Clips",       value: `${wr.clipsApproved} / ${wr.clipsSubmitted}`, color: "var(--text-primary)" },
-                                            { label: "Eff. CPM",    value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—", color: "var(--text-secondary)" },
+                                            { label: "Total Views", value: fmt(wr.totalViews) },
+                                            { label: "Paid Out",    value: fmtCurrency(wr.paidOut) },
+                                            { label: "Clips",       value: `${wr.clipsApproved} / ${wr.clipsSubmitted}` },
+                                            { label: "Eff. CPM",    value: wr.effectiveCpm != null ? fmtCurrency(wr.effectiveCpm) : "—" },
                                           ].map((s) => (
                                             <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                                               <p className="label-mono mb-1">{s.label}</p>
-                                              <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
+                                              <p className="metric-value text-xl" style={{ color: "#3DD68C" }}>{s.value}</p>
                                             </div>
                                           ))}
                                         </div>
@@ -1411,12 +1106,12 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                     <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
                                       <div className="text-right">
                                         <p className="label-mono">Approved</p>
-                                        <p className="metric-value text-sm" style={{ color: "var(--success)" }}>{report.approved}</p>
+                                        <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{report.approved}</p>
                                       </div>
                                       <div className="text-right">
                                         <p className="label-mono">Views Today</p>
                                         <div className="flex items-center justify-end gap-1.5">
-                                          <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsToday)}</p>
+                                          <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{fmt(report.viewsToday)}</p>
                                           {viewsTodayChange !== null && (
                                             <span className="label-mono" style={{ color: changeColor }}>
                                               {viewsTodayChange >= 0 ? "+" : ""}{viewsTodayChange}%
@@ -1426,7 +1121,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                       </div>
                                       <div className="text-right">
                                         <p className="label-mono">Views Total</p>
-                                        <p className="metric-value text-sm" style={{ color: "var(--text-primary)" }}>{fmt(report.viewsTotal)}</p>
+                                        <p className="metric-value text-sm" style={{ color: "#3DD68C" }}>{fmt(report.viewsTotal)}</p>
                                       </div>
                                     </div>
                                     <div className="flex-shrink-0 ml-2 transition-transform duration-200"
@@ -1438,15 +1133,15 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                     <div className="px-5 pb-5 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
                                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {([
-                                          { label: "Approved",     value: report.approved.toString(), color: "var(--success)" },
-                                          { label: "Views Today",  value: fmt(report.viewsToday),     color: "var(--accent)" },
-                                          { label: "Views Total",  value: fmt(report.viewsTotal),     color: "var(--text-primary)" },
-                                          { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
-                                          ...(report.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(report.effectiveCpm), color: "var(--text-secondary)" }] : []),
-                                        ] as { label: string; value: string; color: string }[]).map((s) => (
+                                          { label: "Approved",     value: report.approved.toString() },
+                                          { label: "Views Today",  value: fmt(report.viewsToday) },
+                                          { label: "Views Total",  value: fmt(report.viewsTotal) },
+                                          { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—" },
+                                          ...(report.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(report.effectiveCpm) }] : []),
+                                        ] as { label: string; value: string }[]).map((s) => (
                                           <div key={s.label} className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
                                             <p className="label-mono mb-1">{s.label}</p>
-                                            <p className="metric-value text-xl" style={{ color: s.color }}>{s.value}</p>
+                                            <p className="metric-value text-xl" style={{ color: "#3DD68C" }}>{s.value}</p>
                                           </div>
                                         ))}
                                       </div>
@@ -1543,7 +1238,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                     Welcome to ClipLaunch!
                   </h2>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 580 }}>
-                    We are so excited to have you on board! Read through each step carefully so we can get your campaign live and running as fast as possible. Your campaign will be live within 24 to 72 hours depending on payment method, prelaunch strategy, and how quickly you complete the onboarding steps below.
+                    We are so excited to have you on board! Your campaign will be live within 3–5 business days from payment. Please complete the steps below as soon as possible so we can get everything moving without delay.
                   </p>
                 </div>
 
@@ -1553,7 +1248,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   { number: "02", owner: "You",            title: "Complete the intake form",                       description: "Tell us about your brand, goals, and niche." },
                   { number: "03", owner: "You",            title: "Notify us in our dedicated communication channel", description: "Once your intake form is complete, notify us in our dedicated communication channel so we can start building your rules brief." },
                   { number: "04", owner: "ClipLaunch Team", title: "We build your rules brief",                      description: "Using your intake form answers, we create a custom brief outlining exactly how your clips should be cut, framed, and posted including CTAs, messaging, and any other specifics based on your goals." },
-                  { number: "05", owner: "You",            title: "You approve the brief",                          description: "Before anything goes live, you will review and sign off on the brief. Your campaign does not launch without your green light." },
+                  { number: "05", owner: "You",            title: "You approve the brief",                          description: "We will send the completed rules brief to you in our communication channel for your review. Simply give us the okay and approve it there — your campaign does not launch without your approval." },
                   { number: "06", owner: "ClipLaunch Team", title: "Campaign launches",                              description: "Once approved, we launch your campaign across our clipper network and content starts getting created." },
                   { number: "07", owner: "ClipLaunch Team", title: "Updates and optimization",                       description: "You will get a tracking link so you can watch everything in real time: approved clips, views, CPM, all of it. You will also have access to this dashboard, where we will post campaign reports and weekly updates so you can track your results in one place. We will keep you posted on anything worth knowing along with any adjustments we are making along the way." },
                 ] as const).map((step, i, arr) => {
@@ -1661,10 +1356,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
           {/* ── CONTRACT ─────────────────────────────────────────────── */}
           {activeTab === "contract" && client.campaignType === "cpm" && (
-            <div className="max-w-xl">
+            <div className="max-w-3xl">
               {client.contractUrl ? (
                 <div style={card} className="overflow-hidden p-0">
-                  <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <div className="flex items-center gap-3">
                       <div
                         className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
@@ -1677,41 +1372,43 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       </div>
                       <div>
                         <p className="text-sm font-medium" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Signed Agreement</p>
-                        <p className="metric-sub">Your executed campaign contract. This is here for viewing purposes if needed.</p>
+                        <p className="metric-sub">Your executed campaign contract.</p>
                       </div>
                     </div>
-                  </div>
-                  <div className="px-5 py-4 flex flex-col items-start gap-3">
-                    <div
-                      className="w-full rounded-md px-3 py-2 flex items-center gap-2"
-                      style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                      </svg>
-                      <p className="metric-sub truncate flex-1">
-                        {client.contractUrl}
-                      </p>
-                    </div>
-                    <a
-                      href={client.contractUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-                      style={{
-                        background: "var(--accent-solid)",
-                        color: "var(--text-on-accent)",
-                        textDecoration: "none",
-                        boxShadow: "var(--shadow-inset-top)",
+                    <button
+                      onClick={() => {
+                        const url = client.contractUrl!;
+                        if (url.startsWith("data:")) {
+                          const [meta, b64] = url.split(",");
+                          const mime = meta.split(":")[1].split(";")[0];
+                          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+                          const blob = new Blob([bytes], { type: mime });
+                          window.open(URL.createObjectURL(blob), "_blank");
+                        } else {
+                          window.open(url, "_blank");
+                        }
                       }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid-hover)")}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent-solid)")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium flex-shrink-0"
+                      style={{ background: "var(--accent-solid)", color: "var(--text-on-accent)", boxShadow: "var(--shadow-inset-top)" }}
                     >
-                      <ExternalLink size={13} />
-                      Open Agreement
-                    </a>
+                      <ExternalLink size={12} />
+                      Open fullscreen
+                    </button>
                   </div>
+                  {/* Inline PDF viewer */}
+                  {client.contractUrl.startsWith("data:") ? (
+                    <iframe
+                      src={client.contractUrl}
+                      style={{ width: "100%", height: 700, border: "none", display: "block" }}
+                      title="Signed Agreement"
+                    />
+                  ) : (
+                    <iframe
+                      src={client.contractUrl}
+                      style={{ width: "100%", height: 700, border: "none", display: "block" }}
+                      title="Signed Agreement"
+                    />
+                  )}
                 </div>
               ) : (
                 <div
@@ -1729,7 +1426,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
           )}
 
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

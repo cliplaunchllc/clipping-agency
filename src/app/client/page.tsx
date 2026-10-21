@@ -24,7 +24,7 @@ export default async function ClientPage() {
       links: { orderBy: { createdAt: "asc" } },
       campaigns: { orderBy: { order: "asc" } },
       onboardingSteps: { orderBy: { order: "asc" } },
-      ongoingReports: { orderBy: { date: "desc" } },
+      ongoingReports: { orderBy: { date: "desc" }, include: { campaign: { select: { id: true, name: true, totalBudget: true } } } },
       campaignReports: { where: { published: true }, orderBy: { weekEndDate: "desc" } },
     },
   });
@@ -38,6 +38,7 @@ export default async function ClientPage() {
     campaignType: "cpm" as const,
     contractUrl: client.contractUrl ?? null,
     campaignTrackerUrl: client.campaignTrackerUrl ?? null,
+    bannerUrl: client.bannerUrl ?? null,
     welcomePageUrl: client.welcomePageUrl ?? null,
     welcomeVideoUrl: client.welcomeVideoUrl ?? null,
     intakeFormUrl: client.intakeFormUrl ?? null,
@@ -104,6 +105,7 @@ export default async function ClientPage() {
       viewsToday: r.viewsToday,
       amountSpent: r.amountSpent ?? null,
       effectiveCpm: r.effectiveCpm ?? null,
+      campaign: r.campaign ? { id: r.campaign.id, name: r.campaign.name, totalBudget: r.campaign.totalBudget } : null,
     })),
     clippers: [],
   };

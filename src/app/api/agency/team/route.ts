@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, email, password } = await req.json();
+  const { name, email, password, teamRole } = await req.json();
   if (!name?.trim() || !email?.trim() || !password?.trim()) {
     return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
   }
@@ -30,8 +30,10 @@ export async function POST(req: Request) {
       role: "agency",
       status: "active",
       mustChangePassword: true,
+      isTeamMember: true,
+      teamRole: teamRole || null,
     },
-    select: { id: true, name: true, email: true, status: true, mustChangePassword: true, createdAt: true },
+    select: { id: true, name: true, email: true, status: true, mustChangePassword: true, isTeamMember: true, teamRole: true, createdAt: true },
   });
 
   return NextResponse.json(user, { status: 201 });

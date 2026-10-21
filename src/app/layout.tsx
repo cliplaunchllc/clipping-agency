@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
-import SpaceBackground from "@/components/shared/SpaceBackground";
 
 export const metadata: Metadata = {
   title: "ClipLaunch",
@@ -19,7 +18,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
-        <SpaceBackground />
         <SessionProvider>
           {children}
         </SessionProvider>

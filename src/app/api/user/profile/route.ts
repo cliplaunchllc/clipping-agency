@@ -3,12 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, email: true },
+  });
+  return NextResponse.json({ name: user?.name ?? null, email: user?.email ?? null });
+}
+
 export async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { email, name, currentPassword, newPassword } = body;
+  const { email, name, currentPassword, newPassword, teamRole } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
@@ -47,6 +57,10 @@ export async function PATCH(req: NextRequest) {
 
     updateData.passwordHash = await bcrypt.hash(newPassword, 10);
     updateData.mustChangePassword = false;
+  }
+
+  if (teamRole !== undefined) {
+    updateData.teamRole = teamRole || null;
   }
 
   if (Object.keys(updateData).length === 0) {

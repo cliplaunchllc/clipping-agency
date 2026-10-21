@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
   const client = await prisma.client.create({
     data: {
       name,
+      status: "active",
       welcomeVideoUrl: welcomeVideoUrl || null,
       intakeFormUrl: intakeFormUrl || null,
     },

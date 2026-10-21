@@ -1,14 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { User, Lock, Bell, Shield, ImageIcon, Camera, X, Users, Plus, Trash2, KeyRound } from "lucide-react";
+
+const TEAM_ROLES = [
+  { id: "head_campaign",    label: "Head of Campaign Management" },
+  { id: "campaign_manager", label: "Campaign Manager" },
+  { id: "va",               label: "VA" },
+  { id: "discord_mod",      label: "Discord Moderator" },
+  { id: "freelance",        label: "Freelance" },
+];
 
 interface TeamMember {
   id: string;
   name: string | null;
   email: string;
   mustChangePassword: boolean;
+  isTeamMember: boolean;
+  teamRole: string | null;
   createdAt: string;
 }
 
@@ -18,11 +29,21 @@ interface Props {
   currentUserId: string;
   initialTeam: TeamMember[];
   mustChangePassword: boolean;
+  isTeamMember: boolean;
+  needsSessionRefresh?: boolean;
   initialInviteCode: string | null;
 }
 
-export default function AgencySettings({ userName, email, currentUserId, initialTeam, mustChangePassword, initialInviteCode }: Props) {
+export default function AgencySettings({ userName, email, currentUserId, initialTeam, mustChangePassword, isTeamMember, needsSessionRefresh, initialInviteCode }: Props) {
   const { update: updateSession } = useSession();
+  const router = useRouter();
+
+  // If the JWT is stale (e.g. admin was wrongly marked as team member), refresh and reload
+  useEffect(() => {
+    if (!needsSessionRefresh) return;
+    updateSession().then(() => router.refresh());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "branding" | "team">(
     mustChangePassword ? "security" : "profile"
   );
@@ -53,9 +74,19 @@ export default function AgencySettings({ userName, email, currentUserId, initial
   const [memberName, setMemberName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
+  const [memberRole, setMemberRole] = useState("");
   const [memberError, setMemberError] = useState("");
   const [memberLoading, setMemberLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+
+  // Self role state (for team member first-login)
+  const [selfRole, setSelfRole] = useState(
+    () => initialTeam.find((m) => m.id === currentUserId)?.teamRole ?? ""
+  );
+  const [selfRoleSaving, setSelfRoleSaving] = useState(false);
+  const [selfRoleSaved, setSelfRoleSaved] = useState(false);
+  const [selfRoleError, setSelfRoleError] = useState("");
 
   // Invite code state
   const [inviteCode, setInviteCode] = useState(initialInviteCode ?? "");
@@ -132,7 +163,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
         setNameError(data.error || "Failed to save name");
       } else {
         setSaved(true);
-        await updateSession(); // refresh JWT so sidebar name updates immediately
+        await updateSession();
+        router.refresh();
         setTimeout(() => setSaved(false), 2500);
       }
     } catch {
@@ -204,19 +236,55 @@ export default function AgencySettings({ userName, email, currentUserId, initial
     const res = await fetch("/api/agency/team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: memberName.trim(), email: memberEmail.trim(), password: memberPassword }),
+      body: JSON.stringify({ name: memberName.trim(), email: memberEmail.trim(), password: memberPassword, teamRole: memberRole || null }),
     });
     const data = await res.json();
     if (!res.ok) {
       setMemberError(data.error || "Failed to add team member");
     } else {
-      setTeam((prev) => [...prev, { ...data, createdAt: data.createdAt }]);
+      setTeam((prev) => [...prev, { ...data, teamRole: data.teamRole ?? null, createdAt: data.createdAt }]);
       setMemberName("");
       setMemberEmail("");
       setMemberPassword("");
+      setMemberRole("");
       setShowAddMember(false);
     }
     setMemberLoading(false);
+  }
+
+  async function handleUpdateRole(id: string, role: string) {
+    setUpdatingRoleId(id);
+    const res = await fetch(`/api/agency/team/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamRole: role || null }),
+    });
+    if (res.ok) {
+      setTeam((prev) => prev.map((m) => m.id === id ? { ...m, teamRole: role || null } : m));
+    }
+    setUpdatingRoleId(null);
+  }
+
+  async function handleSaveSelfRole() {
+    setSelfRoleError("");
+    if (!selfRole) { setSelfRoleError("Please select a role"); return; }
+    setSelfRoleSaving(true);
+    const res = await fetch("/api/user/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamRole: selfRole }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setSelfRoleError(data.error || "Failed to save role");
+      setSelfRoleSaving(false);
+    } else {
+      setSelfRoleSaved(true);
+      setSelfRoleSaving(false);
+      await updateSession();
+      router.refresh();
+      setTimeout(() => setSelfRoleSaved(false), 2500);
+    }
   }
 
   async function handleRemoveMember(id: string) {
@@ -226,6 +294,17 @@ export default function AgencySettings({ userName, email, currentUserId, initial
       setTeam((prev) => prev.filter((m) => m.id !== id));
     }
     setRemovingId(null);
+  }
+
+  async function handleToggleTeamMember(id: string, current: boolean) {
+    const res = await fetch(`/api/agency/team/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isTeamMember: !current }),
+    });
+    if (res.ok) {
+      setTeam((prev) => prev.map((m) => m.id === id ? { ...m, isTeamMember: !current } : m));
+    }
   }
 
   async function handleSaveInviteCode() {
@@ -346,6 +425,32 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <p className="text-sm" style={{ color: "var(--warning)" }}>You're using a temporary password — please set a new one to continue.</p>
                 </div>
               )}
+              {isTeamMember && (
+                <div className="pb-5 mb-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Your Role</label>
+                  <select
+                    value={selfRole}
+                    onChange={(e) => { setSelfRole(e.target.value); setSelfRoleSaved(false); setSelfRoleError(""); }}
+                    style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+                    <option value="">— Select your role —</option>
+                    {TEAM_ROLES.map((r) => (
+                      <option key={r.id} value={r.id}>{r.label}</option>
+                    ))}
+                  </select>
+                  {selfRoleError && <p className="text-xs mt-1.5" style={{ color: "var(--danger)" }}>{selfRoleError}</p>}
+                  <button onClick={handleSaveSelfRole} disabled={selfRoleSaving}
+                    className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
+                    style={{
+                      background: selfRoleSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
+                      border: `1px solid ${selfRoleSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
+                      color: selfRoleSaved ? "#3DD68C" : "#FF3B3B",
+                      opacity: selfRoleSaving ? 0.6 : 1,
+                      cursor: selfRoleSaving ? "not-allowed" : "pointer",
+                    }}>
+                    {selfRoleSaving ? "Saving…" : selfRoleSaved ? "Saved!" : "Save Role"}
+                  </button>
+                </div>
+              )}
               <div>
                 <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Current Password</label>
                 <input type="password" placeholder="••••••••" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} style={inputStyle} />
@@ -464,19 +569,63 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                             </span>
                           )}
                         </div>
-                        <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{member.email}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{member.email}</p>
+                          {member.teamRole && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-md flex-shrink-0"
+                              style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" }}>
+                              {TEAM_ROLES.find((r) => r.id === member.teamRole)?.label ?? member.teamRole}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Remove */}
+                      {/* Role selector + Team/Admin toggle + Remove */}
                       {!isCurrentUser && (
-                        <button
-                          onClick={() => handleRemoveMember(member.id)}
-                          disabled={isRemoving}
-                          className="p-2 rounded-lg transition-all"
-                          title="Remove member"
-                          style={{ color: "var(--text-secondary)", opacity: isRemoving ? 0.4 : 1 }}>
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {member.isTeamMember && (
+                            <select
+                              value={member.teamRole ?? ""}
+                              onChange={(e) => handleUpdateRole(member.id, e.target.value)}
+                              disabled={updatingRoleId === member.id}
+                              title="Assign role"
+                              style={{
+                                background: "rgba(255,255,255,0.04)",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "var(--text-secondary)",
+                                borderRadius: 8,
+                                padding: "4px 6px",
+                                fontSize: 11,
+                                outline: "none",
+                                cursor: "pointer",
+                                maxWidth: 130,
+                              }}>
+                              <option value="">No role</option>
+                              {TEAM_ROLES.map((r) => (
+                                <option key={r.id} value={r.id}>{r.label}</option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            onClick={() => handleToggleTeamMember(member.id, member.isTeamMember)}
+                            title={member.isTeamMember ? "Team member (restricted access) — click to grant admin access" : "Admin access — click to restrict"}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+                            style={{
+                              background: member.isTeamMember ? "rgba(245,158,11,0.1)" : "rgba(61,214,140,0.1)",
+                              border: `1px solid ${member.isTeamMember ? "rgba(245,158,11,0.3)" : "rgba(61,214,140,0.3)"}`,
+                              color: member.isTeamMember ? "#f59e0b" : "rgb(61,214,140)",
+                            }}>
+                            {member.isTeamMember ? "Team" : "Admin"}
+                          </button>
+                          <button
+                            onClick={() => handleRemoveMember(member.id)}
+                            disabled={isRemoving}
+                            className="p-2 rounded-lg transition-all"
+                            title="Remove member"
+                            style={{ color: "var(--text-secondary)", opacity: isRemoving ? 0.4 : 1 }}>
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -489,7 +638,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>New Team Member</p>
-                    <button onClick={() => { setShowAddMember(false); setMemberError(""); setMemberName(""); setMemberEmail(""); setMemberPassword(""); }}>
+                    <button onClick={() => { setShowAddMember(false); setMemberError(""); setMemberName(""); setMemberEmail(""); setMemberPassword(""); setMemberRole(""); }}>
                       <X size={15} color="#8A93A6" />
                     </button>
                   </div>
@@ -508,6 +657,16 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     <input type="text" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)}
                       placeholder="Min. 6 characters" style={inputStyle} />
                     <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>They'll be prompted to change this on first login</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Role <span style={{ color: "var(--text-tertiary)" }}>(optional)</span></label>
+                    <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}
+                      style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+                      <option value="">— Select a role —</option>
+                      {TEAM_ROLES.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
                   </div>
                   {memberError && <p className="text-xs" style={{ color: "var(--danger)" }}>{memberError}</p>}
                   <button onClick={handleAddMember} disabled={memberLoading}

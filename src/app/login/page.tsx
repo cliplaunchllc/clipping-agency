@@ -80,11 +80,20 @@ function LoginPageInner() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const TEAM_ROLES = [
+    { id: "head_campaign",    label: "Head of Campaign Management" },
+    { id: "campaign_manager", label: "Campaign Manager" },
+    { id: "va",               label: "VA" },
+    { id: "discord_mod",      label: "Discord Moderator" },
+    { id: "freelance",        label: "Freelance" },
+  ];
+
   // Team signup form
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupRole, setSignupRole] = useState("");
   const [signupCode, setSignupCode] = useState("");
   const [signupError, setSignupError] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
@@ -178,6 +187,10 @@ function LoginPageInner() {
       setSignupError("All fields are required");
       return;
     }
+    if (!signupRole) {
+      setSignupError("Please select your role");
+      return;
+    }
     if (signupPassword.length < 6) {
       setSignupError("Password must be at least 6 characters");
       return;
@@ -190,7 +203,7 @@ function LoginPageInner() {
     const res = await fetch("/api/admin/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: signupName.trim(), email: signupEmail.trim(), password: signupPassword, inviteCode: signupCode.trim() }),
+      body: JSON.stringify({ name: signupName.trim(), email: signupEmail.trim(), password: signupPassword, inviteCode: signupCode.trim(), teamRole: signupRole }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -403,6 +416,18 @@ function LoginPageInner() {
                 <input type="password" value={signupConfirm} onChange={(e) => setSignupConfirm(e.target.value)} required placeholder="••••••••" style={inputStyle}
                   onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
                   onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Your Role</label>
+                <select value={signupRole} onChange={(e) => setSignupRole(e.target.value)} required
+                  style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
+                  onFocus={(e) => (e.target.style.borderColor = "var(--accent-border)")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--border-default)")}>
+                  <option value="">— Select your role —</option>
+                  {TEAM_ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 4 }}>
                 <label className="block text-xs font-medium mb-1.5 mt-2" style={{ color: "var(--text-secondary)" }}>Invite Code</label>

@@ -30,6 +30,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     campaignType: client.campaignType as "manual" | "cpm",
     contractUrl: client.contractUrl ?? null,
     campaignTrackerUrl: client.campaignTrackerUrl ?? null,
+    bannerUrl: client.bannerUrl ?? null,
     welcomePageUrl: client.welcomePageUrl ?? null,
     welcomeVideoUrl: client.welcomeVideoUrl ?? null,
     intakeFormUrl: client.intakeFormUrl ?? null,
@@ -52,7 +53,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} />
+      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
       <main className="flex-1 overflow-y-auto ml-56">
         <ClientDetail client={serialized} />
       </main>

@@ -3,19 +3,22 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-const THIRTY_DAYS = 30 * 24 * 60 * 60;
+const TEN_YEARS = 10 * 365 * 24 * 60 * 60;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt", maxAge: THIRTY_DAYS },
-  jwt: { maxAge: THIRTY_DAYS },
+  session: { strategy: "jwt", maxAge: TEN_YEARS },
+  jwt: { maxAge: TEN_YEARS },
   cookies: {
     sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        maxAge: THIRTY_DAYS,
+        maxAge: TEN_YEARS,
       },
     },
   },
@@ -47,6 +50,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           clientId: user.clientId ?? null,
           status: user.status,
           mustChangePassword: user.mustChangePassword,
+          isTeamMember: user.isTeamMember,
+          teamRole: user.teamRole ?? null,
         } as any;
       },
     }),
@@ -75,37 +80,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           clientId: user.clientId ?? null,
           status: user.status,
           mustChangePassword: user.mustChangePassword,
+          isTeamMember: user.isTeamMember,
+          teamRole: (user as any).teamRole ?? null,
         } as any;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
-      if (user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const u = user as any;
-        token.role = u.role;
-        token.id = u.id;
-        token.name = u.name;
-        token.clientId = u.clientId ?? null;
-        token.status = u.status ?? "active";
-        token.mustChangePassword = u.mustChangePassword ?? false;
-      }
-      if (trigger === "update" && token.id) {
-        const fresh = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { name: true, email: true, role: true, clientId: true, status: true, mustChangePassword: true },
-        });
-        if (fresh) {
-          token.name = fresh.name;
-          token.email = fresh.email;
-          token.role = fresh.role;
-          token.clientId = fresh.clientId ?? null;
-          token.status = fresh.status ?? "active";
-          token.mustChangePassword = fresh.mustChangePassword ?? false;
+      try {
+        if (user) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const u = user as any;
+          token.role = u.role;
+          token.id = u.id;
+          token.name = u.name;
+          token.clientId = u.clientId ?? null;
+          token.status = u.status ?? "active";
+          token.mustChangePassword = u.mustChangePassword ?? false;
+          token.isTeamMember = u.isTeamMember ?? false;
+          token.teamRole = u.teamRole ?? null;
         }
+        if (trigger === "update" && token.id) {
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { name: true, email: true, role: true, clientId: true, status: true, mustChangePassword: true, isTeamMember: true, teamRole: true },
+          });
+          if (fresh) {
+            token.name = fresh.name;
+            token.email = fresh.email;
+            token.role = fresh.role;
+            token.clientId = fresh.clientId ?? null;
+            token.status = fresh.status ?? "active";
+            token.mustChangePassword = fresh.mustChangePassword ?? false;
+            token.isTeamMember = fresh.isTeamMember ?? false;
+            token.teamRole = fresh.teamRole ?? null;
+          }
+        }
+        return token;
+      } catch {
+        // Stale or malformed token — force re-login by returning null
+        return null as never;
       }
-      return token;
     },
     async session({ session, token }) {
       if (token) {
@@ -115,6 +131,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.clientId = (token.clientId as string | null) ?? null;
         session.user.status = (token.status as string) ?? "active";
         session.user.mustChangePassword = (token.mustChangePassword as boolean) ?? false;
+        session.user.isTeamMember = (token.isTeamMember as boolean) ?? false;
+        session.user.teamRole = (token.teamRole as string | null) ?? null;
       }
       return session;
     },

@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Users, Settings, BarChart2, BookOpen,
+  LayoutDashboard, Users, Settings, BarChart2, ContactRound, BookOpen, Wallet,
 } from "lucide-react";
 
 const NAV_ITEMS = {
@@ -13,34 +12,57 @@ const NAV_ITEMS = {
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
     { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
-    { label: "Reporting Guide", href: "/agency/reporting-guide", icon: BookOpen },
+    { label: "CRM", href: "/agency/crm", icon: ContactRound },
+    { label: "SOPs", href: "/agency/sops", icon: BookOpen },
+    { label: "Team Payments", href: "/agency/team-payments", icon: Wallet },
+    { label: "Settings", href: "/agency/settings", icon: Settings },
+  ],
+  agency_team: [
+    { label: "Overview", href: "/agency", icon: LayoutDashboard },
+    { label: "Clients", href: "/agency/clients", icon: Users },
+    { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
+    { label: "SOPs", href: "/agency/sops", icon: BookOpen },
     { label: "Settings", href: "/agency/settings", icon: Settings },
   ],
   client: [
     { label: "Dashboard", href: "/client", icon: LayoutDashboard },
     { label: "Settings", href: "/client/settings", icon: Settings },
   ],
+  clipper: [
+    { label: "SOPs", href: "/clipper/sops", icon: BookOpen },
+  ],
 };
 
 interface SidebarProps {
-  role: "agency" | "client";
+  role: "agency" | "client" | "clipper";
   userName: string;
+  isTeamMember?: boolean;
 }
 
-export default function Sidebar({ role, userName }: SidebarProps) {
+export default function Sidebar({ role, userName: userNameProp, isTeamMember }: SidebarProps) {
   const pathname = usePathname();
-  const navItems = NAV_ITEMS[role];
+  const [userName, setUserName] = useState(userNameProp);
+  const navKey = role === "agency" && isTeamMember ? "agency_team" : role;
+  const navItems = NAV_ITEMS[navKey];
   const [agencyLogo, setAgencyLogo] = useState<string | null>(() =>
     typeof window !== "undefined" ? localStorage.getItem("agency_logo") : null
   );
 
   useEffect(() => {
+    if (role !== "agency") return;
     fetch("/api/settings/logo").then((r) => r.json()).then((d) => {
       const logo = d.logoUrl ?? null;
       setAgencyLogo(logo);
       if (logo) localStorage.setItem("agency_logo", logo);
       else localStorage.removeItem("agency_logo");
     });
+  }, [role]);
+
+  // Always fetch real name from DB so it reflects changes without re-login
+  useEffect(() => {
+    fetch("/api/user/profile").then((r) => r.ok ? r.json() : null).then((d) => {
+      if (d?.name) setUserName(d.name);
+    }).catch(() => {});
   }, []);
 
   return (
@@ -91,7 +113,7 @@ export default function Sidebar({ role, userName }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto min-h-0">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -121,14 +143,14 @@ export default function Sidebar({ role, userName }: SidebarProps) {
       </nav>
 
       {/* Section divider + role label */}
-      <div className="px-5 pb-1 pt-2">
+      <div className="px-5 pb-1 pt-2 flex-shrink-0">
         <p className="label-mono">
-          {role}
+          {role === "agency" ? (isTeamMember ? "Team Member" : "Agency Admin") : role}
         </p>
       </div>
 
       {/* User */}
-      <div className="px-3 py-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border-subtle)" }}>
         <div className="flex items-center gap-2.5 px-2 mb-2">
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
@@ -146,13 +168,13 @@ export default function Sidebar({ role, userName }: SidebarProps) {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login?out=1" })}
-          className="w-full text-xs py-1.5 px-3 rounded-md text-left transition-colors nav-link"
+        <a
+          href="/api/auth/logout"
+          className="block w-full text-xs py-1.5 px-3 rounded-md text-left transition-colors nav-link"
           style={{ color: "var(--text-tertiary)" }}
         >
           Sign out
-        </button>
+        </a>
       </div>
     </aside>
   );
