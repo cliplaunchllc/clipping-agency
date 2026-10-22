@@ -15,7 +15,12 @@ jobs:
       - name: Install Railway CLI
         run: curl -fsSL https://railway.com/install.sh | sh
 
-      - name: Deploy
+      - name: Deploy main service
         run: $HOME/.railway/bin/railway up --detach --service 839f4797-4912-4cea-bf70-70fc08743608 --project 78e90682-89f6-4e06-bf43-ad3989136220 --environment production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy worker service
+        run: $HOME/.railway/bin/railway up --detach --service 1568ee1b-28a0-4e34-a2ca-f26a1e76a0ca --project 78e90682-89f6-4e06-bf43-ad3989136220 --environment production
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
