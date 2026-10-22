@@ -2,9 +2,12 @@
  * Lead Factory Pipeline
  *
  * Sources (cheapest to free):
- *   - YouTube Data API v3  → FREE  (10K units/day, ~100 searches/day)
- *   - Serper.dev           → $0.001/search (Google results)
- *   - Claude Haiku         → $0.00025/1K input + $0.00125/1K output
+ *   - Roblox Games API    → FREE  (no key, public API)
+ *   - Steam Store API     → FREE  (no key, public API)
+ *   - iTunes Search API   → FREE  (no key, Apple public API)
+ *   - YouTube Data API v3 → FREE  (10K units/day, needs YOUTUBE_API_KEY)
+ *   - Serper.dev          → $0.001/search (Google results, needs SERPER_API_KEY)
+ *   - Claude Haiku        → $0.00025/1K input + $0.00125/1K output
  *
  * Approximate cost:
  *   bulk  → ~$0.008/lead   (~$0.20 for 25)
@@ -72,6 +75,17 @@ function parseJSON<T>(text: string, fallback: T): T {
   }
 }
 
+// ─── Candidate type ───────────────────────────────────────────────────────────
+
+interface Candidate {
+  type: "youtube" | "web" | "roblox" | "steam" | "mobile";
+  name: string;
+  website: string;
+  description: string;
+  email: string | null;
+  rawData: Record<string, unknown>;
+}
+
 // ─── YouTube ──────────────────────────────────────────────────────────────────
 
 interface YTChannel {
@@ -126,6 +140,147 @@ async function ytDetails(ids: string[]): Promise<YTChannel[]> {
   });
 }
 
+// ─── Roblox (FREE — no key required) ─────────────────────────────────────────
+
+interface RobloxGame {
+  creatorId: number;
+  creatorName: string;
+  creatorType: string;
+  name: string;
+  placeId: number;
+  playerCount: number;
+  totalUpVotes: number;
+}
+
+async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
+  const url = `https://games.roblox.com/v1/games/list?model.keyword=${encodeURIComponent(query)}&model.gameFilter=0&model.genreFilter=all&model.maxRows=${max}`;
+  const res = await fetch(url, {
+    headers: { "Accept": "application/json" },
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => null);
+  if (!res?.ok) return [];
+
+  const data = await res.json() as { games?: RobloxGame[] };
+  const games = data.games ?? [];
+
+  // Deduplicate by creatorId — only one entry per developer
+  const seenCreators = new Map<number, true>();
+  const candidates: Candidate[] = [];
+
+  for (const g of games) {
+    if (seenCreators.has(g.creatorId)) continue;
+    seenCreators.set(g.creatorId, true);
+
+    const profileUrl = g.creatorType === "Group"
+      ? `https://www.roblox.com/groups/${g.creatorId}`
+      : `https://www.roblox.com/users/${g.creatorId}/profile`;
+
+    candidates.push({
+      type: "roblox",
+      name: g.creatorName,
+      website: profileUrl,
+      description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes`,
+      email: null,
+      rawData: g as unknown as Record<string, unknown>,
+    });
+  }
+  return candidates;
+}
+
+// ─── Steam (FREE — no key required) ──────────────────────────────────────────
+
+async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
+  const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&cc=us&l=en`;
+  const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!searchRes?.ok) return [];
+
+  const searchData = await searchRes.json() as {
+    items?: Array<{ id: number; name: string; type: string }>;
+  };
+  const games = (searchData.items ?? []).filter((i) => i.type === "game").slice(0, max);
+  if (!games.length) return [];
+
+  // Fetch developer info for each game (parallel, best-effort)
+  const candidates: Candidate[] = [];
+  const seenDevs = new Set<string>();
+
+  await Promise.allSettled(
+    games.map(async (game) => {
+      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers`;
+      const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+      if (!detRes?.ok) return;
+
+      const detData = await detRes.json() as Record<string, {
+        success: boolean;
+        data?: {
+          developers?: string[];
+          publishers?: string[];
+          short_description?: string;
+          website?: string;
+        };
+      }>;
+      const app = detData[String(game.id)];
+      if (!app?.success || !app.data) return;
+
+      const devName = app.data.developers?.[0] ?? app.data.publishers?.[0];
+      if (!devName) return;
+
+      const key = devName.toLowerCase().trim();
+      if (seenDevs.has(key)) return;
+      seenDevs.add(key);
+
+      candidates.push({
+        type: "steam",
+        name: devName,
+        website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
+        description: `Steam game developer. Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
+        email: null,
+        rawData: { appId: game.id, gameName: game.name, ...app.data },
+      });
+    })
+  );
+
+  return candidates;
+}
+
+// ─── iTunes / App Store (FREE — no key required) ──────────────────────────────
+
+async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
+  // genreId 6014 = Games
+  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&genreId=6014&limit=${max}&country=us`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!res?.ok) return [];
+
+  const data = await res.json() as {
+    results?: Array<{
+      trackName: string;
+      sellerName: string;
+      sellerUrl?: string;
+      trackViewUrl: string;
+      description?: string;
+    }>;
+  };
+
+  const seenSellers = new Set<string>();
+  const candidates: Candidate[] = [];
+
+  for (const r of data.results ?? []) {
+    const key = r.sellerName.toLowerCase().trim();
+    if (seenSellers.has(key) || !key) continue;
+    seenSellers.add(key);
+
+    candidates.push({
+      type: "mobile",
+      name: r.sellerName,
+      website: r.sellerUrl ?? r.trackViewUrl,
+      description: `Mobile game developer (App Store). Game: "${r.trackName}".${r.description ? ` ${r.description.slice(0, 200)}` : ""}`,
+      email: null,
+      rawData: r as unknown as Record<string, unknown>,
+    });
+  }
+  return candidates;
+}
+
 // ─── Serper (Google Search) ───────────────────────────────────────────────────
 
 interface WebResult { title: string; link: string; snippet: string }
@@ -144,15 +299,15 @@ async function serper(query: string): Promise<WebResult[]> {
   return (data.organic ?? []).map((r) => ({ title: r.title, link: r.link, snippet: r.snippet }));
 }
 
-// ─── Candidate type ───────────────────────────────────────────────────────────
+// ─── Plan type ────────────────────────────────────────────────────────────────
 
-interface Candidate {
-  type: "youtube" | "web";
-  name: string;
-  website: string;
-  description: string;
-  email: string | null;
-  rawData: Record<string, unknown>;
+interface Plan {
+  youtubeQueries: string[];
+  webQueries: string[];
+  robloxQueries: string[];
+  steamQueries: string[];
+  mobileQueries: string[];
+  segments: string[];
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -177,29 +332,41 @@ export async function processLeadRun(runId: string): Promise<void> {
     await setStatus(runId, "planning", "Building search strategy…");
     await log(runId, "planning", `Run started: "${run.prompt.slice(0, 80)}"  mode=${run.mode}  count=${run.count}`);
 
-    const planPrompt = `You're a lead researcher for a video clipping agency.
+    const planPrompt = `You're a lead researcher for a video clipping agency that creates short-form clips for game developers and creators.
 Target audience: "${run.prompt}"
 ${run.offer ? `Our offer: "${run.offer}"` : ""}
 Leads needed: ${run.count}
 
 Generate a search plan as JSON only (no markdown):
 {
-  "youtubeQueries": ["3-6 YouTube channel search strings"],
-  "webQueries": ["3-6 Google search strings for companies/creators"],
-  "segments": ["2-4 segment labels like 'Gaming Creator' or 'E-commerce Brand'"]
+  "youtubeQueries": ["2-4 YouTube channel search strings for gaming creators"],
+  "webQueries": ["2-4 Google search strings for game studios or developers"],
+  "robloxQueries": ["2-4 Roblox game keyword searches like 'combat', 'simulator', 'tycoon', 'pvp'"],
+  "steamQueries": ["2-4 Steam game searches like 'indie pvp', 'survival game', 'battle royale indie'"],
+  "mobileQueries": ["2-4 App Store game searches like 'mobile pvp game', 'idle RPG', 'clicker game'"],
+  "segments": ["2-4 segment labels like 'Roblox Developer', 'Indie Game Studio', 'Mobile Game Publisher'"]
 }`;
 
     const planRes = await haiku(planPrompt);
     await trackCost(runId, "anthropic", "planning", planRes.inTok + planRes.outTok, planRes.inTok * HAIKU_IN + planRes.outTok * HAIKU_OUT);
 
-    const plan = parseJSON<{ youtubeQueries: string[]; webQueries: string[]; segments: string[] }>(planRes.text, {
-      youtubeQueries: [run.prompt, `${run.prompt} creator`],
-      webQueries: [`${run.prompt} company`],
-      segments: ["potential client"],
+    const plan = parseJSON<Plan>(planRes.text, {
+      youtubeQueries: [`${run.prompt} gaming`],
+      webQueries: [`${run.prompt} game developer`],
+      robloxQueries: ["pvp", "simulator"],
+      steamQueries: ["indie game"],
+      mobileQueries: ["mobile game"],
+      segments: ["Game Developer"],
     });
 
-    await prisma.leadRun.update({ where: { id: runId }, data: { plan } });
-    await log(runId, "planning", `Queries: ${plan.youtubeQueries.length} YouTube + ${plan.webQueries.length} web`);
+    await prisma.leadRun.update({ where: { id: runId }, data: { plan: plan as unknown as Prisma.InputJsonValue } });
+    await log(runId, "planning", [
+      `YouTube: ${plan.youtubeQueries.length}`,
+      `Web: ${plan.webQueries.length}`,
+      `Roblox: ${plan.robloxQueries.length}`,
+      `Steam: ${plan.steamQueries.length}`,
+      `Mobile: ${plan.mobileQueries.length}`,
+    ].join("  ·  ") + " queries");
 
     if (await isStopped(runId)) return;
 
@@ -219,8 +386,47 @@ Generate a search plan as JSON only (no markdown):
       }
     };
 
-    // YouTube
+    const addMany = (list: Candidate[]) => list.forEach(addCandidate);
+
+    // ── Roblox (free, always runs) ──
+    await setStage(runId, "Searching Roblox games…");
+    for (const q of plan.robloxQueries) {
+      if (await isStopped(runId)) return;
+      const results = await robloxSearch(q, 30);
+      addMany(results);
+      await setStage(runId, `Roblox: ${candidates.filter((c) => c.type === "roblox").length} developers found…`);
+    }
+    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} developers`);
+
+    if (await isStopped(runId)) return;
+
+    // ── Steam (free, always runs) ──
+    await setStage(runId, "Searching Steam…");
+    for (const q of plan.steamQueries) {
+      if (await isStopped(runId)) return;
+      const results = await steamSearch(q, 15);
+      addMany(results);
+      await setStage(runId, `Steam: ${candidates.filter((c) => c.type === "steam").length} developers found…`);
+    }
+    await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} developers`);
+
+    if (await isStopped(runId)) return;
+
+    // ── iTunes / App Store (free, always runs) ──
+    await setStage(runId, "Searching App Store…");
+    for (const q of plan.mobileQueries) {
+      if (await isStopped(runId)) return;
+      const results = await itunesSearch(q, 30);
+      addMany(results);
+      await setStage(runId, `Mobile: ${candidates.filter((c) => c.type === "mobile").length} developers found…`);
+    }
+    await log(runId, "discovering", `Mobile: ${candidates.filter((c) => c.type === "mobile").length} developers`);
+
+    if (await isStopped(runId)) return;
+
+    // ── YouTube (needs YOUTUBE_API_KEY) ──
     if (hasYT) {
+      await setStage(runId, "Searching YouTube channels…");
       const perQuery = Math.ceil((run.count * 1.5) / plan.youtubeQueries.length);
       const allChannelIds: string[] = [];
 
@@ -228,10 +434,8 @@ Generate a search plan as JSON only (no markdown):
         if (await isStopped(runId)) return;
         const ch = await ytSearch(q, Math.min(perQuery + 5, 50));
         allChannelIds.push(...ch.map((c) => c.channelId));
-        await setStage(runId, `Found ${allChannelIds.length} YouTube channels…`);
       }
 
-      // Enrich in batches of 50
       for (let i = 0; i < allChannelIds.length; i += 50) {
         const batch = await ytDetails(allChannelIds.slice(i, i + 50));
         for (const ch of batch) {
@@ -245,12 +449,14 @@ Generate a search plan as JSON only (no markdown):
           });
         }
       }
-
-      await log(runId, "discovering", `YouTube: ${candidates.length} channels found`);
+      await log(runId, "discovering", `YouTube: ${candidates.filter((c) => c.type === "youtube").length} channels`);
     }
 
-    // Web search
+    if (await isStopped(runId)) return;
+
+    // ── Serper / Google (needs SERPER_API_KEY) ──
     if (hasSerper) {
+      await setStage(runId, "Searching Google…");
       for (const q of plan.webQueries) {
         if (await isStopped(runId)) return;
         const results = await serper(q);
@@ -270,38 +476,50 @@ Generate a search plan as JSON only (no markdown):
             // skip invalid URLs
           }
         }
-        await setStage(runId, `Found ${candidates.length} total candidates…`);
       }
       await log(runId, "discovering", `Web: ${candidates.filter((c) => c.type === "web").length} results`);
     }
 
+    await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
+    await log(runId, "discovering", `Total: ${candidates.length} candidates (Roblox + Steam + Mobile + YouTube + Web)`);
+
     if (candidates.length === 0) {
-      await setStatus(runId, "failed", "No candidates found. Set YOUTUBE_API_KEY or SERPER_API_KEY in environment.");
+      await setStatus(runId, "failed", "No candidates found. Check that external APIs are reachable.");
       return;
     }
 
-    await log(runId, "discovering", `Total candidates: ${candidates.length}`);
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
     // PHASE 3: RESEARCH + SCORE
     // ──────────────────────────────────────────────────────────────────────────
-    await setStatus(runId, "researching", `Analyzing ${Math.min(candidates.length, run.count)} leads…`);
+    await setStatus(runId, "researching", `Analyzing ${Math.min(candidates.length, run.count * 2)} leads…`);
 
     let savedCount = 0;
-    const toProcess = candidates.slice(0, Math.min(candidates.length, run.count * 2));
+    // Shuffle to get a mix of sources rather than all Roblox first
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+    const toProcess = shuffled.slice(0, Math.min(shuffled.length, run.count * 3));
 
     for (let i = 0; i < toProcess.length && savedCount < run.count; i++) {
       if (i % 5 === 0 && await isStopped(runId)) return;
 
       const c = toProcess[i];
 
-      const analyzePrompt = `Analyze this lead for a video/clipping agency.
+      const sourceLabel = {
+        roblox: "Roblox developer",
+        steam: "Steam game developer",
+        mobile: "Mobile game developer",
+        youtube: "YouTube creator",
+        web: "company/creator",
+      }[c.type];
+
+      const analyzePrompt = `Analyze this lead for a video/clipping agency that makes short-form clips for game companies and creators.
 
 Looking for: "${run.prompt}"
 ${run.offer ? `Our offer: "${run.offer}"` : ""}
 
-Lead: ${c.name}
+Lead type: ${sourceLabel}
+Name: ${c.name}
 URL: ${c.website}
 About: ${c.description.slice(0, 300)}
 ${c.email ? `Email found: ${c.email}` : ""}
@@ -313,18 +531,18 @@ Return ONLY this JSON:
   "website": "best URL for this lead",
   "whatItIs": "1 sentence description",
   "segment": "segment label",
-  "decisionMaker": "owner/CEO name or null",
+  "decisionMaker": "owner/developer name or null",
   "dmRole": "title or null",
   "dmEmail": "email or null",
   "instagramHandle": "@handle or null",
   "xHandle": "@handle or null",
   "grade": "A|B|C|D|F",
   "score": 0-100,
-  "whyItFits": "why this lead fits our target",
-  "bestChannel": "instagram|email|youtube|direct"
+  "whyItFits": "why this lead needs video clips",
+  "bestChannel": "instagram|email|youtube|direct|roblox|discord"
 }
 
-Grade: A=perfect fit + contact info, B=good fit, C=possible, D=weak, F=skip`;
+Grade: A=perfect fit (active game, needs promo content), B=good fit, C=possible, D=weak, F=skip`;
 
       try {
         const res = await haiku(analyzePrompt);
