@@ -567,7 +567,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                         <Square size={11} /> Stop
                       </button>
                     )}
-                    {!ACTIVE_STATUSES.has(selectedRun.status) && leads.length > 0 && (
+                    {!ACTIVE_STATUSES.has(selectedRun.status) && selectedRun.leadCount > 0 && (
                       <a
                         href={`/api/agency/lead-factory/${selectedRun.id}/export`}
                         download
