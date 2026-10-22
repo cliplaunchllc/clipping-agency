@@ -372,21 +372,35 @@ async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
   return candidates;
 }
 
-// ─── Brave Search (free: 2000 queries/month, no credit card required) ─────────
+// ─── SearXNG (free, open-source meta-search — no key, no account) ────────────
+// Aggregates Google + Bing + DuckDuckGo. Falls through public instances.
+
+const SEARX_INSTANCES = [
+  "https://searx.be",
+  "https://search.inetol.net",
+  "https://searxng.site",
+  "https://opnxng.com",
+  "https://search.bus-hit.me",
+];
 
 interface WebResult { title: string; link: string; snippet: string }
 
 async function braveSearch(query: string): Promise<WebResult[]> {
-  const key = process.env.BRAVE_API_KEY;
-  if (!key) return [];
-  const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&search_lang=en`;
-  const res = await fetch(url, {
-    headers: { "Accept": "application/json", "X-Subscription-Token": key },
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => null);
-  if (!res?.ok) return [];
-  const data = await res.json() as { web?: { results?: Array<{ title: string; url: string; description: string }> } };
-  return (data.web?.results ?? []).map((r) => ({ title: r.title, link: r.url, snippet: r.description ?? "" }));
+  for (const base of SEARX_INSTANCES) {
+    try {
+      const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`;
+      const res = await fetch(url, {
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json() as { results?: Array<{ title: string; url: string; content?: string }> };
+      const results = data.results ?? [];
+      if (!results.length) continue;
+      return results.slice(0, 10).map((r) => ({ title: r.title, link: r.url, snippet: r.content ?? "" }));
+    } catch { /* try next instance */ }
+  }
+  return [];
 }
 
 // Pull contact info out of Brave results for a specific lead
@@ -511,8 +525,7 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  const hasBrave  = !!process.env.BRAVE_API_KEY;
-  const hasAI     = !!process.env.GROQ_API_KEY;
+  const hasAI = !!process.env.GROQ_API_KEY;
 
   if (!hasAI) {
     await setStatus(runId, "failed", "GROQ_API_KEY not configured");
@@ -652,7 +665,7 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
     if (await isStopped(runId)) return;
 
     // ── Brave Search (free web results) ──
-    if (hasBrave) {
+    if (true) {
       await setStage(runId, "Searching web…");
       for (const q of plan.webQueries) {
         if (await isStopped(runId)) return;
@@ -805,7 +818,7 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
 
         // Serper email enrichment — only runs for leads that passed scoring
         let finalEmail = a.dmEmail || c.contacts.email || null;
-        if (!finalEmail && hasBrave) {
+        if (!finalEmail && true) {
           const found = await serperEmailSearch(c.name, c.website);
           await trackCost(runId, "brave", "email_enrich", 2, 0);
           if (found) {
@@ -814,7 +827,7 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
           }
         }
         // Last resort: contact enrichment via Serper general search
-        if (!finalEmail && hasBrave) {
+        if (!finalEmail && true) {
           const { contacts } = await serperContactEnrich(c.name, c.website);
           await trackCost(runId, "brave", "contact_enrich", 1, 0);
           finalEmail = contacts.email;
