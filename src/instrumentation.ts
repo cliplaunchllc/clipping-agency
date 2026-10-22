@@ -3,8 +3,9 @@
  * Starts the Lead Factory background worker in the same process.
  */
 export async function register() {
-  // Only run in Node.js runtime (not Edge), and only in production or when explicitly enabled
-  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  // Skip Edge runtime — instrumentation.ts runs twice in Next.js (edge + nodejs).
+  // Allow both "nodejs" and undefined (Railway may not set NEXT_RUNTIME).
+  if (process.env.NEXT_RUNTIME === "edge") return;
 
   const { startWorker } = await import("./lib/lead-factory/worker");
   startWorker();
