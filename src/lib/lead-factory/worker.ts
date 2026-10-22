@@ -10,10 +10,22 @@ import { processLeadRun } from "./pipeline";
 const prisma = new PrismaClient();
 const processing = new Set<string>();
 
-const POLL_MS     = 15_000;  // poll every 15 seconds
-const STUCK_MIN   = 15;      // re-queue runs stuck for 15+ min
+const POLL_MS   = 15_000;
+const STUCK_MIN = 15;
+
+// ─── Worker health state (readable by the status API) ────────────────────────
+export const workerState = {
+  started: false,
+  startedAt: null as Date | null,
+  lastTickAt: null as Date | null,
+  tickCount: 0,
+  activeRuns: [] as string[],
+};
 
 async function tick() {
+  workerState.lastTickAt = new Date();
+  workerState.tickCount++;
+  workerState.activeRuns = [...processing];
   try {
     // Pick up queued runs (up to 3 at once)
     const queued = await prisma.leadRun.findMany({
@@ -60,7 +72,9 @@ async function tick() {
 }
 
 export function startWorker() {
+  workerState.started = true;
+  workerState.startedAt = new Date();
   console.log("[worker] Lead Factory worker started");
-  tick(); // run immediately
+  tick();
   setInterval(tick, POLL_MS);
 }
