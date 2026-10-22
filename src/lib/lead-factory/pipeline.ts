@@ -1,28 +1,20 @@
 /**
- * Lead Factory Pipeline
+ * Lead Factory Pipeline — 100% FREE APIs
  *
- * Sources (cheapest to free):
- *   - Roblox Games API    → FREE  (no key, public API — includes profile contact enrichment)
- *   - Steam Store API     → FREE  (no key, public API)
- *   - iTunes Search API   → FREE  (no key, Apple public API)
- *   - YouTube Data API v3 → FREE  (10K units/day, needs YOUTUBE_API_KEY)
- *   - Serper.dev          → $0.001/search (Google — contact enrichment + web results)
- *   - Claude Haiku        → $0.00025/1K input + $0.00125/1K output
+ * Sources (all free, no paid keys required):
+ *   - Roblox Games API    → FREE  (no key)
+ *   - Steam Store API     → FREE  (no key)
+ *   - iTunes Search API   → FREE  (no key)
+ *   - Invidious           → FREE  (open-source YouTube — no key, no quota)
+ *   - GitHub Search API   → FREE  (no key: 60 req/hr · GITHUB_TOKEN: 5000 req/hr)
+ *   - Brave Search API    → FREE  (2000 queries/month free · BRAVE_API_KEY)
+ *   - Groq LLM            → FREE  (14,400 req/day · GROQ_API_KEY — llama-3.1-8b-instant)
  *
- * Approximate cost:
- *   bulk  → ~$0.010/lead   (~$0.25 for 25)
- *   deep  → ~$0.035/lead   (~$0.88 for 25)
+ * Approximate cost: $0 — all free tiers
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// ─── Haiku pricing (per token) ────────────────────────────────────────────────
-const HAIKU_IN  = 0.00000025;   // $0.25  / MTok
-const HAIKU_OUT = 0.00000125;   // $1.25  / MTok
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,18 +43,41 @@ async function isStopped(runId: string): Promise<boolean> {
   return r?.status === "stopped";
 }
 
-// ─── Claude Haiku ─────────────────────────────────────────────────────────────
+// ─── Groq LLM (free) ──────────────────────────────────────────────────────────
+// llama-3.1-8b-instant: 6000 RPM, great for bulk JSON extraction tasks
+// llama-3.3-70b-versatile: 30 RPM, higher quality for deep mode
 
-async function haiku(prompt: string): Promise<{ text: string; inTok: number; outTok: number }> {
-  const res = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1500,
-    messages: [{ role: "user", content: prompt }],
-  });
+async function haiku(prompt: string, deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error("GROQ_API_KEY not set");
+
+  const model = deep ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1500,
+      temperature: 0.2,
+    }),
+    signal: AbortSignal.timeout(30000),
+  }).catch(() => null);
+
+  if (!res?.ok) {
+    const err = await res?.text().catch(() => "timeout");
+    throw new Error(`Groq error ${res?.status}: ${String(err).slice(0, 120)}`);
+  }
+
+  const data = await res.json() as {
+    choices: [{ message: { content: string } }];
+    usage: { prompt_tokens: number; completion_tokens: number };
+  };
   return {
-    text: (res.content[0] as { text: string }).text,
-    inTok: res.usage.input_tokens,
-    outTok: res.usage.output_tokens,
+    text: data.choices[0]?.message?.content ?? "",
+    inTok: data.usage?.prompt_tokens ?? 0,
+    outTok: data.usage?.completion_tokens ?? 0,
   };
 }
 
@@ -130,52 +145,43 @@ function hasContacts(c: Contacts): boolean {
   return !!(c.email || c.instagram || c.twitter || c.linkedin);
 }
 
-// ─── YouTube ──────────────────────────────────────────────────────────────────
+// ─── Invidious (free open-source YouTube, no key required) ───────────────────
+// Falls through multiple public instances until one responds.
 
-interface YTChannel {
-  channelId: string;
-  title: string;
-  description: string;
-  subscriberCount: number;
-  customUrl: string;
-  country: string;
+const INVIDIOUS_INSTANCES = [
+  "https://invidious.fdn.fr",
+  "https://invidious.privacydev.net",
+  "https://yt.artemislena.eu",
+  "https://invidious.nerdvpn.de",
+  "https://iv.melmac.space",
+];
+
+async function invidiousFetch<T>(path: string): Promise<T | null> {
+  for (const base of INVIDIOUS_INSTANCES) {
+    try {
+      const res = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) return await res.json() as T;
+    } catch { /* try next instance */ }
+  }
+  return null;
 }
 
-async function ytSearch(query: string, max = 25): Promise<Array<{ channelId: string; title: string; description: string }>> {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) return [];
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(query)}&maxResults=${max}&key=${key}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!res?.ok) return [];
-  const data = await res.json() as { items?: Array<{ id: { channelId: string }; snippet: { title: string; description: string } }> };
-  return (data.items ?? []).map((i) => ({
-    channelId: i.id.channelId,
-    title: i.snippet.title,
-    description: i.snippet.description?.slice(0, 200) ?? "",
-  }));
+interface InvChannel {
+  authorId: string;
+  author: string;
+  description?: string;
+  subCount?: number;
+  authorUrl?: string;
 }
 
-async function ytDetails(ids: string[]): Promise<YTChannel[]> {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key || !ids.length) return [];
-  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${ids.slice(0, 50).join(",")}&key=${key}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!res?.ok) return [];
-  const data = await res.json() as {
-    items?: Array<{
-      id: string;
-      snippet: { title: string; description: string; customUrl: string; country: string };
-      statistics: { subscriberCount: string };
-    }>;
-  };
-  return (data.items ?? []).map((i) => ({
-    channelId: i.id,
-    title: i.snippet.title,
-    description: (i.snippet.description ?? "").slice(0, 300),
-    subscriberCount: parseInt(i.statistics?.subscriberCount ?? "0"),
-    customUrl: i.snippet.customUrl ?? "",
-    country: i.snippet.country ?? "",
-  }));
+async function ytSearch(query: string, max = 25): Promise<InvChannel[]> {
+  const path = `/api/v1/search?q=${encodeURIComponent(query)}&type=channel&fields=authorId,author,description,subCount,authorUrl`;
+  const data = await invidiousFetch<InvChannel[]>(path);
+  return (data ?? []).slice(0, max);
+}
+
+async function ytChannelDetail(channelId: string): Promise<InvChannel | null> {
+  return invidiousFetch<InvChannel>(`/api/v1/channels/${channelId}?fields=authorId,author,description,subCount,authorUrl`);
 }
 
 // ─── Roblox (FREE — no key required) ─────────────────────────────────────────
@@ -366,32 +372,30 @@ async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
   return candidates;
 }
 
-// ─── Serper (Google Search) ───────────────────────────────────────────────────
+// ─── Brave Search (free: 2000 queries/month, no credit card required) ─────────
 
 interface WebResult { title: string; link: string; snippet: string }
 
-async function serper(query: string): Promise<WebResult[]> {
-  const key = process.env.SERPER_API_KEY;
+async function braveSearch(query: string): Promise<WebResult[]> {
+  const key = process.env.BRAVE_API_KEY;
   if (!key) return [];
-  const res = await fetch("https://google.serper.dev/search", {
-    method: "POST",
-    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ q: query, num: 10 }),
+  const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&search_lang=en`;
+  const res = await fetch(url, {
+    headers: { "Accept": "application/json", "X-Subscription-Token": key },
     signal: AbortSignal.timeout(10000),
   }).catch(() => null);
   if (!res?.ok) return [];
-  const data = await res.json() as { organic?: Array<{ title: string; link: string; snippet: string }> };
-  return (data.organic ?? []).map((r) => ({ title: r.title, link: r.link, snippet: r.snippet }));
+  const data = await res.json() as { web?: { results?: Array<{ title: string; url: string; description: string }> } };
+  return (data.web?.results ?? []).map((r) => ({ title: r.title, link: r.url, snippet: r.description ?? "" }));
 }
 
-// Pull contact info out of Serper results for a specific lead
+// Pull contact info out of Brave results for a specific lead
 async function serperContactEnrich(name: string, website: string): Promise<{ contacts: Contacts; snippets: string }> {
   const query = `"${name}" instagram OR linkedin OR email OR twitter contact`;
-  const results = await serper(query);
+  const results = await braveSearch(query);
   const combined = results.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
   const contacts = extractContacts(combined);
 
-  // Also check if any result links directly to Instagram/LinkedIn
   for (const r of results) {
     if (!contacts.instagram && r.link.includes("instagram.com/")) {
       const m = r.link.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
@@ -407,24 +411,20 @@ async function serperContactEnrich(name: string, website: string): Promise<{ con
   return { contacts, snippets: combined.slice(0, 600) };
 }
 
-// Dedicated email search — two targeted Serper queries focused only on finding an email address
+// Dedicated email search using Brave — two targeted queries
 async function serperEmailSearch(name: string, website: string): Promise<string | null> {
-  // Query 1: name + "email"
-  const q1 = `"${name}" email contact`;
-  const r1 = await serper(q1);
+  const r1 = await braveSearch(`"${name}" email contact`);
   const text1 = r1.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
   const m1 = text1.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   if (m1) return m1[0];
 
-  // Query 2: site-specific — domain + "contact" or "email"
   try {
     const domain = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
-    const q2 = `site:${domain} email OR contact`;
-    const r2 = await serper(q2);
+    const r2 = await braveSearch(`site:${domain} email OR contact`);
     const text2 = r2.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
     const m2 = text2.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (m2) return m2[0];
-  } catch { /* invalid URL, skip */ }
+  } catch { /* invalid URL */ }
 
   return null;
 }
@@ -443,6 +443,56 @@ function inferEmailFromDomain(website: string): string | null {
   }
 }
 
+// ─── GitHub (FREE — 60 req/hr anonymous, 5000 req/hr with GITHUB_TOKEN) ───────
+
+async function githubSearch(query: string, max = 20): Promise<Candidate[]> {
+  const token = process.env.GITHUB_TOKEN;
+  const headers: Record<string, string> = {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // Search GitHub orgs — game studios almost always use org accounts
+  const searchUrl = `https://api.github.com/search/users?q=${encodeURIComponent(query + " type:org")}&per_page=${Math.min(max, 30)}`;
+  const res = await fetch(searchUrl, { headers, signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (!res?.ok) return [];
+
+  const data = await res.json() as { items?: Array<{ login: string }> };
+  const items = (data.items ?? []).slice(0, 10); // cap profile fetches to avoid rate limits
+
+  const candidates: Candidate[] = [];
+  await Promise.allSettled(items.map(async (user) => {
+    const profileRes = await fetch(`https://api.github.com/users/${user.login}`, {
+      headers,
+      signal: AbortSignal.timeout(6000),
+    }).catch(() => null);
+    if (!profileRes?.ok) return;
+
+    const p = await profileRes.json() as {
+      login: string; name?: string; email?: string; bio?: string;
+      blog?: string; twitter_username?: string; html_url: string;
+    };
+
+    const website = (p.blog && p.blog.startsWith("http")) ? p.blog : p.html_url;
+    const rawText = [p.bio, p.email, p.blog, p.twitter_username].filter(Boolean).join(" ");
+    const contacts = extractContacts(rawText);
+    if (p.email) contacts.email = p.email;
+    if (p.twitter_username) contacts.twitter = `@${p.twitter_username}`;
+
+    candidates.push({
+      type: "web",
+      name: p.name || p.login,
+      website,
+      description: `Game studio on GitHub. ${p.bio ?? ""}`.trim(),
+      contacts,
+      rawData: p as unknown as Record<string, unknown>,
+    });
+  }));
+
+  return candidates;
+}
+
 // ─── Plan type ────────────────────────────────────────────────────────────────
 
 interface Plan {
@@ -451,6 +501,7 @@ interface Plan {
   robloxQueries: string[];
   steamQueries: string[];
   mobileQueries: string[];
+  githubQueries: string[];
   segments: string[];
 }
 
@@ -460,12 +511,11 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  const hasYT     = !!process.env.YOUTUBE_API_KEY;
-  const hasSerper = !!process.env.SERPER_API_KEY;
-  const hasAI     = !!process.env.ANTHROPIC_API_KEY;
+  const hasBrave  = !!process.env.BRAVE_API_KEY;
+  const hasAI     = !!process.env.GROQ_API_KEY;
 
   if (!hasAI) {
-    await setStatus(runId, "failed", "ANTHROPIC_API_KEY not configured");
+    await setStatus(runId, "failed", "GROQ_API_KEY not configured");
     return;
   }
 
@@ -487,15 +537,16 @@ Leads needed: ${run.count}
 Generate a search plan as JSON only (no markdown). Each array must have exactly ${qCount} entries — use varied keywords to maximize unique results:
 {
   "youtubeQueries": ["${qCount} distinct YouTube channel search strings for gaming creators"],
-  "webQueries": ["${qCount} distinct Google search strings for game studios or developers"],
+  "webQueries": ["${qCount} distinct search strings for game studios or developers"],
   "robloxQueries": ["${qCount} distinct Roblox game keyword searches like 'combat', 'simulator', 'tycoon', 'pvp', 'fps', 'roleplay'"],
   "steamQueries": ["${qCount} distinct Steam game searches like 'indie pvp', 'survival game', 'battle royale indie', 'roguelike'"],
   "mobileQueries": ["${qCount} distinct App Store game searches like 'mobile pvp', 'idle RPG', 'clicker', 'gacha', 'strategy'"],
+  "githubQueries": ["${qCount} distinct GitHub org search strings like 'game studio', 'indie game developer', 'mobile game'"],
   "segments": ["3-5 segment labels like 'Roblox Developer', 'Indie Game Studio', 'Mobile Game Publisher'"]
 }`;
 
-    const planRes = await haiku(planPrompt);
-    await trackCost(runId, "anthropic", "planning", planRes.inTok + planRes.outTok, planRes.inTok * HAIKU_IN + planRes.outTok * HAIKU_OUT);
+    const planRes = await haiku(planPrompt, true); // use 70b for planning quality
+    await trackCost(runId, "groq", "planning", planRes.inTok + planRes.outTok, 0);
 
     const plan = parseJSON<Plan>(planRes.text, {
       youtubeQueries: [`${run.prompt} gaming`],
@@ -503,6 +554,7 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
       robloxQueries: ["pvp", "simulator"],
       steamQueries: ["indie game"],
       mobileQueries: ["mobile game"],
+      githubQueries: ["game studio"],
       segments: ["Game Developer"],
     });
 
@@ -575,44 +627,37 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
 
     if (await isStopped(runId)) return;
 
-    // ── YouTube (needs YOUTUBE_API_KEY) ──
-    if (hasYT) {
-      await setStage(runId, "Searching YouTube channels…");
-      const perQuery = Math.ceil((run.count * 1.5) / plan.youtubeQueries.length);
-      const allChannelIds: string[] = [];
-
-      for (const q of plan.youtubeQueries) {
-        if (await isStopped(runId)) return;
-        const ch = await ytSearch(q, Math.min(perQuery + 5, 50));
-        allChannelIds.push(...ch.map((c) => c.channelId));
-      }
-
-      for (let i = 0; i < allChannelIds.length; i += 50) {
-        const batch = await ytDetails(allChannelIds.slice(i, i + 50));
-        for (const ch of batch) {
-          const contacts = extractContacts(ch.description);
-          addCandidate({
-            type: "youtube",
-            name: ch.title,
-            website: ch.customUrl ? `https://youtube.com/${ch.customUrl}` : `https://youtube.com/channel/${ch.channelId}`,
-            description: ch.description,
-            contacts,
-            rawData: ch as unknown as Record<string, unknown>,
-          });
-        }
-      }
-      await log(runId, "discovering", `YouTube: ${candidates.filter((c) => c.type === "youtube").length} channels`);
+    // ── YouTube via Invidious (free, no key required) ──
+    await setStage(runId, "Searching YouTube channels…");
+    const perQuery = Math.ceil((run.count * 1.5) / Math.max(plan.youtubeQueries.length, 1));
+    for (const q of plan.youtubeQueries) {
+      if (await isStopped(runId)) return;
+      const channels = await ytSearch(q, Math.min(perQuery + 5, 50));
+      // Fetch full channel detail for description/sub count (in parallel, capped at 10)
+      await Promise.allSettled(channels.slice(0, 10).map(async (ch) => {
+        const detail = await ytChannelDetail(ch.authorId) ?? ch;
+        const contacts = extractContacts(detail.description ?? "");
+        addCandidate({
+          type: "youtube",
+          name: detail.author,
+          website: `https://youtube.com/channel/${detail.authorId}`,
+          description: (detail.description ?? "").slice(0, 300),
+          contacts,
+          rawData: detail as unknown as Record<string, unknown>,
+        });
+      }));
     }
+    await log(runId, "discovering", `YouTube: ${candidates.filter((c) => c.type === "youtube").length} channels`);
 
     if (await isStopped(runId)) return;
 
-    // ── Serper / Google web results (needs SERPER_API_KEY) ──
-    if (hasSerper) {
-      await setStage(runId, "Searching Google…");
+    // ── Brave Search (free web results) ──
+    if (hasBrave) {
+      await setStage(runId, "Searching web…");
       for (const q of plan.webQueries) {
         if (await isStopped(runId)) return;
-        const results = await serper(q);
-        await trackCost(runId, "serper", "search", 1, 0.001);
+        const results = await braveSearch(q);
+        await trackCost(runId, "brave", "search", 1, 0);
         for (const r of results) {
           try {
             const host = new URL(r.link.startsWith("http") ? r.link : `https://${r.link}`).hostname;
@@ -630,6 +675,18 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
       }
       await log(runId, "discovering", `Web: ${candidates.filter((c) => c.type === "web").length} results`);
     }
+
+    if (await isStopped(runId)) return;
+
+    // ── GitHub orgs (free, no key required — GITHUB_TOKEN increases rate limit) ──
+    await setStage(runId, "Searching GitHub…");
+    for (const q of (plan.githubQueries ?? [])) {
+      if (await isStopped(runId)) return;
+      const results = await githubSearch(q, 20);
+      addMany(results);
+      await setStage(runId, `GitHub: ${candidates.filter((c) => c.type === "web").length} studios found…`);
+    }
+    await log(runId, "discovering", `GitHub: ${candidates.filter((c) => c.rawData?.html_url !== undefined).length} orgs`);
 
     await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
     await log(runId, "discovering", `Total: ${candidates.length} candidates`);
@@ -732,8 +789,8 @@ Return ONLY this JSON (use null if unknown, do NOT guess emails):
 
 Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
 
-        const res = await haiku(analyzePrompt);
-        await trackCost(runId, "anthropic", "analyze", res.inTok + res.outTok, res.inTok * HAIKU_IN + res.outTok * HAIKU_OUT);
+        const res = await haiku(analyzePrompt, run.mode === "deep");
+        await trackCost(runId, "groq", "analyze", res.inTok + res.outTok, 0);
         return { c, a: parseJSON<Analysis>(res.text, null as never) };
       }));
 
@@ -748,18 +805,18 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
 
         // Serper email enrichment — only runs for leads that passed scoring
         let finalEmail = a.dmEmail || c.contacts.email || null;
-        if (!finalEmail && hasSerper) {
+        if (!finalEmail && hasBrave) {
           const found = await serperEmailSearch(c.name, c.website);
-          await trackCost(runId, "serper", "email_enrich", 2, 0.002);
+          await trackCost(runId, "brave", "email_enrich", 2, 0);
           if (found) {
             finalEmail = found;
             c.contacts.email = found;
           }
         }
         // Last resort: contact enrichment via Serper general search
-        if (!finalEmail && hasSerper) {
+        if (!finalEmail && hasBrave) {
           const { contacts } = await serperContactEnrich(c.name, c.website);
-          await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
+          await trackCost(runId, "brave", "contact_enrich", 1, 0);
           finalEmail = contacts.email;
           if (contacts.email) c.contacts = mergeContacts(c.contacts, contacts);
         }
