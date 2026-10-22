@@ -1,0 +1,66 @@
+/**
+ * Lead Factory Background Worker
+ * Started via Next.js instrumentation on server boot.
+ * Polls for queued runs every 15 seconds and processes them.
+ */
+
+import { PrismaClient } from "@prisma/client";
+import { processLeadRun } from "./pipeline";
+
+const prisma = new PrismaClient();
+const processing = new Set<string>();
+
+const POLL_MS     = 15_000;  // poll every 15 seconds
+const STUCK_MIN   = 15;      // re-queue runs stuck for 15+ min
+
+async function tick() {
+  try {
+    // Pick up queued runs (up to 3 at once)
+    const queued = await prisma.leadRun.findMany({
+      where: { status: "queued" },
+      orderBy: { createdAt: "asc" },
+      take: 3,
+    });
+
+    for (const run of queued) {
+      if (processing.has(run.id)) continue;
+      processing.add(run.id);
+      console.log(`[worker] Starting run ${run.id} — "${run.prompt.slice(0, 60)}"`);
+
+      processLeadRun(run.id)
+        .catch(async (err) => {
+          console.error(`[worker] Run ${run.id} failed:`, err);
+          await prisma.leadRun
+            .update({ where: { id: run.id }, data: { status: "failed", stage: String(err).slice(0, 200) } })
+            .catch(() => {});
+        })
+        .finally(() => processing.delete(run.id));
+    }
+
+    // Re-queue runs stuck in active states for too long
+    const stuckCutoff = new Date(Date.now() - STUCK_MIN * 60 * 1000);
+    const stuck = await prisma.leadRun.findMany({
+      where: {
+        status: { in: ["planning", "discovering", "researching"] },
+        updatedAt: { lt: stuckCutoff },
+        id: { notIn: [...processing] },
+      },
+    });
+
+    for (const run of stuck) {
+      console.log(`[worker] Re-queuing stuck run ${run.id}`);
+      await prisma.leadRun.update({
+        where: { id: run.id },
+        data: { status: "queued", stage: "Re-queued by worker…" },
+      });
+    }
+  } catch (err) {
+    console.error("[worker] tick error:", err);
+  }
+}
+
+export function startWorker() {
+  console.log("[worker] Lead Factory worker started");
+  tick(); // run immediately
+  setInterval(tick, POLL_MS);
+}
