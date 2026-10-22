@@ -476,19 +476,22 @@ export async function processLeadRun(runId: string): Promise<void> {
     await setStatus(runId, "planning", "Building search strategy…");
     await log(runId, "planning", `Run started: "${run.prompt.slice(0, 80)}"  mode=${run.mode}  count=${run.count}`);
 
+    // Scale query count based on how many leads are requested
+    const qCount = run.count <= 50 ? 3 : run.count <= 200 ? 6 : run.count <= 500 ? 10 : 15;
+
     const planPrompt = `You're a lead researcher for a video clipping agency that creates short-form clips for game developers and creators.
 Target audience: "${run.prompt}"
 ${run.offer ? `Our offer: "${run.offer}"` : ""}
 Leads needed: ${run.count}
 
-Generate a search plan as JSON only (no markdown):
+Generate a search plan as JSON only (no markdown). Each array must have exactly ${qCount} entries — use varied keywords to maximize unique results:
 {
-  "youtubeQueries": ["2-4 YouTube channel search strings for gaming creators"],
-  "webQueries": ["2-4 Google search strings for game studios or developers"],
-  "robloxQueries": ["2-4 Roblox game keyword searches like 'combat', 'simulator', 'tycoon', 'pvp'"],
-  "steamQueries": ["2-4 Steam game searches like 'indie pvp', 'survival game', 'battle royale indie'"],
-  "mobileQueries": ["2-4 App Store game searches like 'mobile pvp game', 'idle RPG', 'clicker game'"],
-  "segments": ["2-4 segment labels like 'Roblox Developer', 'Indie Game Studio', 'Mobile Game Publisher'"]
+  "youtubeQueries": ["${qCount} distinct YouTube channel search strings for gaming creators"],
+  "webQueries": ["${qCount} distinct Google search strings for game studios or developers"],
+  "robloxQueries": ["${qCount} distinct Roblox game keyword searches like 'combat', 'simulator', 'tycoon', 'pvp', 'fps', 'roleplay'"],
+  "steamQueries": ["${qCount} distinct Steam game searches like 'indie pvp', 'survival game', 'battle royale indie', 'roguelike'"],
+  "mobileQueries": ["${qCount} distinct App Store game searches like 'mobile pvp', 'idle RPG', 'clicker', 'gacha', 'strategy'"],
+  "segments": ["3-5 segment labels like 'Roblox Developer', 'Indie Game Studio', 'Mobile Game Publisher'"]
 }`;
 
     const planRes = await haiku(planPrompt);
@@ -531,11 +534,16 @@ Generate a search plan as JSON only (no markdown):
     };
     const addMany = (list: Candidate[]) => list.forEach(addCandidate);
 
+    // Scale per-source fetch size with count (need ~3x candidates vs target to filter down)
+    const robloxMax  = Math.min(Math.ceil(run.count * 3 / Math.max(plan.robloxQueries.length, 1)), 200);
+    const steamMax   = Math.min(Math.ceil(run.count * 2 / Math.max(plan.steamQueries.length, 1)), 50);
+    const itunesMax  = Math.min(Math.ceil(run.count * 3 / Math.max(plan.mobileQueries.length, 1)), 200);
+
     // ── Roblox (free, profile descriptions fetched for contacts) ──
     await setStage(runId, "Searching Roblox games…");
     for (const q of plan.robloxQueries) {
       if (await isStopped(runId)) return;
-      const results = await robloxSearch(q, 30);
+      const results = await robloxSearch(q, robloxMax);
       addMany(results);
       await setStage(runId, `Roblox: ${candidates.filter((c) => c.type === "roblox").length} developers found…`);
     }
@@ -547,7 +555,7 @@ Generate a search plan as JSON only (no markdown):
     await setStage(runId, "Searching Steam…");
     for (const q of plan.steamQueries) {
       if (await isStopped(runId)) return;
-      const results = await steamSearch(q, 15);
+      const results = await steamSearch(q, steamMax);
       addMany(results);
       await setStage(runId, `Steam: ${candidates.filter((c) => c.type === "steam").length} developers found…`);
     }
@@ -559,7 +567,7 @@ Generate a search plan as JSON only (no markdown):
     await setStage(runId, "Searching App Store…");
     for (const q of plan.mobileQueries) {
       if (await isStopped(runId)) return;
-      const results = await itunesSearch(q, 30);
+      const results = await itunesSearch(q, itunesMax);
       addMany(results);
       await setStage(runId, `Mobile: ${candidates.filter((c) => c.type === "mobile").length} developers found…`);
     }
@@ -634,60 +642,9 @@ Generate a search plan as JSON only (no markdown):
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 2.5: CONTACT ENRICHMENT (email-first)
-    // Pass A: general contact enrichment for leads missing all contacts.
-    // Pass B: dedicated email search for leads still missing an email.
-    // Pass C: domain-based fallback for any remaining email-less leads.
+    // PHASE 2.5: FREE DOMAIN INFERENCE (no Serper cost here)
+    // Serper enrichment happens POST-score — only on leads that actually pass.
     // ──────────────────────────────────────────────────────────────────────────
-    if (hasSerper) {
-      await setStatus(runId, "researching", "Enriching contact info…");
-
-      // Pass A: general enrichment for leads missing all contacts
-      const needsGeneralEnrich = candidates.filter((c) => !hasContacts(c.contacts));
-      const enrichLimit = Math.min(needsGeneralEnrich.length, run.count * 2);
-      const toEnrich = needsGeneralEnrich.slice(0, enrichLimit);
-
-      let enriched = 0;
-      const BATCH = 5;
-      for (let i = 0; i < toEnrich.length; i += BATCH) {
-        if (await isStopped(runId)) return;
-        const batch = toEnrich.slice(i, i + BATCH);
-        await Promise.allSettled(batch.map(async (c) => {
-          const { contacts, snippets } = await serperContactEnrich(c.name, c.website);
-          await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
-          if (hasContacts(contacts)) {
-            c.contacts = mergeContacts(c.contacts, contacts);
-            c.rawData.enrichSnippets = snippets;
-            enriched++;
-          }
-        }));
-        await setStage(runId, `Enriching contacts: ${Math.min(i + BATCH, toEnrich.length)} / ${enrichLimit} searched…`);
-      }
-      await log(runId, "researching", `Contact enrichment pass A: ${enriched} contacts found from ${enrichLimit} searches`);
-
-      // Pass B: targeted email search for leads still missing an email
-      const needsEmail = candidates.filter((c) => !c.contacts.email);
-      const emailSearchLimit = Math.min(needsEmail.length, run.count * 2);
-      const toEmailSearch = needsEmail.slice(0, emailSearchLimit);
-
-      let emailsFound = 0;
-      for (let i = 0; i < toEmailSearch.length; i += BATCH) {
-        if (await isStopped(runId)) return;
-        const batch = toEmailSearch.slice(i, i + BATCH);
-        await Promise.allSettled(batch.map(async (c) => {
-          const email = await serperEmailSearch(c.name, c.website);
-          await trackCost(runId, "serper", "email_search", 2, 0.002); // 2 queries
-          if (email) {
-            c.contacts.email = email;
-            emailsFound++;
-          }
-        }));
-        await setStage(runId, `Finding emails: ${Math.min(i + BATCH, toEmailSearch.length)} / ${emailSearchLimit} searched…`);
-      }
-      await log(runId, "researching", `Email search pass B: ${emailsFound} emails found`);
-    }
-
-    // Pass C: domain-based fallback for leads still missing an email after Serper
     for (const c of candidates) {
       if (!c.contacts.email) {
         const inferred = inferEmailFromDomain(c.website);
@@ -698,37 +655,51 @@ Generate a search plan as JSON only (no markdown):
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 3: RESEARCH + SCORE
+    // PHASE 3: SCORE (parallel Haiku) → ENRICH (Serper only on passing leads)
+    // Haiku runs 10 at a time. Serper enrichment only fires for leads that
+    // passed scoring — keeps cost proportional to saved leads, not candidates.
     // ──────────────────────────────────────────────────────────────────────────
     await setStatus(runId, "researching", `Analyzing leads…`);
 
     let savedCount = 0;
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    // deep mode: process up to 2x needed; bulk: 1.5x — avoids unnecessary Haiku calls
-    const processCap = run.mode === "deep" ? run.count * 2 : Math.ceil(run.count * 1.5);
+    const processCap = run.count * 3; // enough headroom to fill quota after filtering
     const toProcess = shuffled.slice(0, Math.min(shuffled.length, processCap));
 
-    for (let i = 0; i < toProcess.length && savedCount < run.count; i++) {
-      if (i % 3 === 0 && await isStopped(runId)) return;
+    const HAIKU_BATCH = 10; // parallel Haiku calls per batch
 
-      const c = toProcess[i];
-      const sourceLabel = {
-        roblox: "Roblox developer",
-        steam: "Steam game developer",
-        mobile: "Mobile game developer",
-        youtube: "YouTube creator",
-        web: "company/creator",
-      }[c.type];
+    type Analysis = {
+      company: string; website: string; whatItIs: string; segment: string;
+      decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
+      instagramHandle: string | null; xHandle: string | null;
+      linkedinUrl: string | null; discordUrl: string | null;
+      grade: string; score: number; whyItFits: string; bestChannel: string;
+    };
 
-      const contactBlock = [
-        c.contacts.email     && `Email: ${c.contacts.email}`,
-        c.contacts.instagram && `Instagram: ${c.contacts.instagram}`,
-        c.contacts.twitter   && `Twitter/X: ${c.contacts.twitter}`,
-        c.contacts.linkedin  && `LinkedIn: ${c.contacts.linkedin}`,
-        c.contacts.discord   && `Discord: ${c.contacts.discord}`,
-      ].filter(Boolean).join("\n");
+    for (let i = 0; i < toProcess.length && savedCount < run.count; i += HAIKU_BATCH) {
+      if (await isStopped(runId)) return;
 
-      const analyzePrompt = `Analyze this lead for a video/clipping agency that makes short-form clips for game companies and creators.
+      const batch = toProcess.slice(i, Math.min(i + HAIKU_BATCH, toProcess.length));
+
+      // Score the whole batch in parallel
+      const batchResults = await Promise.allSettled(batch.map(async (c) => {
+        const sourceLabel = {
+          roblox: "Roblox developer",
+          steam: "Steam game developer",
+          mobile: "Mobile game developer",
+          youtube: "YouTube creator",
+          web: "company/creator",
+        }[c.type];
+
+        const contactBlock = [
+          c.contacts.email     && `Email: ${c.contacts.email}`,
+          c.contacts.instagram && `Instagram: ${c.contacts.instagram}`,
+          c.contacts.twitter   && `Twitter/X: ${c.contacts.twitter}`,
+          c.contacts.linkedin  && `LinkedIn: ${c.contacts.linkedin}`,
+          c.contacts.discord   && `Discord: ${c.contacts.discord}`,
+        ].filter(Boolean).join("\n");
+
+        const analyzePrompt = `Analyze this lead for a video/clipping agency that makes short-form clips for game companies and creators.
 
 Looking for: "${run.prompt}"
 ${run.offer ? `Our offer: "${run.offer}"` : ""}
@@ -737,7 +708,7 @@ Lead type: ${sourceLabel}
 Name: ${c.name}
 URL: ${c.website}
 About: ${c.description.slice(0, 300)}
-${contactBlock ? `Known contacts:\n${contactBlock}` : "No contacts found yet — infer what you can."}
+${contactBlock ? `Known contacts:\n${contactBlock}` : "No contacts yet."}
 ${run.mode === "deep" ? `Extra data: ${JSON.stringify(c.rawData).slice(0, 500)}` : ""}
 
 Return ONLY this JSON (use null if unknown, do NOT guess emails):
@@ -761,24 +732,39 @@ Return ONLY this JSON (use null if unknown, do NOT guess emails):
 
 Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
 
-      try {
         const res = await haiku(analyzePrompt);
         await trackCost(runId, "anthropic", "analyze", res.inTok + res.outTok, res.inTok * HAIKU_IN + res.outTok * HAIKU_OUT);
+        return { c, a: parseJSON<Analysis>(res.text, null as never) };
+      }));
 
-        const a = parseJSON<{
-          company: string; website: string; whatItIs: string; segment: string;
-          decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
-          instagramHandle: string | null; xHandle: string | null;
-          linkedinUrl: string | null; discordUrl: string | null;
-          grade: string; score: number; whyItFits: string; bestChannel: string;
-        }>(res.text, null as never);
+      // Process scored results — enrich with Serper only for passing leads
+      for (const result of batchResults) {
+        if (savedCount >= run.count) break;
+        if (result.status !== "fulfilled") continue;
 
+        const { c, a } = result.value;
         if (!a) continue;
         if (run.mode === "bulk" && a.grade === "F") continue;
 
-        // Require an email — skip leads where none was found at any stage
-        const finalEmail = a.dmEmail || c.contacts.email || null;
-        if (!finalEmail) continue;
+        // Serper email enrichment — only runs for leads that passed scoring
+        let finalEmail = a.dmEmail || c.contacts.email || null;
+        if (!finalEmail && hasSerper) {
+          const found = await serperEmailSearch(c.name, c.website);
+          await trackCost(runId, "serper", "email_enrich", 2, 0.002);
+          if (found) {
+            finalEmail = found;
+            c.contacts.email = found;
+          }
+        }
+        // Last resort: contact enrichment via Serper general search
+        if (!finalEmail && hasSerper) {
+          const { contacts } = await serperContactEnrich(c.name, c.website);
+          await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
+          finalEmail = contacts.email;
+          if (contacts.email) c.contacts = mergeContacts(c.contacts, contacts);
+        }
+
+        if (!finalEmail) continue; // still no email — skip
 
         savedCount++;
 
@@ -786,15 +772,15 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
           data: {
             runId,
             num: savedCount,
-            company:        a.company        || c.name,
-            website:        a.website        || c.website,
-            whatItIs:       a.whatItIs       || null,
-            segment:        a.segment        || plan.segments[0] || null,
-            decisionMaker:  a.decisionMaker  || null,
-            dmRole:         a.dmRole         || null,
-            dmEmail:        finalEmail,
+            company:         a.company         || c.name,
+            website:         a.website         || c.website,
+            whatItIs:        a.whatItIs        || null,
+            segment:         a.segment         || plan.segments[0] || null,
+            decisionMaker:   a.decisionMaker   || null,
+            dmRole:          a.dmRole          || null,
+            dmEmail:         finalEmail,
             instagramHandle: a.instagramHandle || c.contacts.instagram || null,
-            xHandle:        a.xHandle        || c.contacts.twitter || null,
+            xHandle:         a.xHandle         || c.contacts.twitter   || null,
             grade:  ["A", "B", "C", "D", "F"].includes(a.grade) ? a.grade : "C",
             score:  typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 50,
             whyItFits: a.whyItFits
@@ -809,12 +795,9 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
           where: { id: runId },
           data: {
             stage: `Saved ${savedCount} / ${run.count} leads`,
-            stats: { discovered: candidates.length, processed: i + 1, saved: savedCount },
+            stats: { discovered: candidates.length, processed: Math.min(i + HAIKU_BATCH, toProcess.length), saved: savedCount },
           },
         });
-
-      } catch (err) {
-        await log(runId, "researching", `Skipped "${c.name}": ${String(err).slice(0, 100)}`, "warn");
       }
     }
 
