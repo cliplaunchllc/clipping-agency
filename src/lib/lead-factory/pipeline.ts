@@ -403,8 +403,44 @@ async function serperContactEnrich(name: string, website: string): Promise<{ con
     }
   }
 
-  void website; // used for context but searching by name is more reliable
+  void website;
   return { contacts, snippets: combined.slice(0, 600) };
+}
+
+// Dedicated email search — two targeted Serper queries focused only on finding an email address
+async function serperEmailSearch(name: string, website: string): Promise<string | null> {
+  // Query 1: name + "email"
+  const q1 = `"${name}" email contact`;
+  const r1 = await serper(q1);
+  const text1 = r1.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
+  const m1 = text1.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (m1) return m1[0];
+
+  // Query 2: site-specific — domain + "contact" or "email"
+  try {
+    const domain = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
+    const q2 = `site:${domain} email OR contact`;
+    const r2 = await serper(q2);
+    const text2 = r2.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
+    const m2 = text2.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (m2) return m2[0];
+  } catch { /* invalid URL, skip */ }
+
+  return null;
+}
+
+// Last-resort: derive a likely contact email from the website domain
+function inferEmailFromDomain(website: string): string | null {
+  try {
+    const domain = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
+    // Skip platform URLs — these aren't the company's own domain
+    const platformDomains = ["roblox.com", "steampowered.com", "store.steampowered.com", "apple.com", "youtube.com", "twitter.com", "instagram.com", "linkedin.com"];
+    if (platformDomains.some((p) => domain.endsWith(p))) return null;
+    if (!domain.includes(".") || domain.split(".").length < 2) return null;
+    return `contact@${domain}`;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Plan type ────────────────────────────────────────────────────────────────
@@ -598,17 +634,18 @@ Generate a search plan as JSON only (no markdown):
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 2.5: CONTACT ENRICHMENT
-    // Parallel batches of 5 — much faster than sequential.
-    // Capped at run.count enrichments to keep cost predictable.
+    // PHASE 2.5: CONTACT ENRICHMENT (email-first)
+    // Pass A: general contact enrichment for leads missing all contacts.
+    // Pass B: dedicated email search for leads still missing an email.
+    // Pass C: domain-based fallback for any remaining email-less leads.
     // ──────────────────────────────────────────────────────────────────────────
     if (hasSerper) {
       await setStatus(runId, "researching", "Enriching contact info…");
 
-      const shuffledForEnrich = [...candidates].sort(() => Math.random() - 0.5);
-      const needsEnrich = shuffledForEnrich.filter((c) => !hasContacts(c.contacts));
-      const enrichLimit = Math.min(needsEnrich.length, run.count);
-      const toEnrich = needsEnrich.slice(0, enrichLimit);
+      // Pass A: general enrichment for leads missing all contacts
+      const needsGeneralEnrich = candidates.filter((c) => !hasContacts(c.contacts));
+      const enrichLimit = Math.min(needsGeneralEnrich.length, run.count * 2);
+      const toEnrich = needsGeneralEnrich.slice(0, enrichLimit);
 
       let enriched = 0;
       const BATCH = 5;
@@ -626,8 +663,36 @@ Generate a search plan as JSON only (no markdown):
         }));
         await setStage(runId, `Enriching contacts: ${Math.min(i + BATCH, toEnrich.length)} / ${enrichLimit} searched…`);
       }
+      await log(runId, "researching", `Contact enrichment pass A: ${enriched} contacts found from ${enrichLimit} searches`);
 
-      await log(runId, "researching", `Contact enrichment: ${enriched} contacts found from ${enrichLimit} searches`);
+      // Pass B: targeted email search for leads still missing an email
+      const needsEmail = candidates.filter((c) => !c.contacts.email);
+      const emailSearchLimit = Math.min(needsEmail.length, run.count * 2);
+      const toEmailSearch = needsEmail.slice(0, emailSearchLimit);
+
+      let emailsFound = 0;
+      for (let i = 0; i < toEmailSearch.length; i += BATCH) {
+        if (await isStopped(runId)) return;
+        const batch = toEmailSearch.slice(i, i + BATCH);
+        await Promise.allSettled(batch.map(async (c) => {
+          const email = await serperEmailSearch(c.name, c.website);
+          await trackCost(runId, "serper", "email_search", 2, 0.002); // 2 queries
+          if (email) {
+            c.contacts.email = email;
+            emailsFound++;
+          }
+        }));
+        await setStage(runId, `Finding emails: ${Math.min(i + BATCH, toEmailSearch.length)} / ${emailSearchLimit} searched…`);
+      }
+      await log(runId, "researching", `Email search pass B: ${emailsFound} emails found`);
+    }
+
+    // Pass C: domain-based fallback for leads still missing an email after Serper
+    for (const c of candidates) {
+      if (!c.contacts.email) {
+        const inferred = inferEmailFromDomain(c.website);
+        if (inferred) c.contacts.email = inferred;
+      }
     }
 
     if (await isStopped(runId)) return;
@@ -711,6 +776,10 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
         if (!a) continue;
         if (run.mode === "bulk" && a.grade === "F") continue;
 
+        // Require an email — skip leads where none was found at any stage
+        const finalEmail = a.dmEmail || c.contacts.email || null;
+        if (!finalEmail) continue;
+
         savedCount++;
 
         await prisma.leadFactoryLead.create({
@@ -723,7 +792,7 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
             segment:        a.segment        || plan.segments[0] || null,
             decisionMaker:  a.decisionMaker  || null,
             dmRole:         a.dmRole         || null,
-            dmEmail:        a.dmEmail        || c.contacts.email || null,
+            dmEmail:        finalEmail,
             instagramHandle: a.instagramHandle || c.contacts.instagram || null,
             xHandle:        a.xHandle        || c.contacts.twitter || null,
             grade:  ["A", "B", "C", "D", "F"].includes(a.grade) ? a.grade : "C",
