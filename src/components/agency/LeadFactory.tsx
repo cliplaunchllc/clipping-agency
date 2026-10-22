@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, ExternalLink, X,
-  Zap, Mail, AtSign, Link, Globe, User, Play, Square, RotateCcw,
+  Zap, Mail, AtSign, Link, Globe, User, Play, Square, RotateCcw, Download,
 } from "lucide-react";
 
 interface LeadRun {
@@ -566,6 +566,16 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                       >
                         <Square size={11} /> Stop
                       </button>
+                    )}
+                    {!ACTIVE_STATUSES.has(selectedRun.status) && leads.length > 0 && (
+                      <a
+                        href={`/api/agency/lead-factory/${selectedRun.id}/export`}
+                        download
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                        style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa" }}
+                      >
+                        <Download size={11} /> Export CSV
+                      </a>
                     )}
                     {!ACTIVE_STATUSES.has(selectedRun.status) && (
                       <button
