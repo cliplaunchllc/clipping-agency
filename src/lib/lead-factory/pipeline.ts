@@ -103,6 +103,107 @@ function generatePlan(prompt: string, count: number): Plan {
   };
 }
 
+// ─── Criteria parsing — translates free-text requirements into scoring signals ──
+// Handles phrases like "active downloads", "VC backed", "must have instagram", etc.
+
+interface CriteriaSignals {
+  // Per-type score boosts (additive)
+  boostMobile:  number;
+  boostYoutube: number;
+  boostRoblox:  number;
+  boostSteam:   number;
+  boostWeb:     number;
+  // Contact boosts
+  bonusEmail:     number;
+  bonusLinkedin:  number;
+  bonusSocial:    number;   // instagram or twitter
+  bonusDiscord:   number;
+  // Engagement amplifier — multiplies existing CCU/sub bonuses
+  engagementMult: number;
+  // Hard filters — candidates that fail are skipped
+  requireEmail:    boolean;
+  requireSocial:   boolean;
+  requireLinkedin: boolean;
+  requireRealSite: boolean; // must have own domain, not just a platform URL
+}
+
+const PLATFORM_DOMAINS = ["roblox.com", "youtube.com", "twitter.com", "instagram.com", "linkedin.com", "apple.com", "steampowered.com"];
+
+function parseCriteria(text: string): CriteriaSignals {
+  const t = text.toLowerCase();
+  const s: CriteriaSignals = {
+    boostMobile: 0, boostYoutube: 0, boostRoblox: 0, boostSteam: 0, boostWeb: 0,
+    bonusEmail: 0, bonusLinkedin: 0, bonusSocial: 0, bonusDiscord: 0,
+    engagementMult: 1,
+    requireEmail: false, requireSocial: false, requireLinkedin: false, requireRealSite: false,
+  };
+
+  // ── Downloads / active installs ──
+  if (/download|install|app store|play store|active app/.test(t)) {
+    s.boostMobile  += 25;
+    s.boostSteam   += 10;
+    s.engagementMult = Math.max(s.engagementMult, 1.4);
+  }
+
+  // ── VC / funded / capital / investors ──
+  if (/\bvc\b|venture capital|vc[- ]backed|backed by|funded|investor|investment|capital|series [abcde]|seed round|raised/.test(t)) {
+    s.boostWeb      += 20;
+    s.bonusLinkedin += 20; // funded companies almost always have LinkedIn
+    s.requireRealSite = true; // funded companies have their own domain
+  }
+
+  // ── Active player base / high engagement ──
+  if (/active player|active user|concurrent|daily active|high engagement|popular|trending|viral|large audience/.test(t)) {
+    s.engagementMult = Math.max(s.engagementMult, 1.5);
+    s.boostRoblox  += 10;
+    s.boostYoutube += 10;
+  }
+
+  // ── Subscriber/view thresholds ──
+  if (/subscriber|view|audience|creator|youtuber/.test(t)) {
+    s.boostYoutube += 20;
+  }
+
+  // ── Platform-specific boosts ──
+  if (/\broblox\b/.test(t))                          s.boostRoblox  += 25;
+  if (/\byoutube\b|youtuber/.test(t))                s.boostYoutube += 20;
+  if (/\bsteam\b|pc game|indie game/.test(t))        s.boostSteam   += 20;
+  if (/\bmobile\b|ios|android|phone/.test(t))        s.boostMobile  += 20;
+  if (/startup|company|studio|agency|brand/.test(t)) s.boostWeb     += 10;
+
+  // ── Contact requirements ──
+  if (/must have email|require email|need.{0,8}email|has.{0,8}email|with email/.test(t)) {
+    s.requireEmail = true;
+    s.bonusEmail   = 20;
+  }
+  if (/instagram|social media|social presence|social following/.test(t)) {
+    s.bonusSocial += 15;
+    if (/must have instagram|require instagram|need.{0,8}instagram/.test(t)) s.requireSocial = true;
+  }
+  if (/linkedin|professional|b2b|decision maker|decision-maker/.test(t)) {
+    s.bonusLinkedin += 15;
+    if (/must have linkedin|require linkedin/.test(t)) s.requireLinkedin = true;
+  }
+  if (/discord|community/.test(t)) {
+    s.bonusDiscord += 10;
+  }
+
+  // ── Real website (not just a platform profile) ──
+  if (/real website|own website|company website|their own site|website/.test(t)) {
+    s.requireRealSite = true;
+  }
+
+  return s;
+}
+
+function meetsHardCriteria(c: Candidate, signals: CriteriaSignals): boolean {
+  if (signals.requireEmail    && !c.contacts.email)     return false;
+  if (signals.requireSocial   && !c.contacts.instagram && !c.contacts.twitter) return false;
+  if (signals.requireLinkedin && !c.contacts.linkedin)  return false;
+  if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) return false;
+  return true;
+}
+
 // ─── Zero-dependency scoring — no AI needed ───────────────────────────────────
 // Scores candidates using platform signals: CCU, review count, subscribers, etc.
 
@@ -114,7 +215,7 @@ type Analysis = {
   grade: string; score: number; whyItFits: string; bestChannel: string;
 };
 
-function scoreCandidate(c: Candidate, segments: string[]): Analysis {
+function scoreCandidate(c: Candidate, segments: string[], signals?: CriteriaSignals): Analysis {
   let score = 40;
 
   // Contact signals
@@ -128,7 +229,8 @@ function scoreCandidate(c: Candidate, segments: string[]): Analysis {
     const raw = c.rawData as { playerCount?: number; totalUpVotes?: number };
     const ccu   = (raw.playerCount  ?? 0) as number;
     const votes = (raw.totalUpVotes ?? 0) as number;
-    score += ccu > 10000 ? 25 : ccu > 1000 ? 18 : ccu > 100 ? 10 : ccu > 10 ? 5 : 0;
+    const engMult = signals?.engagementMult ?? 1;
+    score += Math.round((ccu > 10000 ? 25 : ccu > 1000 ? 18 : ccu > 100 ? 10 : ccu > 10 ? 5 : 0) * engMult);
     score += votes > 100000 ? 10 : votes > 10000 ? 6 : votes > 1000 ? 3 : 0;
   } else if (c.type === "steam") {
     score += 20; // Steam support email present = qualified lead
@@ -138,11 +240,31 @@ function scoreCandidate(c: Candidate, segments: string[]): Analysis {
   } else if (c.type === "youtube") {
     const raw  = c.rawData as { subCount?: number };
     const subs = (raw.subCount ?? 0) as number;
-    score += subs > 1000000 ? 25 : subs > 100000 ? 20 : subs > 10000 ? 12 : subs > 1000 ? 6 : 0;
+    const engMult = signals?.engagementMult ?? 1;
+    score += Math.round((subs > 1000000 ? 25 : subs > 100000 ? 20 : subs > 10000 ? 12 : subs > 1000 ? 6 : 0) * engMult);
   } else if (c.type === "web") {
     score += 10;
     const raw = c.rawData as { followers?: number };
     if (raw.followers) score += Math.min(10, Math.floor(raw.followers / 100));
+  }
+
+  // ── Criteria-driven boosts ────────────────────────────────────────────────
+  if (signals) {
+    if (c.type === "mobile")  score += signals.boostMobile;
+    if (c.type === "youtube") score += signals.boostYoutube;
+    if (c.type === "roblox")  score += signals.boostRoblox;
+    if (c.type === "steam")   score += signals.boostSteam;
+    if (c.type === "web")     score += signals.boostWeb;
+
+    if (c.contacts.email)    score += signals.bonusEmail;
+    if (c.contacts.linkedin) score += signals.bonusLinkedin;
+    if (c.contacts.instagram || c.contacts.twitter) score += signals.bonusSocial;
+    if (c.contacts.discord)  score += signals.bonusDiscord;
+
+    // Penalise platform-only profiles when a real website is required
+    if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) {
+      score -= 30;
+    }
   }
 
   score = Math.min(100, Math.max(0, score));
@@ -625,6 +747,15 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     const plan = generatePlan(run.prompt, run.count);
 
+    // Parse criteria into scoring signals (empty object if no criteria set)
+    const criteriaSignals: CriteriaSignals | undefined = run.criteria?.trim()
+      ? parseCriteria(run.criteria)
+      : undefined;
+
+    if (criteriaSignals) {
+      await log(runId, "planning", `Criteria applied: "${run.criteria!.slice(0, 100)}"`);
+    }
+
     await prisma.leadRun.update({ where: { id: runId }, data: { plan: plan as unknown as Prisma.InputJsonValue } });
     await log(runId, "planning", [
       `YouTube: ${plan.youtubeQueries.length}`,
@@ -799,7 +930,7 @@ export async function processLeadRun(runId: string): Promise<void> {
 
       // Score the whole batch — synchronous, instant, no AI needed
       const batchResults = batch.map((c) => {
-        const a = scoreCandidate(c, plan.segments);
+        const a = scoreCandidate(c, plan.segments, criteriaSignals);
         return { c, a };
       });
 
@@ -807,6 +938,9 @@ export async function processLeadRun(runId: string): Promise<void> {
       for (const { c, a } of batchResults) {
         if (savedCount >= run.count) break;
         if (run.mode === "bulk" && a.grade === "F") continue;
+
+        // Hard criteria filter — skip candidates that don't meet required conditions
+        if (criteriaSignals && !meetsHardCriteria(c, criteriaSignals)) continue;
 
         // Serper email enrichment — only runs for leads that passed scoring
         let finalEmail = a.dmEmail || c.contacts.email || null;

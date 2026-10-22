@@ -18,6 +18,7 @@ interface LeadRun {
   id: string;
   prompt: string;
   offer: string | null;
+  criteria: string | null;
   count: number;
   mode: string;
   status: string;
@@ -131,6 +132,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   // New run form
   const [prompt, setPrompt] = useState("");
   const [offer, setOffer] = useState("");
+  const [criteria, setCriteria] = useState("");
   const [count, setCount] = useState(25);
   const [mode, setMode] = useState<"bulk" | "deep">("bulk");
   const [runSaving, setRunSaving] = useState(false);
@@ -207,12 +209,12 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
     const res = await fetch("/api/agency/lead-factory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, offer, count, mode }),
+      body: JSON.stringify({ prompt, offer, criteria, count, mode }),
     });
     if (res.ok) {
       const run = await res.json();
       setRuns((prev) => [run, ...prev]);
-      setPrompt(""); setOffer(""); setCount(25); setMode("bulk");
+      setPrompt(""); setOffer(""); setCriteria(""); setCount(25); setMode("bulk");
       setShowNewRun(false); setShowOffer(false);
     }
     setRunSaving(false);
@@ -347,6 +349,47 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   placeholder="What you're offering these leads…"
                   style={{ ...inputStyle, resize: "none", marginTop: 8 }}
                 />
+              )}
+            </div>
+
+            {/* Criteria */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                Criteria
+                <span className="ml-2 font-normal" style={{ color: "var(--text-tertiary)" }}>
+                  (optional — describe what makes a good lead)
+                </span>
+              </label>
+              <textarea
+                value={criteria}
+                onChange={(e) => setCriteria(e.target.value)}
+                rows={2}
+                placeholder="e.g. must have active downloads, backed by VC with capital, has instagram, min 100k subscribers…"
+                style={{ ...inputStyle, resize: "none" }}
+              />
+              {criteria.trim() && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {[
+                    [/download|install|app store/i, "active downloads → mobile boost"],
+                    [/vc|funded|investor|capital|backed/i, "VC-backed → web + LinkedIn boost"],
+                    [/instagram|social/i, "social presence → Instagram bonus"],
+                    [/linkedin|b2b|professional/i, "professional → LinkedIn bonus"],
+                    [/subscriber|youtube|creator/i, "subscribers → YouTube boost"],
+                    [/roblox/i, "Roblox focus"],
+                    [/active|engagement|popular/i, "high engagement → amplified signals"],
+                    [/must have email|require email/i, "email required (hard filter)"],
+                    [/must have instagram|require instagram/i, "Instagram required (hard filter)"],
+                    [/website|real site/i, "real website required (hard filter)"],
+                  ].filter(([rx]) => (rx as RegExp).test(criteria)).map(([, label]) => (
+                    <span
+                      key={label as string}
+                      className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.2)", color: "#3DD68C" }}
+                    >
+                      {label as string}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -555,6 +598,11 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
                       {selectedRun.prompt}
                     </p>
+                    {selectedRun.criteria && (
+                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
+                        Criteria: {selectedRun.criteria}
+                      </p>
+                    )}
                     {selectedRun.stage && (
                       <p className="text-xs mt-1" style={{ color: selectedRun.status === "failed" ? "#FF3B3B" : "var(--text-tertiary)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                         {selectedRun.stage}

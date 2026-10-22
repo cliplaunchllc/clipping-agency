@@ -350,6 +350,7 @@ model LeadRun {
   id         String   @id @default(cuid())
   prompt     String   @db.Text
   offer      String?  @db.Text
+  criteria   String?  @db.Text
   count      Int      @default(25)
   mode       String   @default("deep")      // deep|bulk
   status     String   @default("pending")   // pending|planning|discovering|researching|verifying|scoring|building|completed|stopped|failed

@@ -24,6 +24,7 @@ export default async function LeadFactoryPage() {
           id: r.id,
           prompt: r.prompt,
           offer: r.offer ?? null,
+          criteria: r.criteria ?? null,
           count: r.count,
           mode: r.mode,
           status: r.status,
