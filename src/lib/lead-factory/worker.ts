@@ -4,10 +4,9 @@
  * Polls for queued runs every 15 seconds and processes them.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { processLeadRun } from "./pipeline";
 
-const prisma = new PrismaClient();
 const processing = new Set<string>();
 
 const POLL_MS   = 15_000;
@@ -75,6 +74,9 @@ export function startWorker() {
   workerState.started = true;
   workerState.startedAt = new Date();
   console.log("[worker] Lead Factory worker started");
-  tick();
-  setInterval(tick, POLL_MS);
+  // Delay first tick 5s so the server finishes booting before we hit the DB
+  setTimeout(() => {
+    tick();
+    setInterval(tick, POLL_MS);
+  }, 5000);
 }
