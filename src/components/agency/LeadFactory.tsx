@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, ExternalLink, X,
-  Zap, Mail, AtSign, Link, Globe, User,
+  Zap, Mail, AtSign, Link, Globe, User, Play, Square, RotateCcw,
 } from "lucide-react";
 
 interface LeadRun {
@@ -101,6 +101,8 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
 };
 
+const ACTIVE_STATUSES = new Set(["planning", "discovering", "researching", "verifying", "scoring", "building"]);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] }) {
   const [runs, setRuns] = useState<LeadRun[]>(initialRuns);
@@ -111,6 +113,9 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const [showAddLead, setShowAddLead] = useState(false);
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // New run form
   const [prompt, setPrompt] = useState("");
@@ -119,6 +124,41 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const [mode, setMode] = useState<"bulk" | "deep">("bulk");
   const [runSaving, setRunSaving] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
+
+  // ── Polling ────────────────────────────────────────────────────────────────
+  const pollRun = useCallback(async (runId: string) => {
+    try {
+      const res = await fetch(`/api/agency/lead-factory/${runId}`);
+      if (!res.ok) return;
+      const updated = await res.json() as LeadRun;
+      setRuns((prev) => prev.map((r) => r.id === runId ? updated : r));
+      setSelectedRun((prev) => prev?.id === runId ? updated : prev);
+      // If run is now active, also refresh leads
+      if (ACTIVE_STATUSES.has(updated.status)) {
+        const lr = await fetch(`/api/agency/lead-factory/${runId}/leads`);
+        if (lr.ok) setLeads(await lr.json());
+      }
+      // Stop polling when done
+      if (!ACTIVE_STATUSES.has(updated.status)) {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        if (["completed", "failed", "stopped"].includes(updated.status)) {
+          const lr = await fetch(`/api/agency/lead-factory/${runId}/leads`);
+          if (lr.ok) setLeads(await lr.json());
+        }
+      }
+    } catch {
+      // network error - just skip this tick
+    }
+  }, []);
+
+  // Start polling when selected run is active
+  useEffect(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (selectedRun && ACTIVE_STATUSES.has(selectedRun.status)) {
+      pollRef.current = setInterval(() => pollRun(selectedRun.id), 3000);
+    }
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [selectedRun?.id, selectedRun?.status, pollRun]);
 
   // New lead form
   const [leadForm, setLeadForm] = useState({
@@ -158,6 +198,32 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
       setShowNewRun(false); setShowOffer(false);
     }
     setRunSaving(false);
+  }
+
+  async function handleStartRun(id: string) {
+    setStartingId(id);
+    const res = await fetch(`/api/agency/lead-factory/${id}/start`, { method: "POST" });
+    if (res.ok) {
+      const updated = await fetch(`/api/agency/lead-factory/${id}`).then((r) => r.json()) as LeadRun;
+      setRuns((prev) => prev.map((r) => r.id === id ? updated : r));
+      if (selectedRun?.id === id) setSelectedRun(updated);
+    }
+    setStartingId(null);
+  }
+
+  async function handleStopRun(id: string) {
+    setStoppingId(id);
+    const res = await fetch(`/api/agency/lead-factory/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stop" }),
+    });
+    if (res.ok) {
+      const updated = await res.json() as LeadRun;
+      setRuns((prev) => prev.map((r) => r.id === id ? updated : r));
+      if (selectedRun?.id === id) setSelectedRun(updated);
+    }
+    setStoppingId(null);
   }
 
   async function handleDeleteRun(id: string) {
@@ -350,6 +416,9 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
               const dot = STATUS_DOT[run.status] ?? STATUS_DOT.pending;
               const isSelected = selectedRun?.id === run.id;
               const c = chip(run.status);
+              const isActive = ACTIVE_STATUSES.has(run.status);
+              const canStart = ["pending", "stopped", "failed"].includes(run.status);
+              const progress = run.stats ? Math.round(((run.stats.saved ?? 0) / (run.count || 1)) * 100) : 0;
               return (
                 <div
                   key={run.id}
@@ -360,20 +429,45 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     border: `1px solid ${isSelected ? "rgba(255,59,59,0.28)" : "var(--border-default)"}`,
                   }}
                 >
-                  {/* Status dot + delete */}
+                  {/* Status dot + actions */}
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
+                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isActive ? "animate-pulse" : ""}`}
+                        style={{ background: dot }} />
                       <span className="text-xs" style={{ color: c.color }}>{run.status}</span>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteRun(run.id); }}
-                      disabled={deletingId === run.id}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      <Trash2 size={11} />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      {canStart && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleStartRun(run.id); }}
+                          disabled={startingId === run.id}
+                          title="Start run"
+                          className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/5"
+                          style={{ color: "#3DD68C" }}
+                        >
+                          {startingId === run.id ? <RotateCcw size={11} className="animate-spin" /> : <Play size={11} />}
+                        </button>
+                      )}
+                      {isActive && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleStopRun(run.id); }}
+                          disabled={stoppingId === run.id}
+                          title="Stop run"
+                          className="p-1 rounded transition-opacity hover:bg-white/5"
+                          style={{ color: "#f87171" }}
+                        >
+                          <Square size={11} />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteRun(run.id); }}
+                        disabled={deletingId === run.id || isActive}
+                        className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: "var(--text-tertiary)", opacity: isActive ? 0 : undefined }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Prompt */}
@@ -382,11 +476,27 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     {run.prompt}
                   </p>
 
+                  {/* Progress bar (active only) */}
+                  {isActive && (
+                    <div className="mb-2">
+                      <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(4, progress)}%`, background: c.color }} />
+                      </div>
+                      {run.stage && (
+                        <p className="text-xs mt-1 truncate" style={{ color: "var(--text-tertiary)" }}>
+                          {run.stage}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Meta row */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs tabular-nums px-1.5 py-0.5 rounded-md"
                       style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-tertiary)" }}>
                       {run.leadCount} lead{run.leadCount !== 1 ? "s" : ""}
+                      {run.totalCost > 0 && <span className="ml-1.5 opacity-60">${run.totalCost.toFixed(3)}</span>}
                     </span>
                     <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                       {new Date(run.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -410,31 +520,65 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
           ) : (
             <>
               {/* Panel header */}
-              <div className="flex items-center gap-3 px-5 py-3.5 flex-shrink-0"
-                style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: chip(selectedRun.status).bg, color: chip(selectedRun.status).color, border: `1px solid ${chip(selectedRun.status).border}` }}>
-                      {selectedRun.status}
-                    </span>
-                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                      {leads.length} lead{leads.length !== 1 ? "s" : ""}
-                      &nbsp;·&nbsp; {selectedRun.mode} mode
-                    </span>
+              <div className="flex-shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <div className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: chip(selectedRun.status).bg, color: chip(selectedRun.status).color, border: `1px solid ${chip(selectedRun.status).border}` }}>
+                        {selectedRun.status}
+                      </span>
+                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                        {leads.length} lead{leads.length !== 1 ? "s" : ""}
+                        &nbsp;·&nbsp; {selectedRun.mode}
+                        {selectedRun.totalCost > 0 && <span>&nbsp;·&nbsp; ${selectedRun.totalCost.toFixed(4)} spent</span>}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
+                      {selectedRun.prompt}
+                    </p>
+                    {ACTIVE_STATUSES.has(selectedRun.status) && selectedRun.stage && (
+                      <p className="text-xs mt-1 truncate" style={{ color: "var(--text-tertiary)" }}>
+                        {selectedRun.stage}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
-                    {selectedRun.prompt}
-                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {["pending", "stopped", "failed"].includes(selectedRun.status) && (
+                      <button
+                        onClick={() => handleStartRun(selectedRun.id)}
+                        disabled={startingId === selectedRun.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DD68C" }}
+                      >
+                        {startingId === selectedRun.id
+                          ? <RotateCcw size={11} className="animate-spin" />
+                          : <Play size={11} />}
+                        {startingId === selectedRun.id ? "Starting…" : "Start Run"}
+                      </button>
+                    )}
+                    {ACTIVE_STATUSES.has(selectedRun.status) && (
+                      <button
+                        onClick={() => handleStopRun(selectedRun.id)}
+                        disabled={stoppingId === selectedRun.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}
+                      >
+                        <Square size={11} /> Stop
+                      </button>
+                    )}
+                    {!ACTIVE_STATUSES.has(selectedRun.status) && (
+                      <button
+                        onClick={() => setShowAddLead((v) => !v)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                        style={{ background: showAddLead ? "transparent" : "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}
+                      >
+                        {showAddLead ? <X size={11} /> : <Plus size={11} />}
+                        {showAddLead ? "Cancel" : "Add Lead"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowAddLead((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
-                  style={{ background: showAddLead ? "transparent" : "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}
-                >
-                  {showAddLead ? <X size={11} /> : <Plus size={11} />}
-                  {showAddLead ? "Cancel" : "Add Lead"}
-                </button>
               </div>
 
               {/* Add lead form */}
