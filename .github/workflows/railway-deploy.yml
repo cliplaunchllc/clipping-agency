@@ -12,10 +12,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: curl -fsSL https://railway.com/install.sh | sh && echo "$HOME/.railway/bin" >> $GITHUB_PATH
-
-      - name: Deploy
-        run: railway up --detach --service 839f4797-4912-4cea-bf70-70fc08743608 --project 78e90682-89f6-4e06-bf43-ad3989136220
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: "839f4797-4912-4cea-bf70-70fc08743608"
