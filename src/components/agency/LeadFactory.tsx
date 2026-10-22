@@ -58,6 +58,7 @@ function fmtCost(n: number) {
 // ─── Status / grade maps ──────────────────────────────────────────────────────
 const STATUS_DOT: Record<string, string> = {
   pending:     "#94a3b8",
+  queued:      "#f59e0b",
   planning:    "#fbbf24",
   discovering: "#818cf8",
   researching: "#60a5fa",
@@ -71,6 +72,7 @@ const STATUS_DOT: Record<string, string> = {
 
 const STATUS_CHIP: Record<string, { bg: string; color: string; border: string }> = {
   pending:     { bg: "rgba(148,163,184,0.1)",  color: "#94a3b8", border: "rgba(148,163,184,0.2)" },
+  queued:      { bg: "rgba(245,158,11,0.1)",   color: "#f59e0b", border: "rgba(245,158,11,0.2)" },
   planning:    { bg: "rgba(251,191,36,0.1)",   color: "#fbbf24", border: "rgba(251,191,36,0.2)" },
   discovering: { bg: "rgba(129,140,248,0.1)",  color: "#818cf8", border: "rgba(129,140,248,0.2)" },
   researching: { bg: "rgba(96,165,250,0.1)",   color: "#60a5fa", border: "rgba(96,165,250,0.2)" },
@@ -101,7 +103,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const ACTIVE_STATUSES = new Set(["planning", "discovering", "researching", "verifying", "scoring", "building"]);
+const ACTIVE_STATUSES = new Set(["queued", "planning", "discovering", "researching", "verifying", "scoring", "building"]);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] }) {

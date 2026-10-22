@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { processLeadRun } from "@/lib/lead-factory/pipeline";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +16,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!["pending", "stopped", "failed"].includes(run.status))
     return NextResponse.json({ error: "Run is already active" }, { status: 409 });
 
-  // Reset for fresh start
+  // Queue the run — the background worker picks it up
   await prisma.leadRun.update({
     where: { id },
-    data: { status: "planning", stage: "Starting…", totalCost: 0 },
-  });
-
-  // Fire and forget — returns immediately, pipeline runs in background
-  processLeadRun(id).catch(async (err) => {
-    await prisma.leadRun
-      .update({ where: { id }, data: { status: "failed", stage: String(err).slice(0, 200) } })
-      .catch(() => {});
+    data: { status: "queued", stage: "Waiting for worker…", totalCost: 0 },
   });
 
   return NextResponse.json({ started: true });

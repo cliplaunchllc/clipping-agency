@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "prisma db push && next start",
+    "worker": "ts-node --compiler-options {\"module\":\"CommonJS\",\"moduleResolution\":\"node\"} --project tsconfig.worker.json src/worker/index.ts",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
