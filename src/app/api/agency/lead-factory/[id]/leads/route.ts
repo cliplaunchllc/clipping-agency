@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = await req.json();
-  const { company, website, decisionMaker, dmRole, xHandle, instagramHandle, linkedinUrl, dmEmail, whatItIs, notes, grade, score, segment } = body;
+  const { company, website, decisionMaker, dmRole, xHandle, instagramHandle, linkedinUrl, dmEmail, whatItIs, grade, score, segment } = body;
 
   if (!company?.trim()) return NextResponse.json({ error: "Company name required" }, { status: 400 });
 
@@ -37,7 +37,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       linkedinUrl: linkedinUrl?.trim() || null,
       dmEmail: dmEmail?.trim() || null,
       whatItIs: whatItIs?.trim() || null,
-      notes: notes?.trim() || null,
       grade: grade || null,
       score: score || null,
       segment: segment?.trim() || null,
