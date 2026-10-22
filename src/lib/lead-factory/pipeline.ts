@@ -45,14 +45,14 @@ async function isStopped(runId: string): Promise<boolean> {
 
 // ─── Hugging Face Inference API (free, open-source models) ───────────────────
 // Uses the Messages API (OpenAI-compatible) on HuggingFace serverless inference.
-// Model: mistralai/Mistral-7B-Instruct-v0.3 — reliable JSON extraction, always free.
+// Model: HuggingFaceH4/zephyr-7b-beta — reliable JSON extraction, always free.
 // Sign up free at huggingface.co → Settings → Access Tokens → New token (read).
 
 async function haiku(prompt: string, _deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
   const key = process.env.HF_TOKEN;
   if (!key) throw new Error("HF_TOKEN not set — add it in Railway Variables");
 
-  const model = "mistralai/Mistral-7B-Instruct-v0.3";
+  const model = "HuggingFaceH4/zephyr-7b-beta";
   const url = `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`;
   const body = JSON.stringify({
     model,
