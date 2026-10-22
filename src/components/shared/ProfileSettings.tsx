@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Sidebar from "@/components/shared/Sidebar";
@@ -17,6 +17,17 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
 
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
+
+  // Keep inputs in sync with fresh prop from server after router.refresh()
+  useEffect(() => {
+    if (!profileSaving) setName(initialName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialName]);
+
+  useEffect(() => {
+    if (!profileSaving) setEmail(initialEmail);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEmail]);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,6 +66,7 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
     } else {
       setProfileMsg({ type: "ok", text: "Saved!" });
       setProfileSaving(false);
+      setTimeout(() => setProfileMsg(null), 2500);
       await updateSession();
       router.refresh();
     }

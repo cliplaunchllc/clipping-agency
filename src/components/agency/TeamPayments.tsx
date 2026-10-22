@@ -384,6 +384,7 @@ export default function TeamPayments({ initialMembers }: Props) {
     form: typeof EMPTY_FORM;
     setForm: (f: typeof EMPTY_FORM) => void;
   }) {
+    const dateStyle: React.CSSProperties = { ...inputStyle, width: "100%", colorScheme: "dark" };
     return (
       <>
         <div>
@@ -401,7 +402,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                   : form.nextPaymentDue,
               })
             }
-            style={{ ...inputStyle, width: "100%" }}
+            style={dateStyle}
           />
         </div>
         <div>
@@ -417,7 +418,7 @@ export default function TeamPayments({ initialMembers }: Props) {
             type="date"
             value={form.nextPaymentDue}
             onChange={(e) => setForm({ ...form, nextPaymentDue: e.target.value })}
-            style={{ ...inputStyle, width: "100%" }}
+            style={dateStyle}
           />
         </div>
       </>

@@ -96,6 +96,12 @@ export default function AgencySettings({ userName, email, currentUserId, initial
   const [inviteCodeSaved, setInviteCodeSaved] = useState(false);
   const [showInviteCode, setShowInviteCode] = useState(false);
 
+  // Keep name in sync with fresh prop from server after router.refresh()
+  useEffect(() => {
+    if (!nameSaving) setName(userName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userName]);
+
   useEffect(() => {
     fetch("/api/settings/logo").then((r) => r.json()).then((d) => setAgencyLogo(d.logoUrl ?? null));
   }, []);
