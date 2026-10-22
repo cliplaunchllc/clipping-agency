@@ -43,36 +43,39 @@ async function isStopped(runId: string): Promise<boolean> {
   return r?.status === "stopped";
 }
 
-// ─── Groq LLM (free) ──────────────────────────────────────────────────────────
-// llama-3.1-8b-instant: 6000 RPM, great for bulk JSON extraction tasks
-// llama-3.3-70b-versatile: 30 RPM, higher quality for deep mode
+// ─── Hugging Face Inference API (free, open-source models) ───────────────────
+// Uses the Messages API (OpenAI-compatible) on HuggingFace serverless inference.
+// Model: mistralai/Mistral-7B-Instruct-v0.3 — reliable JSON extraction, always free.
+// Sign up free at huggingface.co → Settings → Access Tokens → New token (read).
 
-async function haiku(prompt: string, deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw new Error("GROQ_API_KEY not set");
+async function haiku(prompt: string, _deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
+  const key = process.env.HF_TOKEN;
+  if (!key) throw new Error("HF_TOKEN not set");
 
-  const model = deep ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 1500,
-      temperature: 0.2,
-    }),
-    signal: AbortSignal.timeout(30000),
-  }).catch(() => null);
+  const model = "mistralai/Mistral-7B-Instruct-v0.3";
+  const res = await fetch(
+    `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(60000), // HF can take ~10s on cold start
+    }
+  ).catch(() => null);
 
   if (!res?.ok) {
     const err = await res?.text().catch(() => "timeout");
-    throw new Error(`Groq error ${res?.status}: ${String(err).slice(0, 120)}`);
+    throw new Error(`HuggingFace error ${res?.status}: ${String(err).slice(0, 120)}`);
   }
 
   const data = await res.json() as {
     choices: [{ message: { content: string } }];
-    usage: { prompt_tokens: number; completion_tokens: number };
+    usage?: { prompt_tokens: number; completion_tokens: number };
   };
   return {
     text: data.choices[0]?.message?.content ?? "",
@@ -525,10 +528,10 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  const hasAI = !!process.env.GROQ_API_KEY;
+  const hasAI = !!process.env.HF_TOKEN;
 
   if (!hasAI) {
-    await setStatus(runId, "failed", "GROQ_API_KEY not configured");
+    await setStatus(runId, "failed", "HF_TOKEN not configured — get a free token at huggingface.co/settings/tokens");
     return;
   }
 
@@ -559,7 +562,7 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
 }`;
 
     const planRes = await haiku(planPrompt, true); // use 70b for planning quality
-    await trackCost(runId, "groq", "planning", planRes.inTok + planRes.outTok, 0);
+    await trackCost(runId, "huggingface", "planning", planRes.inTok + planRes.outTok, 0);
 
     const plan = parseJSON<Plan>(planRes.text, {
       youtubeQueries: [`${run.prompt} gaming`],
@@ -803,7 +806,7 @@ Return ONLY this JSON (use null if unknown, do NOT guess emails):
 Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
 
         const res = await haiku(analyzePrompt, run.mode === "deep");
-        await trackCost(runId, "groq", "analyze", res.inTok + res.outTok, 0);
+        await trackCost(runId, "huggingface", "analyze", res.inTok + res.outTok, 0);
         return { c, a: parseJSON<Analysis>(res.text, null as never) };
       }));
 
