@@ -1,16 +1,16 @@
 /**
- * Lead Factory Pipeline — 100% FREE APIs
+ * Lead Factory Pipeline — 100% FREE, zero external accounts required
  *
- * Sources (all free, no paid keys required):
+ * Sources (all free, no keys required):
  *   - Roblox Games API    → FREE  (no key)
  *   - Steam Store API     → FREE  (no key)
  *   - iTunes Search API   → FREE  (no key)
  *   - Invidious           → FREE  (open-source YouTube — no key, no quota)
+ *   - SearXNG             → FREE  (open-source meta-search — no key, no account)
  *   - GitHub Search API   → FREE  (no key: 60 req/hr · GITHUB_TOKEN: 5000 req/hr)
- *   - Brave Search API    → FREE  (2000 queries/month free · BRAVE_API_KEY)
- *   - Groq LLM            → FREE  (14,400 req/day · GROQ_API_KEY — llama-3.1-8b-instant)
  *
- * Approximate cost: $0 — all free tiers
+ * Planning + scoring: rule-based — no AI, no API key, no account needed.
+ * Approximate cost: $0
  */
 
 import { Prisma } from "@prisma/client";
@@ -43,54 +43,142 @@ async function isStopped(runId: string): Promise<boolean> {
   return r?.status === "stopped";
 }
 
-// ─── Google Gemini Flash (free: 1500 req/day, no credit card needed) ─────────
-// Get a free API key at aistudio.google.com → "Get API key" (just needs Google account).
-// Uses OpenAI-compatible endpoint — no extra SDK needed.
+// ─── Zero-dependency planning — no AI needed ─────────────────────────────────
+// Extracts keywords from the user prompt and mixes them with a pre-built query
+// bank to generate diverse search queries across all sources.
 
-async function haiku(prompt: string, _deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY not set — get a free key at aistudio.google.com");
+const STOP_WORDS = new Set([
+  "the","and","for","that","with","have","this","from","they","will","been",
+  "are","but","not","you","all","can","was","one","our","out","get","has",
+  "how","its","may","now","she","too","use","who","your","more","also","into",
+  "than","then","when","some","such","only","over","just","like","after","about",
+  "very","well","back","even","much","most","make","long","time","look","come",
+  "take","know","give","want","keep","find","tell","feel","turn","hand","place",
+  "game","games","studio","developer","company","want","need","find","looking",
+  "short","form","video","clip","clips","every","must","include","return","each",
+]);
 
-  const res = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
-        temperature: 0.2,
-      }),
-      signal: AbortSignal.timeout(30000),
-    }
-  ).catch(() => null);
+function extractKeywords(prompt: string, max = 6): string[] {
+  return prompt.toLowerCase()
+    .split(/[\s,;.!?()\[\]{}"']+/)
+    .filter((w) => w.length > 3 && !STOP_WORDS.has(w))
+    .filter((w, i, a) => a.indexOf(w) === i) // deduplicate
+    .slice(0, max);
+}
 
-  if (!res) throw new Error("Gemini request timed out");
+function generatePlan(prompt: string, count: number): Plan {
+  const qCount = count <= 50 ? 3 : count <= 200 ? 6 : count <= 500 ? 10 : 15;
+  const kw = extractKeywords(prompt);
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "unknown");
-    throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 200)}`);
-  }
+  const robloxBank = ["pvp combat","tycoon simulator","roleplay adventure","fps shooter","tower defense","horror escape","racing car","battle royale","obstacle course","fighting martial","open world","social hangout","clicker idle","space exploration","zombie survival"];
+  const steamBank  = ["indie pvp game","survival multiplayer","battle royale indie","roguelike action","co-op adventure","indie rpg","indie shooter","open world survival","platformer indie","card game indie","city builder","strategy indie","souls-like indie","auto battler","extraction shooter"];
+  const mobileBank = ["mobile pvp game","idle clicker game","mobile strategy game","battle game mobile","mobile rpg","mobile shooter","match 3 puzzle","mobile card game","tower defense mobile","gacha game mobile","mobile battle royale","mobile racing","mobile farming sim","mobile sports game","mobile survival"];
+  const youtubeBank = ["game developer channel","indie game studio youtube","roblox game creator","mobile game developer","game review channel","gaming tips creator","multiplayer gameplay","esports gaming channel","game design tutorial","game dev vlog"];
+  const webBank    = ["indie game studio contact","game developer press kit","mobile game company","online multiplayer developer","esports game studio","game publisher indie","browser game developer","game startup hiring","game company about","competitive game studio"];
+  const githubBank = ["game studio org","indie game developer","mobile game company","unity game developer","unreal engine studio","godot game developer","roblox developer","multiplayer game","game engine","web game developer"];
 
-  const data = await res.json() as {
-    choices: [{ message: { content: string } }];
-    usage?: { prompt_tokens: number; completion_tokens: number };
+  const blend = (bank: string[]) => {
+    const keywordQueries = kw.map((k) => `${k} game`);
+    const merged = [...new Set([...keywordQueries, ...bank])].slice(0, qCount);
+    return merged;
   };
+
+  // Derive segment labels from the prompt keywords
+  const segments = [
+    kw.some((k) => ["roblox","rbx"].includes(k)) ? "Roblox Studio" : "Roblox Developer",
+    kw.some((k) => ["steam","pc"].includes(k))   ? "PC Game Studio" : "Indie Game Studio",
+    kw.some((k) => ["mobile","ios","android"].includes(k)) ? "Mobile Game Publisher" : "Mobile Game Developer",
+    "Online PvP Studio",
+    "Gaming Content Creator",
+  ];
+
   return {
-    text: data.choices[0]?.message?.content ?? "",
-    inTok: data.usage?.prompt_tokens ?? 0,
-    outTok: data.usage?.completion_tokens ?? 0,
+    youtubeQueries: blend(youtubeBank),
+    webQueries:     blend(webBank),
+    robloxQueries:  blend(robloxBank),
+    steamQueries:   blend(steamBank),
+    mobileQueries:  blend(mobileBank),
+    githubQueries:  blend(githubBank),
+    segments,
   };
 }
 
-function parseJSON<T>(text: string, fallback: T): T {
-  try {
-    const clean = text.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
-    return JSON.parse(clean) as T;
-  } catch {
-    return fallback;
+// ─── Zero-dependency scoring — no AI needed ───────────────────────────────────
+// Scores candidates using platform signals: CCU, review count, subscribers, etc.
+
+type Analysis = {
+  company: string; website: string; whatItIs: string; segment: string;
+  decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
+  instagramHandle: string | null; xHandle: string | null;
+  linkedinUrl: string | null; discordUrl: string | null;
+  grade: string; score: number; whyItFits: string; bestChannel: string;
+};
+
+function scoreCandidate(c: Candidate, segments: string[]): Analysis {
+  let score = 40;
+
+  // Contact signals
+  if (c.contacts.email)     score += 15;
+  if (c.contacts.instagram) score += 5;
+  if (c.contacts.twitter)   score += 3;
+  if (c.contacts.linkedin)  score += 7;
+
+  // Source-specific quality signals
+  if (c.type === "roblox") {
+    const raw = c.rawData as { playerCount?: number; totalUpVotes?: number };
+    const ccu   = (raw.playerCount  ?? 0) as number;
+    const votes = (raw.totalUpVotes ?? 0) as number;
+    score += ccu > 10000 ? 25 : ccu > 1000 ? 18 : ccu > 100 ? 10 : ccu > 10 ? 5 : 0;
+    score += votes > 100000 ? 10 : votes > 10000 ? 6 : votes > 1000 ? 3 : 0;
+  } else if (c.type === "steam") {
+    score += 20; // Steam support email present = qualified lead
+  } else if (c.type === "mobile") {
+    score += 15;
+    if (c.description.length > 150) score += 5; // rich description = active app
+  } else if (c.type === "youtube") {
+    const raw  = c.rawData as { subCount?: number };
+    const subs = (raw.subCount ?? 0) as number;
+    score += subs > 1000000 ? 25 : subs > 100000 ? 20 : subs > 10000 ? 12 : subs > 1000 ? 6 : 0;
+  } else if (c.type === "web") {
+    score += 10;
+    const raw = c.rawData as { followers?: number };
+    if (raw.followers) score += Math.min(10, Math.floor(raw.followers / 100));
   }
+
+  score = Math.min(100, Math.max(0, score));
+  const grade = score >= 80 ? "A" : score >= 65 ? "B" : score >= 50 ? "C" : score >= 35 ? "D" : "F";
+
+  const segmentMap: Record<string, string> = {
+    roblox: segments.find((s) => s.toLowerCase().includes("roblox")) ?? "Roblox Developer",
+    steam:  segments.find((s) => s.toLowerCase().includes("pc") || s.toLowerCase().includes("indie")) ?? "Indie Game Studio",
+    mobile: segments.find((s) => s.toLowerCase().includes("mobile")) ?? "Mobile Game Developer",
+    youtube: segments.find((s) => s.toLowerCase().includes("creator") || s.toLowerCase().includes("content")) ?? "Gaming Creator",
+    web:    segments.find((s) => s.toLowerCase().includes("studio")) ?? "Game Studio",
+  };
+
+  const bestChannel = c.contacts.email ? "email"
+    : c.contacts.instagram ? "instagram"
+    : c.contacts.discord   ? "discord"
+    : c.contacts.twitter   ? "direct"
+    : "direct";
+
+  return {
+    company:         c.name.trim().slice(0, 100),
+    website:         c.website,
+    whatItIs:        c.description.replace(/\n/g, " ").slice(0, 140) || `${segmentMap[c.type]} creating games`,
+    segment:         segmentMap[c.type] ?? segments[0] ?? "Game Developer",
+    decisionMaker:   null,
+    dmRole:          null,
+    dmEmail:         c.contacts.email,
+    instagramHandle: c.contacts.instagram,
+    xHandle:         c.contacts.twitter,
+    linkedinUrl:     c.contacts.linkedin,
+    discordUrl:      c.contacts.discord,
+    grade,
+    score,
+    whyItFits:       `${segmentMap[c.type] ?? "Game developer"} that can grow their player base with short-form video clips`,
+    bestChannel,
+  };
 }
 
 // ─── Contact extraction ───────────────────────────────────────────────────────
@@ -528,51 +616,14 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  const hasAI = !!process.env.GEMINI_API_KEY;
-
-  if (!hasAI) {
-    await setStatus(runId, "failed", "GEMINI_API_KEY not configured — get a free key at aistudio.google.com");
-    return;
-  }
-
   try {
     // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 1: PLANNING
+    // PHASE 1: PLANNING (rule-based — no AI, no key required)
     // ──────────────────────────────────────────────────────────────────────────
     await setStatus(runId, "planning", "Building search strategy…");
     await log(runId, "planning", `Run started: "${run.prompt.slice(0, 80)}"  mode=${run.mode}  count=${run.count}`);
 
-    // Scale query count based on how many leads are requested
-    const qCount = run.count <= 50 ? 3 : run.count <= 200 ? 6 : run.count <= 500 ? 10 : 15;
-
-    const planPrompt = `You're a lead researcher for a video clipping agency that creates short-form clips for game developers and creators.
-Target audience: "${run.prompt}"
-${run.offer ? `Our offer: "${run.offer}"` : ""}
-Leads needed: ${run.count}
-
-Generate a search plan as JSON only (no markdown). Each array must have exactly ${qCount} entries — use varied keywords to maximize unique results:
-{
-  "youtubeQueries": ["${qCount} distinct YouTube channel search strings for gaming creators"],
-  "webQueries": ["${qCount} distinct search strings for game studios or developers"],
-  "robloxQueries": ["${qCount} distinct Roblox game keyword searches like 'combat', 'simulator', 'tycoon', 'pvp', 'fps', 'roleplay'"],
-  "steamQueries": ["${qCount} distinct Steam game searches like 'indie pvp', 'survival game', 'battle royale indie', 'roguelike'"],
-  "mobileQueries": ["${qCount} distinct App Store game searches like 'mobile pvp', 'idle RPG', 'clicker', 'gacha', 'strategy'"],
-  "githubQueries": ["${qCount} distinct GitHub org search strings like 'game studio', 'indie game developer', 'mobile game'"],
-  "segments": ["3-5 segment labels like 'Roblox Developer', 'Indie Game Studio', 'Mobile Game Publisher'"]
-}`;
-
-    const planRes = await haiku(planPrompt, true); // use 70b for planning quality
-    await trackCost(runId, "gemini", "planning", planRes.inTok + planRes.outTok, 0);
-
-    const plan = parseJSON<Plan>(planRes.text, {
-      youtubeQueries: [`${run.prompt} gaming`],
-      webQueries: [`${run.prompt} game developer`],
-      robloxQueries: ["pvp", "simulator"],
-      steamQueries: ["indie game"],
-      mobileQueries: ["mobile game"],
-      githubQueries: ["game studio"],
-      segments: ["Game Developer"],
-    });
+    const plan = generatePlan(run.prompt, run.count);
 
     await prisma.leadRun.update({ where: { id: runId }, data: { plan: plan as unknown as Prisma.InputJsonValue } });
     await log(runId, "planning", [
@@ -739,84 +790,22 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
     const processCap = run.count * 3; // enough headroom to fill quota after filtering
     const toProcess = shuffled.slice(0, Math.min(shuffled.length, processCap));
 
-    const HAIKU_BATCH = 10; // parallel Haiku calls per batch
+    const BATCH = 20; // process in batches to update progress periodically
 
-    type Analysis = {
-      company: string; website: string; whatItIs: string; segment: string;
-      decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
-      instagramHandle: string | null; xHandle: string | null;
-      linkedinUrl: string | null; discordUrl: string | null;
-      grade: string; score: number; whyItFits: string; bestChannel: string;
-    };
-
-    for (let i = 0; i < toProcess.length && savedCount < run.count; i += HAIKU_BATCH) {
+    for (let i = 0; i < toProcess.length && savedCount < run.count; i += BATCH) {
       if (await isStopped(runId)) return;
 
-      const batch = toProcess.slice(i, Math.min(i + HAIKU_BATCH, toProcess.length));
+      const batch = toProcess.slice(i, Math.min(i + BATCH, toProcess.length));
 
-      // Score the whole batch in parallel
-      const batchResults = await Promise.allSettled(batch.map(async (c) => {
-        const sourceLabel = {
-          roblox: "Roblox developer",
-          steam: "Steam game developer",
-          mobile: "Mobile game developer",
-          youtube: "YouTube creator",
-          web: "company/creator",
-        }[c.type];
+      // Score the whole batch — synchronous, instant, no AI needed
+      const batchResults = batch.map((c) => {
+        const a = scoreCandidate(c, plan.segments);
+        return { c, a };
+      });
 
-        const contactBlock = [
-          c.contacts.email     && `Email: ${c.contacts.email}`,
-          c.contacts.instagram && `Instagram: ${c.contacts.instagram}`,
-          c.contacts.twitter   && `Twitter/X: ${c.contacts.twitter}`,
-          c.contacts.linkedin  && `LinkedIn: ${c.contacts.linkedin}`,
-          c.contacts.discord   && `Discord: ${c.contacts.discord}`,
-        ].filter(Boolean).join("\n");
-
-        const analyzePrompt = `Analyze this lead for a video/clipping agency that makes short-form clips for game companies and creators.
-
-Looking for: "${run.prompt}"
-${run.offer ? `Our offer: "${run.offer}"` : ""}
-
-Lead type: ${sourceLabel}
-Name: ${c.name}
-URL: ${c.website}
-About: ${c.description.slice(0, 300)}
-${contactBlock ? `Known contacts:\n${contactBlock}` : "No contacts yet."}
-${run.mode === "deep" ? `Extra data: ${JSON.stringify(c.rawData).slice(0, 500)}` : ""}
-
-Return ONLY this JSON (use null if unknown, do NOT guess emails):
-{
-  "company": "clean name",
-  "website": "best URL for this lead",
-  "whatItIs": "1 sentence description",
-  "segment": "segment label",
-  "decisionMaker": "owner/developer name if known, else null",
-  "dmRole": "title or null",
-  "dmEmail": "email only if confirmed above, else null",
-  "instagramHandle": "@handle if confirmed above, else null",
-  "xHandle": "@handle if confirmed above, else null",
-  "linkedinUrl": "full linkedin URL if confirmed above, else null",
-  "discordUrl": "discord invite if confirmed above, else null",
-  "grade": "A|B|C|D|F",
-  "score": 0-100,
-  "whyItFits": "why this lead needs video clips",
-  "bestChannel": "instagram|email|youtube|discord|direct"
-}
-
-Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
-
-        const res = await haiku(analyzePrompt, run.mode === "deep");
-        await trackCost(runId, "gemini", "analyze", res.inTok + res.outTok, 0);
-        return { c, a: parseJSON<Analysis>(res.text, null as never) };
-      }));
-
-      // Process scored results — enrich with Serper only for passing leads
-      for (const result of batchResults) {
+      // Process scored results — enrich only passing leads
+      for (const { c, a } of batchResults) {
         if (savedCount >= run.count) break;
-        if (result.status !== "fulfilled") continue;
-
-        const { c, a } = result.value;
-        if (!a) continue;
         if (run.mode === "bulk" && a.grade === "F") continue;
 
         // Serper email enrichment — only runs for leads that passed scoring
@@ -868,7 +857,7 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
           where: { id: runId },
           data: {
             stage: `Saved ${savedCount} / ${run.count} leads`,
-            stats: { discovered: candidates.length, processed: Math.min(i + HAIKU_BATCH, toProcess.length), saved: savedCount },
+            stats: { discovered: candidates.length, processed: Math.min(i + BATCH, toProcess.length), saved: savedCount },
           },
         });
       }
@@ -877,18 +866,16 @@ Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`
     // ──────────────────────────────────────────────────────────────────────────
     // DONE
     // ──────────────────────────────────────────────────────────────────────────
-    const final = await prisma.leadRun.findUnique({ where: { id: runId }, select: { totalCost: true } });
-
     await prisma.leadRun.update({
       where: { id: runId },
       data: {
         status: "completed",
         stage: null,
-        stats: { discovered: candidates.length, saved: savedCount, totalCost: final?.totalCost ?? 0 },
+        stats: { discovered: candidates.length, saved: savedCount },
       },
     });
 
-    await log(runId, "completed", `✓ ${savedCount} leads · $${(final?.totalCost ?? 0).toFixed(4)} total cost`);
+    await log(runId, "completed", `✓ ${savedCount} leads saved from ${candidates.length} candidates`);
 
   } catch (err) {
     const msg = String(err).slice(0, 300);
