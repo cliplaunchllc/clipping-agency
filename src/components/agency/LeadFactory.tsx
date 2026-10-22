@@ -539,8 +539,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
                       {selectedRun.prompt}
                     </p>
-                    {ACTIVE_STATUSES.has(selectedRun.status) && selectedRun.stage && (
-                      <p className="text-xs mt-1 truncate" style={{ color: "var(--text-tertiary)" }}>
+                    {selectedRun.stage && (
+                      <p className="text-xs mt-1" style={{ color: selectedRun.status === "failed" ? "#FF3B3B" : "var(--text-tertiary)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                         {selectedRun.stage}
                       </p>
                     )}

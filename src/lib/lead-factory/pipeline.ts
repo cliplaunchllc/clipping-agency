@@ -50,38 +50,52 @@ async function isStopped(runId: string): Promise<boolean> {
 
 async function haiku(prompt: string, _deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
   const key = process.env.HF_TOKEN;
-  if (!key) throw new Error("HF_TOKEN not set");
+  if (!key) throw new Error("HF_TOKEN not set — add it in Railway Variables");
 
   const model = "mistralai/Mistral-7B-Instruct-v0.3";
-  const res = await fetch(
-    `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
-        temperature: 0.2,
-      }),
-      signal: AbortSignal.timeout(60000), // HF can take ~10s on cold start
-    }
-  ).catch(() => null);
+  const url = `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`;
+  const body = JSON.stringify({
+    model,
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 1500,
+    temperature: 0.2,
+  });
+  const headers = { "Content-Type": "application/json", "Authorization": `Bearer ${key}` };
 
-  if (!res?.ok) {
-    const err = await res?.text().catch(() => "timeout");
-    throw new Error(`HuggingFace error ${res?.status}: ${String(err).slice(0, 120)}`);
+  // HuggingFace free tier cold-starts with 503 "Model is currently loading".
+  // Retry up to 3 times with 15s waits before giving up.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(60000) }).catch(() => null);
+
+    if (!res) throw new Error("HuggingFace request timed out after 60s");
+
+    if (res.status === 503) {
+      const body503 = await res.text().catch(() => "");
+      const isLoading = body503.includes("loading") || body503.includes("currently");
+      if (isLoading && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 15000)); // wait 15s for model to load
+        continue;
+      }
+      throw new Error(`HuggingFace 503 (model unavailable): ${body503.slice(0, 120)}`);
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "unknown");
+      throw new Error(`HuggingFace error ${res.status}: ${errText.slice(0, 120)}`);
+    }
+
+    const data = await res.json() as {
+      choices: [{ message: { content: string } }];
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+    return {
+      text: data.choices[0]?.message?.content ?? "",
+      inTok: data.usage?.prompt_tokens ?? 0,
+      outTok: data.usage?.completion_tokens ?? 0,
+    };
   }
 
-  const data = await res.json() as {
-    choices: [{ message: { content: string } }];
-    usage?: { prompt_tokens: number; completion_tokens: number };
-  };
-  return {
-    text: data.choices[0]?.message?.content ?? "",
-    inTok: data.usage?.prompt_tokens ?? 0,
-    outTok: data.usage?.completion_tokens ?? 0,
-  };
+  throw new Error("HuggingFace model failed to load after 3 attempts (45s)");
 }
 
 function parseJSON<T>(text: string, fallback: T): T {
