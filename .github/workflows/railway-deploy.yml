@@ -12,10 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Railway
-        uses: bervProject/railway-deploy@main
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        run: railway up --detach --service 839f4797-4912-4cea-bf70-70fc08743608 --project 78e90682-89f6-4e06-bf43-ad3989136220
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        with:
-          service: "839f4797-4912-4cea-bf70-70fc08743608"
-          detach: "true"
