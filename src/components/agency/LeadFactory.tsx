@@ -6,6 +6,14 @@ import {
   Zap, Mail, AtSign, Link, Globe, User, Play, Square, RotateCcw, Download,
 } from "lucide-react";
 
+interface RunLog {
+  id: string;
+  stage: string;
+  message: string;
+  level: string;
+  createdAt: string;
+}
+
 interface LeadRun {
   id: string;
   prompt: string;
@@ -110,6 +118,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const [runs, setRuns] = useState<LeadRun[]>(initialRuns);
   const [selectedRun, setSelectedRun] = useState<LeadRun | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [logs, setLogs] = useState<RunLog[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [showNewRun, setShowNewRun] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
@@ -146,6 +155,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
         if (["completed", "failed", "stopped"].includes(updated.status)) {
           const lr = await fetch(`/api/agency/lead-factory/${runId}/leads`);
           if (lr.ok) setLeads(await lr.json());
+          const ll = await fetch(`/api/agency/lead-factory/${runId}/logs`);
+          if (ll.ok) setLogs(await ll.json());
         }
       }
     } catch {
@@ -177,9 +188,14 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
     setSelectedRun(run);
     setLeadsLoading(true);
     setLeads([]);
+    setLogs([]);
     try {
-      const res = await fetch(`/api/agency/lead-factory/${run.id}/leads`);
-      if (res.ok) setLeads(await res.json());
+      const [lr, ll] = await Promise.all([
+        fetch(`/api/agency/lead-factory/${run.id}/leads`),
+        fetch(`/api/agency/lead-factory/${run.id}/logs`),
+      ]);
+      if (lr.ok) setLeads(await lr.json());
+      if (ll.ok) setLogs(await ll.json());
     } finally {
       setLeadsLoading(false);
     }
@@ -649,6 +665,27 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   >
                     {leadSaving ? "Adding…" : "Add Lead"}
                   </button>
+                </div>
+              )}
+
+              {/* Logs panel — shown for failed runs */}
+              {selectedRun.status === "failed" && logs.length > 0 && (
+                <div className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,59,59,0.2)", background: "rgba(255,59,59,0.04)" }}>
+                  <div className="px-4 py-2.5 text-xs font-semibold" style={{ color: "#FF3B3B", borderBottom: "1px solid rgba(255,59,59,0.1)" }}>
+                    Run logs
+                  </div>
+                  <div className="px-4 py-3 flex flex-col gap-1.5 max-h-52 overflow-y-auto">
+                    {logs.map((l) => (
+                      <div key={l.id} className="flex gap-2 text-xs">
+                        <span className="flex-shrink-0 font-mono" style={{ color: l.level === "error" ? "#FF3B3B" : l.level === "warn" ? "#f59e0b" : "var(--text-tertiary)" }}>
+                          [{l.stage}]
+                        </span>
+                        <span style={{ color: l.level === "error" ? "#FF3B3B" : "var(--text-secondary)", wordBreak: "break-word" }}>
+                          {l.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
