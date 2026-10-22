@@ -228,7 +228,7 @@ async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
   }
 
   // Batch-fetch profiles for contact info (parallel, cap at 20 per query)
-  const entries = [...seenCreators.entries()].slice(0, 20);
+  const entries = [...seenCreators.entries()].slice(0, 10);
   const profileResults = await Promise.allSettled(
     entries.map(async ([creatorId, g]) => {
       const desc = g.creatorType === "Group"
@@ -599,35 +599,35 @@ Generate a search plan as JSON only (no markdown):
 
     // ──────────────────────────────────────────────────────────────────────────
     // PHASE 2.5: CONTACT ENRICHMENT
-    // Uses Serper to find email/Instagram/LinkedIn for leads without contacts.
-    // Capped at (run.count * 2) enrichments to keep cost predictable.
+    // Parallel batches of 5 — much faster than sequential.
+    // Capped at run.count enrichments to keep cost predictable.
     // ──────────────────────────────────────────────────────────────────────────
     if (hasSerper) {
       await setStatus(runId, "researching", "Enriching contact info…");
 
-      // Shuffle so we don't just enrich all Roblox — mix sources
       const shuffledForEnrich = [...candidates].sort(() => Math.random() - 0.5);
       const needsEnrich = shuffledForEnrich.filter((c) => !hasContacts(c.contacts));
-      const enrichLimit = Math.min(needsEnrich.length, run.count * 2);
+      const enrichLimit = Math.min(needsEnrich.length, run.count);
+      const toEnrich = needsEnrich.slice(0, enrichLimit);
 
       let enriched = 0;
-      for (const c of needsEnrich.slice(0, enrichLimit)) {
+      const BATCH = 5;
+      for (let i = 0; i < toEnrich.length; i += BATCH) {
         if (await isStopped(runId)) return;
-        const { contacts, snippets } = await serperContactEnrich(c.name, c.website);
-        await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
-
-        if (hasContacts(contacts)) {
-          c.contacts = mergeContacts(c.contacts, contacts);
-          c.rawData.enrichSnippets = snippets;
-          enriched++;
-        }
-
-        if (enriched % 5 === 0) {
-          await setStage(runId, `Enriching contacts: ${enriched} found so far…`);
-        }
+        const batch = toEnrich.slice(i, i + BATCH);
+        await Promise.allSettled(batch.map(async (c) => {
+          const { contacts, snippets } = await serperContactEnrich(c.name, c.website);
+          await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
+          if (hasContacts(contacts)) {
+            c.contacts = mergeContacts(c.contacts, contacts);
+            c.rawData.enrichSnippets = snippets;
+            enriched++;
+          }
+        }));
+        await setStage(runId, `Enriching contacts: ${Math.min(i + BATCH, toEnrich.length)} / ${enrichLimit} searched…`);
       }
 
-      await log(runId, "researching", `Contact enrichment: ${enriched} / ${enrichLimit} leads enriched`);
+      await log(runId, "researching", `Contact enrichment: ${enriched} contacts found from ${enrichLimit} searches`);
     }
 
     if (await isStopped(runId)) return;
@@ -639,10 +639,12 @@ Generate a search plan as JSON only (no markdown):
 
     let savedCount = 0;
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    const toProcess = shuffled.slice(0, Math.min(shuffled.length, run.count * 3));
+    // deep mode: process up to 2x needed; bulk: 1.5x — avoids unnecessary Haiku calls
+    const processCap = run.mode === "deep" ? run.count * 2 : Math.ceil(run.count * 1.5);
+    const toProcess = shuffled.slice(0, Math.min(shuffled.length, processCap));
 
     for (let i = 0; i < toProcess.length && savedCount < run.count; i++) {
-      if (i % 5 === 0 && await isStopped(runId)) return;
+      if (i % 3 === 0 && await isStopped(runId)) return;
 
       const c = toProcess[i];
       const sourceLabel = {
