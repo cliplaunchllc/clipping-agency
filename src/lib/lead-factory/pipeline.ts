@@ -2,16 +2,16 @@
  * Lead Factory Pipeline
  *
  * Sources (cheapest to free):
- *   - Roblox Games API    → FREE  (no key, public API)
+ *   - Roblox Games API    → FREE  (no key, public API — includes profile contact enrichment)
  *   - Steam Store API     → FREE  (no key, public API)
  *   - iTunes Search API   → FREE  (no key, Apple public API)
  *   - YouTube Data API v3 → FREE  (10K units/day, needs YOUTUBE_API_KEY)
- *   - Serper.dev          → $0.001/search (Google results, needs SERPER_API_KEY)
+ *   - Serper.dev          → $0.001/search (Google — contact enrichment + web results)
  *   - Claude Haiku        → $0.00025/1K input + $0.00125/1K output
  *
  * Approximate cost:
- *   bulk  → ~$0.008/lead   (~$0.20 for 25)
- *   deep  → ~$0.032/lead   (~$0.80 for 25)
+ *   bulk  → ~$0.010/lead   (~$0.25 for 25)
+ *   deep  → ~$0.035/lead   (~$0.88 for 25)
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -75,6 +75,34 @@ function parseJSON<T>(text: string, fallback: T): T {
   }
 }
 
+// ─── Contact extraction ───────────────────────────────────────────────────────
+
+interface Contacts {
+  email: string | null;
+  instagram: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  discord: string | null;
+}
+
+function extractContacts(text: string): Contacts {
+  if (!text) return { email: null, instagram: null, twitter: null, linkedin: null, discord: null };
+
+  const emailMatch   = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const igMatch      = text.match(/(?:instagram\.com\/|instagram[:\s]+@?|ig[:\s]+@?)([a-zA-Z0-9_.]{2,30})/i);
+  const twMatch      = text.match(/(?:twitter\.com\/|x\.com\/|twitter[:\s]+@?|x[:\s]+@?)([a-zA-Z0-9_]{2,30})/i);
+  const liMatch      = text.match(/linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]+)/i);
+  const discordMatch = text.match(/(?:discord\.gg\/|discord[:\s]+)([a-zA-Z0-9_\-]+)/i);
+
+  return {
+    email:     emailMatch   ? emailMatch[0]                                   : null,
+    instagram: igMatch      ? `@${igMatch[1]}`                                : null,
+    twitter:   twMatch      ? `@${twMatch[1]}`                                : null,
+    linkedin:  liMatch      ? `https://linkedin.com/in/${liMatch[1]}`         : null,
+    discord:   discordMatch ? `https://discord.gg/${discordMatch[1]}`         : null,
+  };
+}
+
 // ─── Candidate type ───────────────────────────────────────────────────────────
 
 interface Candidate {
@@ -82,8 +110,24 @@ interface Candidate {
   name: string;
   website: string;
   description: string;
-  email: string | null;
+  contacts: Contacts;
   rawData: Record<string, unknown>;
+}
+
+const emptyContacts = (): Contacts => ({ email: null, instagram: null, twitter: null, linkedin: null, discord: null });
+
+function mergeContacts(a: Contacts, b: Contacts): Contacts {
+  return {
+    email:     a.email     ?? b.email,
+    instagram: a.instagram ?? b.instagram,
+    twitter:   a.twitter   ?? b.twitter,
+    linkedin:  a.linkedin  ?? b.linkedin,
+    discord:   a.discord   ?? b.discord,
+  };
+}
+
+function hasContacts(c: Contacts): boolean {
+  return !!(c.email || c.instagram || c.twitter || c.linkedin);
 }
 
 // ─── YouTube ──────────────────────────────────────────────────────────────────
@@ -95,7 +139,6 @@ interface YTChannel {
   subscriberCount: number;
   customUrl: string;
   country: string;
-  email: string | null;
 }
 
 async function ytSearch(query: string, max = 25): Promise<Array<{ channelId: string; title: string; description: string }>> {
@@ -125,19 +168,14 @@ async function ytDetails(ids: string[]): Promise<YTChannel[]> {
       statistics: { subscriberCount: string };
     }>;
   };
-  return (data.items ?? []).map((i) => {
-    const desc = i.snippet.description ?? "";
-    const emailMatch = desc.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    return {
-      channelId: i.id,
-      title: i.snippet.title,
-      description: desc.slice(0, 300),
-      subscriberCount: parseInt(i.statistics?.subscriberCount ?? "0"),
-      customUrl: i.snippet.customUrl ?? "",
-      country: i.snippet.country ?? "",
-      email: emailMatch ? emailMatch[0] : null,
-    };
-  });
+  return (data.items ?? []).map((i) => ({
+    channelId: i.id,
+    title: i.snippet.title,
+    description: (i.snippet.description ?? "").slice(0, 300),
+    subscriberCount: parseInt(i.statistics?.subscriberCount ?? "0"),
+    customUrl: i.snippet.customUrl ?? "",
+    country: i.snippet.country ?? "",
+  }));
 }
 
 // ─── Roblox (FREE — no key required) ─────────────────────────────────────────
@@ -152,10 +190,30 @@ interface RobloxGame {
   totalUpVotes: number;
 }
 
+async function robloxFetchUserDescription(userId: number): Promise<string> {
+  const res = await fetch(`https://users.roblox.com/v1/users/${userId}`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(6000),
+  }).catch(() => null);
+  if (!res?.ok) return "";
+  const data = await res.json() as { description?: string };
+  return data.description ?? "";
+}
+
+async function robloxFetchGroupDescription(groupId: number): Promise<string> {
+  const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(6000),
+  }).catch(() => null);
+  if (!res?.ok) return "";
+  const data = await res.json() as { description?: string };
+  return data.description ?? "";
+}
+
 async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
   const url = `https://games.roblox.com/v1/games/list?model.keyword=${encodeURIComponent(query)}&model.gameFilter=0&model.genreFilter=all&model.maxRows=${max}`;
   const res = await fetch(url, {
-    headers: { "Accept": "application/json" },
+    headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(10000),
   }).catch(() => null);
   if (!res?.ok) return [];
@@ -163,25 +221,41 @@ async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
   const data = await res.json() as { games?: RobloxGame[] };
   const games = data.games ?? [];
 
-  // Deduplicate by creatorId — only one entry per developer
-  const seenCreators = new Map<number, true>();
-  const candidates: Candidate[] = [];
-
+  // Deduplicate by creatorId
+  const seenCreators = new Map<number, RobloxGame>();
   for (const g of games) {
-    if (seenCreators.has(g.creatorId)) continue;
-    seenCreators.set(g.creatorId, true);
+    if (!seenCreators.has(g.creatorId)) seenCreators.set(g.creatorId, g);
+  }
+
+  // Batch-fetch profiles for contact info (parallel, cap at 20 per query)
+  const entries = [...seenCreators.entries()].slice(0, 20);
+  const profileResults = await Promise.allSettled(
+    entries.map(async ([creatorId, g]) => {
+      const desc = g.creatorType === "Group"
+        ? await robloxFetchGroupDescription(creatorId)
+        : await robloxFetchUserDescription(creatorId);
+      return { creatorId, g, desc };
+    })
+  );
+
+  const candidates: Candidate[] = [];
+  for (const r of profileResults) {
+    if (r.status !== "fulfilled") continue;
+    const { creatorId, g, desc } = r.value;
 
     const profileUrl = g.creatorType === "Group"
-      ? `https://www.roblox.com/groups/${g.creatorId}`
-      : `https://www.roblox.com/users/${g.creatorId}/profile`;
+      ? `https://www.roblox.com/groups/${creatorId}`
+      : `https://www.roblox.com/users/${creatorId}/profile`;
+
+    const contacts = extractContacts(desc);
 
     candidates.push({
       type: "roblox",
       name: g.creatorName,
       website: profileUrl,
-      description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes`,
-      email: null,
-      rawData: g as unknown as Record<string, unknown>,
+      description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes.${desc ? ` Bio: ${desc.slice(0, 200)}` : ""}`,
+      contacts,
+      rawData: { ...g, profileDesc: desc } as unknown as Record<string, unknown>,
     });
   }
   return candidates;
@@ -200,13 +274,12 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
   const games = (searchData.items ?? []).filter((i) => i.type === "game").slice(0, max);
   if (!games.length) return [];
 
-  // Fetch developer info for each game (parallel, best-effort)
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
   await Promise.allSettled(
     games.map(async (game) => {
-      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers`;
+      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website`;
       const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
       if (!detRes?.ok) return;
 
@@ -217,6 +290,7 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
           publishers?: string[];
           short_description?: string;
           website?: string;
+          support_info?: { url?: string; email?: string };
         };
       }>;
       const app = detData[String(game.id)];
@@ -229,13 +303,22 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
       if (seenDevs.has(key)) return;
       seenDevs.add(key);
 
+      const supportEmail = app.data.support_info?.email ?? null;
+      const contacts: Contacts = {
+        email: supportEmail,
+        instagram: null,
+        twitter: null,
+        linkedin: null,
+        discord: null,
+      };
+
       candidates.push({
         type: "steam",
         name: devName,
         website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
         description: `Steam game developer. Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
-        email: null,
-        rawData: { appId: game.id, gameName: game.name, ...app.data },
+        contacts,
+        rawData: { appId: game.id, gameName: game.name, supportUrl: app.data.support_info?.url, ...app.data },
       });
     })
   );
@@ -246,7 +329,6 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
 // ─── iTunes / App Store (FREE — no key required) ──────────────────────────────
 
 async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
-  // genreId 6014 = Games
   const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&genreId=6014&limit=${max}&country=us`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
   if (!res?.ok) return [];
@@ -269,12 +351,15 @@ async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
     if (seenSellers.has(key) || !key) continue;
     seenSellers.add(key);
 
+    const desc = `Mobile game developer (App Store). Game: "${r.trackName}".${r.description ? ` ${r.description.slice(0, 200)}` : ""}`;
+    const contacts = extractContacts(r.description ?? "");
+
     candidates.push({
       type: "mobile",
       name: r.sellerName,
       website: r.sellerUrl ?? r.trackViewUrl,
-      description: `Mobile game developer (App Store). Game: "${r.trackName}".${r.description ? ` ${r.description.slice(0, 200)}` : ""}`,
-      email: null,
+      description: desc,
+      contacts,
       rawData: r as unknown as Record<string, unknown>,
     });
   }
@@ -297,6 +382,29 @@ async function serper(query: string): Promise<WebResult[]> {
   if (!res?.ok) return [];
   const data = await res.json() as { organic?: Array<{ title: string; link: string; snippet: string }> };
   return (data.organic ?? []).map((r) => ({ title: r.title, link: r.link, snippet: r.snippet }));
+}
+
+// Pull contact info out of Serper results for a specific lead
+async function serperContactEnrich(name: string, website: string): Promise<{ contacts: Contacts; snippets: string }> {
+  const query = `"${name}" instagram OR linkedin OR email OR twitter contact`;
+  const results = await serper(query);
+  const combined = results.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
+  const contacts = extractContacts(combined);
+
+  // Also check if any result links directly to Instagram/LinkedIn
+  for (const r of results) {
+    if (!contacts.instagram && r.link.includes("instagram.com/")) {
+      const m = r.link.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+      if (m) contacts.instagram = `@${m[1]}`;
+    }
+    if (!contacts.linkedin && r.link.includes("linkedin.com/")) {
+      const m = r.link.match(/linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]+)/);
+      if (m) contacts.linkedin = `https://linkedin.com/in/${m[1]}`;
+    }
+  }
+
+  void website; // used for context but searching by name is more reliable
+  return { contacts, snippets: combined.slice(0, 600) };
 }
 
 // ─── Plan type ────────────────────────────────────────────────────────────────
@@ -385,10 +493,9 @@ Generate a search plan as JSON only (no markdown):
         candidates.push(c);
       }
     };
-
     const addMany = (list: Candidate[]) => list.forEach(addCandidate);
 
-    // ── Roblox (free, always runs) ──
+    // ── Roblox (free, profile descriptions fetched for contacts) ──
     await setStage(runId, "Searching Roblox games…");
     for (const q of plan.robloxQueries) {
       if (await isStopped(runId)) return;
@@ -400,7 +507,7 @@ Generate a search plan as JSON only (no markdown):
 
     if (await isStopped(runId)) return;
 
-    // ── Steam (free, always runs) ──
+    // ── Steam (free, support email extracted from appdetails) ──
     await setStage(runId, "Searching Steam…");
     for (const q of plan.steamQueries) {
       if (await isStopped(runId)) return;
@@ -412,7 +519,7 @@ Generate a search plan as JSON only (no markdown):
 
     if (await isStopped(runId)) return;
 
-    // ── iTunes / App Store (free, always runs) ──
+    // ── iTunes / App Store (free) ──
     await setStage(runId, "Searching App Store…");
     for (const q of plan.mobileQueries) {
       if (await isStopped(runId)) return;
@@ -439,12 +546,13 @@ Generate a search plan as JSON only (no markdown):
       for (let i = 0; i < allChannelIds.length; i += 50) {
         const batch = await ytDetails(allChannelIds.slice(i, i + 50));
         for (const ch of batch) {
+          const contacts = extractContacts(ch.description);
           addCandidate({
             type: "youtube",
             name: ch.title,
             website: ch.customUrl ? `https://youtube.com/${ch.customUrl}` : `https://youtube.com/channel/${ch.channelId}`,
             description: ch.description,
-            email: ch.email,
+            contacts,
             rawData: ch as unknown as Record<string, unknown>,
           });
         }
@@ -454,7 +562,7 @@ Generate a search plan as JSON only (no markdown):
 
     if (await isStopped(runId)) return;
 
-    // ── Serper / Google (needs SERPER_API_KEY) ──
+    // ── Serper / Google web results (needs SERPER_API_KEY) ──
     if (hasSerper) {
       await setStage(runId, "Searching Google…");
       for (const q of plan.webQueries) {
@@ -464,24 +572,23 @@ Generate a search plan as JSON only (no markdown):
         for (const r of results) {
           try {
             const host = new URL(r.link.startsWith("http") ? r.link : `https://${r.link}`).hostname;
+            const contacts = extractContacts(`${r.title} ${r.snippet}`);
             addCandidate({
               type: "web",
               name: r.title.replace(/ [-|].*/, "").trim(),
               website: r.link,
               description: r.snippet,
-              email: null,
+              contacts,
               rawData: { ...r, host },
             });
-          } catch {
-            // skip invalid URLs
-          }
+          } catch { /* skip invalid URLs */ }
         }
       }
       await log(runId, "discovering", `Web: ${candidates.filter((c) => c.type === "web").length} results`);
     }
 
     await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
-    await log(runId, "discovering", `Total: ${candidates.length} candidates (Roblox + Steam + Mobile + YouTube + Web)`);
+    await log(runId, "discovering", `Total: ${candidates.length} candidates`);
 
     if (candidates.length === 0) {
       await setStatus(runId, "failed", "No candidates found. Check that external APIs are reachable.");
@@ -491,12 +598,46 @@ Generate a search plan as JSON only (no markdown):
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
+    // PHASE 2.5: CONTACT ENRICHMENT
+    // Uses Serper to find email/Instagram/LinkedIn for leads without contacts.
+    // Capped at (run.count * 2) enrichments to keep cost predictable.
+    // ──────────────────────────────────────────────────────────────────────────
+    if (hasSerper) {
+      await setStatus(runId, "researching", "Enriching contact info…");
+
+      // Shuffle so we don't just enrich all Roblox — mix sources
+      const shuffledForEnrich = [...candidates].sort(() => Math.random() - 0.5);
+      const needsEnrich = shuffledForEnrich.filter((c) => !hasContacts(c.contacts));
+      const enrichLimit = Math.min(needsEnrich.length, run.count * 2);
+
+      let enriched = 0;
+      for (const c of needsEnrich.slice(0, enrichLimit)) {
+        if (await isStopped(runId)) return;
+        const { contacts, snippets } = await serperContactEnrich(c.name, c.website);
+        await trackCost(runId, "serper", "contact_enrich", 1, 0.001);
+
+        if (hasContacts(contacts)) {
+          c.contacts = mergeContacts(c.contacts, contacts);
+          c.rawData.enrichSnippets = snippets;
+          enriched++;
+        }
+
+        if (enriched % 5 === 0) {
+          await setStage(runId, `Enriching contacts: ${enriched} found so far…`);
+        }
+      }
+
+      await log(runId, "researching", `Contact enrichment: ${enriched} / ${enrichLimit} leads enriched`);
+    }
+
+    if (await isStopped(runId)) return;
+
+    // ──────────────────────────────────────────────────────────────────────────
     // PHASE 3: RESEARCH + SCORE
     // ──────────────────────────────────────────────────────────────────────────
-    await setStatus(runId, "researching", `Analyzing ${Math.min(candidates.length, run.count * 2)} leads…`);
+    await setStatus(runId, "researching", `Analyzing leads…`);
 
     let savedCount = 0;
-    // Shuffle to get a mix of sources rather than all Roblox first
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
     const toProcess = shuffled.slice(0, Math.min(shuffled.length, run.count * 3));
 
@@ -504,7 +645,6 @@ Generate a search plan as JSON only (no markdown):
       if (i % 5 === 0 && await isStopped(runId)) return;
 
       const c = toProcess[i];
-
       const sourceLabel = {
         roblox: "Roblox developer",
         steam: "Steam game developer",
@@ -512,6 +652,14 @@ Generate a search plan as JSON only (no markdown):
         youtube: "YouTube creator",
         web: "company/creator",
       }[c.type];
+
+      const contactBlock = [
+        c.contacts.email     && `Email: ${c.contacts.email}`,
+        c.contacts.instagram && `Instagram: ${c.contacts.instagram}`,
+        c.contacts.twitter   && `Twitter/X: ${c.contacts.twitter}`,
+        c.contacts.linkedin  && `LinkedIn: ${c.contacts.linkedin}`,
+        c.contacts.discord   && `Discord: ${c.contacts.discord}`,
+      ].filter(Boolean).join("\n");
 
       const analyzePrompt = `Analyze this lead for a video/clipping agency that makes short-form clips for game companies and creators.
 
@@ -522,27 +670,29 @@ Lead type: ${sourceLabel}
 Name: ${c.name}
 URL: ${c.website}
 About: ${c.description.slice(0, 300)}
-${c.email ? `Email found: ${c.email}` : ""}
-${run.mode === "deep" ? `Extra data: ${JSON.stringify(c.rawData).slice(0, 400)}` : ""}
+${contactBlock ? `Known contacts:\n${contactBlock}` : "No contacts found yet — infer what you can."}
+${run.mode === "deep" ? `Extra data: ${JSON.stringify(c.rawData).slice(0, 500)}` : ""}
 
-Return ONLY this JSON:
+Return ONLY this JSON (use null if unknown, do NOT guess emails):
 {
   "company": "clean name",
   "website": "best URL for this lead",
   "whatItIs": "1 sentence description",
   "segment": "segment label",
-  "decisionMaker": "owner/developer name or null",
+  "decisionMaker": "owner/developer name if known, else null",
   "dmRole": "title or null",
-  "dmEmail": "email or null",
-  "instagramHandle": "@handle or null",
-  "xHandle": "@handle or null",
+  "dmEmail": "email only if confirmed above, else null",
+  "instagramHandle": "@handle if confirmed above, else null",
+  "xHandle": "@handle if confirmed above, else null",
+  "linkedinUrl": "full linkedin URL if confirmed above, else null",
+  "discordUrl": "discord invite if confirmed above, else null",
   "grade": "A|B|C|D|F",
   "score": 0-100,
   "whyItFits": "why this lead needs video clips",
-  "bestChannel": "instagram|email|youtube|direct|roblox|discord"
+  "bestChannel": "instagram|email|youtube|discord|direct"
 }
 
-Grade: A=perfect fit (active game, needs promo content), B=good fit, C=possible, D=weak, F=skip`;
+Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
 
       try {
         const res = await haiku(analyzePrompt);
@@ -552,6 +702,7 @@ Grade: A=perfect fit (active game, needs promo content), B=good fit, C=possible,
           company: string; website: string; whatItIs: string; segment: string;
           decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
           instagramHandle: string | null; xHandle: string | null;
+          linkedinUrl: string | null; discordUrl: string | null;
           grade: string; score: number; whyItFits: string; bestChannel: string;
         }>(res.text, null as never);
 
@@ -564,20 +715,22 @@ Grade: A=perfect fit (active game, needs promo content), B=good fit, C=possible,
           data: {
             runId,
             num: savedCount,
-            company: a.company || c.name,
-            website: a.website || c.website,
-            whatItIs: a.whatItIs || null,
-            segment: a.segment || plan.segments[0] || null,
-            decisionMaker: a.decisionMaker || null,
-            dmRole: a.dmRole || null,
-            dmEmail: a.dmEmail || c.email || null,
-            instagramHandle: a.instagramHandle || null,
-            xHandle: a.xHandle || null,
-            grade: ["A", "B", "C", "D", "F"].includes(a.grade) ? a.grade : "C",
-            score: typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 50,
-            whyItFits: a.whyItFits ? { reason: a.whyItFits, channel: a.bestChannel } : Prisma.JsonNull,
+            company:        a.company        || c.name,
+            website:        a.website        || c.website,
+            whatItIs:       a.whatItIs       || null,
+            segment:        a.segment        || plan.segments[0] || null,
+            decisionMaker:  a.decisionMaker  || null,
+            dmRole:         a.dmRole         || null,
+            dmEmail:        a.dmEmail        || c.contacts.email || null,
+            instagramHandle: a.instagramHandle || c.contacts.instagram || null,
+            xHandle:        a.xHandle        || c.contacts.twitter || null,
+            grade:  ["A", "B", "C", "D", "F"].includes(a.grade) ? a.grade : "C",
+            score:  typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 50,
+            whyItFits: a.whyItFits
+              ? { reason: a.whyItFits, channel: a.bestChannel, linkedin: a.linkedinUrl, discord: a.discordUrl }
+              : Prisma.JsonNull,
             bestChannel: a.bestChannel || null,
-            rawData: c.rawData as Prisma.InputJsonValue,
+            rawData: { ...c.rawData, contacts: c.contacts } as unknown as Prisma.InputJsonValue,
           },
         });
 
