@@ -43,59 +43,45 @@ async function isStopped(runId: string): Promise<boolean> {
   return r?.status === "stopped";
 }
 
-// ─── Hugging Face Inference API (free, open-source models) ───────────────────
-// Uses the Messages API (OpenAI-compatible) on HuggingFace serverless inference.
-// Model: HuggingFaceH4/zephyr-7b-beta — reliable JSON extraction, always free.
-// Sign up free at huggingface.co → Settings → Access Tokens → New token (read).
+// ─── Google Gemini Flash (free: 1500 req/day, no credit card needed) ─────────
+// Get a free API key at aistudio.google.com → "Get API key" (just needs Google account).
+// Uses OpenAI-compatible endpoint — no extra SDK needed.
 
 async function haiku(prompt: string, _deep = false): Promise<{ text: string; inTok: number; outTok: number }> {
-  const key = process.env.HF_TOKEN;
-  if (!key) throw new Error("HF_TOKEN not set — add it in Railway Variables");
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY not set — get a free key at aistudio.google.com");
 
-  const model = "HuggingFaceH4/zephyr-7b-beta";
-  const url = `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`;
-  const body = JSON.stringify({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: 1500,
-    temperature: 0.2,
-  });
-  const headers = { "Content-Type": "application/json", "Authorization": `Bearer ${key}` };
-
-  // HuggingFace free tier cold-starts with 503 "Model is currently loading".
-  // Retry up to 3 times with 15s waits before giving up.
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const res = await fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(60000) }).catch(() => null);
-
-    if (!res) throw new Error("HuggingFace request timed out after 60s");
-
-    if (res.status === 503) {
-      const body503 = await res.text().catch(() => "");
-      const isLoading = body503.includes("loading") || body503.includes("currently");
-      if (isLoading && attempt < 3) {
-        await new Promise((r) => setTimeout(r, 15000)); // wait 15s for model to load
-        continue;
-      }
-      throw new Error(`HuggingFace 503 (model unavailable): ${body503.slice(0, 120)}`);
+  const res = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "gemini-2.0-flash",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(30000),
     }
+  ).catch(() => null);
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "unknown");
-      throw new Error(`HuggingFace error ${res.status}: ${errText.slice(0, 120)}`);
-    }
+  if (!res) throw new Error("Gemini request timed out");
 
-    const data = await res.json() as {
-      choices: [{ message: { content: string } }];
-      usage?: { prompt_tokens: number; completion_tokens: number };
-    };
-    return {
-      text: data.choices[0]?.message?.content ?? "",
-      inTok: data.usage?.prompt_tokens ?? 0,
-      outTok: data.usage?.completion_tokens ?? 0,
-    };
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "unknown");
+    throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 200)}`);
   }
 
-  throw new Error("HuggingFace model failed to load after 3 attempts (45s)");
+  const data = await res.json() as {
+    choices: [{ message: { content: string } }];
+    usage?: { prompt_tokens: number; completion_tokens: number };
+  };
+  return {
+    text: data.choices[0]?.message?.content ?? "",
+    inTok: data.usage?.prompt_tokens ?? 0,
+    outTok: data.usage?.completion_tokens ?? 0,
+  };
 }
 
 function parseJSON<T>(text: string, fallback: T): T {
@@ -542,10 +528,10 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  const hasAI = !!process.env.HF_TOKEN;
+  const hasAI = !!process.env.GEMINI_API_KEY;
 
   if (!hasAI) {
-    await setStatus(runId, "failed", "HF_TOKEN not configured — get a free token at huggingface.co/settings/tokens");
+    await setStatus(runId, "failed", "GEMINI_API_KEY not configured — get a free key at aistudio.google.com");
     return;
   }
 
@@ -576,7 +562,7 @@ Generate a search plan as JSON only (no markdown). Each array must have exactly 
 }`;
 
     const planRes = await haiku(planPrompt, true); // use 70b for planning quality
-    await trackCost(runId, "huggingface", "planning", planRes.inTok + planRes.outTok, 0);
+    await trackCost(runId, "gemini", "planning", planRes.inTok + planRes.outTok, 0);
 
     const plan = parseJSON<Plan>(planRes.text, {
       youtubeQueries: [`${run.prompt} gaming`],
@@ -820,7 +806,7 @@ Return ONLY this JSON (use null if unknown, do NOT guess emails):
 Grade: A=perfect fit + has contact info, B=good fit, C=possible, D=weak, F=skip`;
 
         const res = await haiku(analyzePrompt, run.mode === "deep");
-        await trackCost(runId, "huggingface", "analyze", res.inTok + res.outTok, 0);
+        await trackCost(runId, "gemini", "analyze", res.inTok + res.outTok, 0);
         return { c, a: parseJSON<Analysis>(res.text, null as never) };
       }));
 
