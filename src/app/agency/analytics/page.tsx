@@ -15,6 +15,7 @@ export default async function AgencyAnalyticsPage() {
       subAccount: true,
     },
     orderBy: { submittedAt: "desc" },
+    take: 500,
   });
 
   // Reshape into the format AgencyAnalytics expects
