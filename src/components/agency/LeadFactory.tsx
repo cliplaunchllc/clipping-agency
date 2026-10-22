@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronUp, ExternalLink, X, Users, Zap } from "lucide-react";
+import {
+  Plus, Trash2, ChevronDown, ChevronUp, ExternalLink, X,
+  Zap, Mail, AtSign, Link, Globe, User,
+} from "lucide-react";
 
 interface LeadRun {
   id: string;
@@ -35,43 +38,70 @@ interface Lead {
   instagramHandle: string | null;
   linkedinUrl: string | null;
   dmEmail: string | null;
-  notes: string | null;
   status: string;
   createdAt: string;
 }
 
-const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  pending:     { bg: "rgba(148,163,184,0.1)",  color: "#94a3b8", border: "rgba(148,163,184,0.25)" },
-  planning:    { bg: "rgba(251,191,36,0.1)",   color: "#fbbf24", border: "rgba(251,191,36,0.25)" },
-  discovering: { bg: "rgba(99,102,241,0.1)",   color: "#818cf8", border: "rgba(99,102,241,0.25)" },
-  researching: { bg: "rgba(59,130,246,0.1)",   color: "#60a5fa", border: "rgba(59,130,246,0.25)" },
-  verifying:   { bg: "rgba(245,158,11,0.1)",   color: "#f59e0b", border: "rgba(245,158,11,0.25)" },
-  scoring:     { bg: "rgba(167,139,250,0.1)",  color: "#a78bfa", border: "rgba(167,139,250,0.25)" },
-  building:    { bg: "rgba(34,211,238,0.1)",   color: "#22d3ee", border: "rgba(34,211,238,0.25)" },
-  completed:   { bg: "rgba(61,255,162,0.1)",   color: "#3DD68C", border: "rgba(61,255,162,0.25)" },
-  stopped:     { bg: "rgba(148,163,184,0.08)", color: "#64748b", border: "rgba(148,163,184,0.2)" },
-  failed:      { bg: "rgba(255,59,59,0.1)",    color: "#FF3B3B", border: "rgba(255,59,59,0.25)" },
+// ─── Cost model ──────────────────────────────────────────────────────────────
+const COST_PER_LEAD = { bulk: 0.008, deep: 0.032 } as const;
+
+function estimateCost(count: number, mode: string) {
+  const rate = COST_PER_LEAD[mode as keyof typeof COST_PER_LEAD] ?? COST_PER_LEAD.bulk;
+  return count * rate;
+}
+
+function fmtCost(n: number) {
+  if (n < 0.01) return "<$0.01";
+  return `~$${n.toFixed(2)}`;
+}
+
+// ─── Status / grade maps ──────────────────────────────────────────────────────
+const STATUS_DOT: Record<string, string> = {
+  pending:     "#94a3b8",
+  planning:    "#fbbf24",
+  discovering: "#818cf8",
+  researching: "#60a5fa",
+  verifying:   "#f59e0b",
+  scoring:     "#a78bfa",
+  building:    "#22d3ee",
+  completed:   "#3DD68C",
+  stopped:     "#64748b",
+  failed:      "#FF3B3B",
 };
 
-const GRADE_COLORS: Record<string, { color: string; bg: string }> = {
-  A: { color: "#3DD68C", bg: "rgba(61,214,140,0.12)" },
-  B: { color: "#60a5fa", bg: "rgba(96,165,250,0.12)" },
-  C: { color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
-  D: { color: "#f87171", bg: "rgba(248,113,113,0.12)" },
-  F: { color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
+const STATUS_CHIP: Record<string, { bg: string; color: string; border: string }> = {
+  pending:     { bg: "rgba(148,163,184,0.1)",  color: "#94a3b8", border: "rgba(148,163,184,0.2)" },
+  planning:    { bg: "rgba(251,191,36,0.1)",   color: "#fbbf24", border: "rgba(251,191,36,0.2)" },
+  discovering: { bg: "rgba(129,140,248,0.1)",  color: "#818cf8", border: "rgba(129,140,248,0.2)" },
+  researching: { bg: "rgba(96,165,250,0.1)",   color: "#60a5fa", border: "rgba(96,165,250,0.2)" },
+  verifying:   { bg: "rgba(245,158,11,0.1)",   color: "#f59e0b", border: "rgba(245,158,11,0.2)" },
+  scoring:     { bg: "rgba(167,139,250,0.1)",  color: "#a78bfa", border: "rgba(167,139,250,0.2)" },
+  building:    { bg: "rgba(34,211,238,0.1)",   color: "#22d3ee", border: "rgba(34,211,238,0.2)" },
+  completed:   { bg: "rgba(61,255,162,0.08)",  color: "#3DD68C", border: "rgba(61,255,162,0.2)" },
+  stopped:     { bg: "rgba(100,116,139,0.1)",  color: "#64748b", border: "rgba(100,116,139,0.2)" },
+  failed:      { bg: "rgba(255,59,59,0.1)",    color: "#FF3B3B", border: "rgba(255,59,59,0.2)" },
+};
+
+const GRADE: Record<string, { color: string; bg: string; border: string }> = {
+  A: { color: "#3DD68C", bg: "rgba(61,214,140,0.1)",  border: "rgba(61,214,140,0.25)" },
+  B: { color: "#60a5fa", bg: "rgba(96,165,250,0.1)",  border: "rgba(96,165,250,0.25)" },
+  C: { color: "#fbbf24", bg: "rgba(251,191,36,0.1)",  border: "rgba(251,191,36,0.25)" },
+  D: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.25)" },
+  F: { color: "#6b7280", bg: "rgba(107,114,128,0.1)", border: "rgba(107,114,128,0.2)" },
 };
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
   color: "var(--text-primary)",
   borderRadius: 10,
-  padding: "10px 14px",
+  padding: "9px 13px",
   fontSize: 13,
   outline: "none",
   width: "100%",
 };
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] }) {
   const [runs, setRuns] = useState<LeadRun[]>(initialRuns);
   const [selectedRun, setSelectedRun] = useState<LeadRun | null>(null);
@@ -86,12 +116,20 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const [prompt, setPrompt] = useState("");
   const [offer, setOffer] = useState("");
   const [count, setCount] = useState(25);
-  const [mode, setMode] = useState("deep");
+  const [mode, setMode] = useState<"bulk" | "deep">("bulk");
   const [runSaving, setRunSaving] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
 
   // New lead form
-  const [leadForm, setLeadForm] = useState({ company: "", website: "", decisionMaker: "", dmRole: "", xHandle: "", instagramHandle: "", linkedinUrl: "", dmEmail: "", whatItIs: "", grade: "", score: "", segment: "" });
+  const [leadForm, setLeadForm] = useState({
+    company: "", website: "", decisionMaker: "", dmRole: "",
+    xHandle: "", instagramHandle: "", linkedinUrl: "", dmEmail: "",
+    whatItIs: "", grade: "", score: "", segment: "",
+  });
   const [leadSaving, setLeadSaving] = useState(false);
+
+  const estCost = estimateCost(count, mode);
+  const rateLabel = `$${COST_PER_LEAD[mode].toFixed(3)}/lead`;
 
   async function loadLeads(run: LeadRun) {
     setSelectedRun(run);
@@ -116,8 +154,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
     if (res.ok) {
       const run = await res.json();
       setRuns((prev) => [run, ...prev]);
-      setPrompt(""); setOffer(""); setCount(25); setMode("deep");
-      setShowNewRun(false);
+      setPrompt(""); setOffer(""); setCount(25); setMode("bulk");
+      setShowNewRun(false); setShowOffer(false);
     }
     setRunSaving(false);
   }
@@ -157,316 +195,470 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leadId, status }),
     });
-    if (res.ok) {
-      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status } : l));
-    }
+    if (res.ok) setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status } : l));
   }
 
-  const statusStyle = (s: string) => STATUS_COLORS[s] ?? STATUS_COLORS.pending;
+  const chip = (s: string) => STATUS_CHIP[s] ?? STATUS_CHIP.pending;
 
   return (
-    <div className="max-w-6xl mx-auto px-8 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="h-full flex flex-col px-8 py-7 gap-6">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Lead Factory</h1>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{runs.length} run{runs.length !== 1 ? "s" : ""} · {runs.reduce((s, r) => s + r.leadCount, 0)} total leads</p>
+          <h1 className="text-xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+            Lead Factory
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+            {runs.length} run{runs.length !== 1 ? "s" : ""} &nbsp;·&nbsp; {runs.reduce((s, r) => s + r.leadCount, 0)} leads
+          </p>
         </div>
         <button
-          onClick={() => setShowNewRun(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "var(--accent)" }}
+          onClick={() => setShowNewRun((v) => !v)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "var(--accent)" }}
         >
-          <Plus size={14} />
-          New Run
+          {showNewRun ? <X size={13} /> : <Plus size={13} />}
+          {showNewRun ? "Cancel" : "New Run"}
         </button>
       </div>
 
-      {/* New Run Form */}
+      {/* ── New run form ────────────────────────────────────────────────── */}
       {showNewRun && (
-        <div className="rounded-xl p-6 mb-6 space-y-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>New Lead Run</p>
-            <button onClick={() => setShowNewRun(false)}><X size={15} color="var(--text-tertiary)" /></button>
-          </div>
-          <div>
-            <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Target Criteria / Prompt *</label>
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3}
-              placeholder="e.g. Gaming YouTubers with 100K–2M subs focused on FPS games" style={{ ...inputStyle, resize: "vertical" }} />
-          </div>
-          <div>
-            <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Offer / Pitch (optional)</label>
-            <textarea value={offer} onChange={(e) => setOffer(e.target.value)} rows={2}
-              placeholder="What you're offering these leads..." style={{ ...inputStyle, resize: "vertical" }} />
-          </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Lead Count</label>
-              <input type="number" min={1} max={200} value={count} onChange={(e) => setCount(parseInt(e.target.value) || 25)} style={inputStyle} />
+        <div className="rounded-2xl flex-shrink-0 overflow-hidden"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+
+          <div className="px-6 pt-5 pb-4 space-y-4">
+            {/* Target prompt */}
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                Target audience
+              </label>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={2}
+                placeholder="e.g. Gaming creators with 100K–2M subscribers focused on FPS content"
+                style={{ ...inputStyle, resize: "none" }}
+                autoFocus
+              />
             </div>
-            <div className="flex-1">
-              <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Mode</label>
-              <select value={mode} onChange={(e) => setMode(e.target.value)} style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
-                <option value="deep">Deep (detailed research)</option>
-                <option value="bulk">Bulk (fast, less detail)</option>
-              </select>
+
+            {/* Offer (collapsible) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowOffer((v) => !v)}
+                className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {showOffer ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                {showOffer ? "Hide offer/pitch" : "Add offer/pitch"}
+              </button>
+              {showOffer && (
+                <textarea
+                  value={offer}
+                  onChange={(e) => setOffer(e.target.value)}
+                  rows={2}
+                  placeholder="What you're offering these leads…"
+                  style={{ ...inputStyle, resize: "none", marginTop: 8 }}
+                />
+              )}
+            </div>
+
+            {/* Count + Mode */}
+            <div className="flex items-end gap-4">
+              <div style={{ width: 100 }}>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                  # Leads
+                </label>
+                <input
+                  type="number" min={1} max={200} value={count}
+                  onChange={(e) => setCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Mode</label>
+                <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {(["bulk", "deep"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMode(m)}
+                      className="flex-1 py-2 text-xs font-medium transition-all"
+                      style={{
+                        background: mode === m ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.03)",
+                        color: mode === m ? "var(--accent)" : "var(--text-tertiary)",
+                        borderRight: m === "bulk" ? "1px solid rgba(255,255,255,0.08)" : undefined,
+                      }}
+                    >
+                      {m === "bulk" ? "Bulk · fast" : "Deep · thorough"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex gap-3 pt-1">
-            <button onClick={handleCreateRun} disabled={runSaving || !prompt.trim()}
-              className="px-5 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "var(--accent)", opacity: runSaving || !prompt.trim() ? 0.5 : 1, cursor: runSaving || !prompt.trim() ? "not-allowed" : "pointer" }}>
-              {runSaving ? "Creating..." : "Create Run"}
-            </button>
-            <button onClick={() => setShowNewRun(false)} className="px-4 py-2 rounded-xl text-sm"
-              style={{ color: "var(--text-secondary)", background: "transparent", border: "1px solid var(--border-default)" }}>
-              Cancel
+
+          {/* Cost estimate footer */}
+          <div className="px-6 py-3 flex items-center justify-between"
+            style={{ background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#3DD68C" }} />
+                <span className="text-xs font-semibold" style={{ color: "#3DD68C" }}>
+                  {fmtCost(estCost)} estimated
+                </span>
+              </div>
+              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                {rateLabel} &nbsp;·&nbsp; {count} lead{count !== 1 ? "s" : ""} &nbsp;·&nbsp; {mode} mode
+              </span>
+            </div>
+            <button
+              onClick={handleCreateRun}
+              disabled={runSaving || !prompt.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(255,59,59,0.15)",
+                border: "1px solid rgba(255,59,59,0.3)",
+                color: "var(--accent)",
+                opacity: runSaving || !prompt.trim() ? 0.4 : 1,
+                cursor: runSaving || !prompt.trim() ? "not-allowed" : "pointer",
+              }}
+            >
+              <Zap size={11} />
+              {runSaving ? "Creating…" : "Create Run"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex gap-6">
-        {/* Runs list */}
-        <div className="w-72 flex-shrink-0 space-y-2">
-          {runs.length === 0 && (
-            <div className="rounded-xl p-6 text-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-              <Zap size={24} className="mx-auto mb-2" style={{ color: "var(--text-tertiary)" }} />
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No runs yet. Create your first lead run.</p>
+      {/* ── Body: runs list + leads panel ──────────────────────────────── */}
+      <div className="flex gap-5 flex-1 min-h-0">
+
+        {/* Runs sidebar */}
+        <div className="w-60 flex-shrink-0 flex flex-col gap-1.5 overflow-y-auto">
+          {runs.length === 0 ? (
+            <div className="rounded-xl p-5 text-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+              <Zap size={18} className="mx-auto mb-2" style={{ color: "var(--text-tertiary)" }} />
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>No runs yet</p>
             </div>
+          ) : (
+            runs.map((run) => {
+              const dot = STATUS_DOT[run.status] ?? STATUS_DOT.pending;
+              const isSelected = selectedRun?.id === run.id;
+              const c = chip(run.status);
+              return (
+                <div
+                  key={run.id}
+                  onClick={() => loadLeads(run)}
+                  className="group rounded-xl px-4 py-3 cursor-pointer transition-all"
+                  style={{
+                    background: isSelected ? "rgba(255,59,59,0.06)" : "var(--bg-surface)",
+                    border: `1px solid ${isSelected ? "rgba(255,59,59,0.28)" : "var(--border-default)"}`,
+                  }}
+                >
+                  {/* Status dot + delete */}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
+                      <span className="text-xs" style={{ color: c.color }}>{run.status}</span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteRun(run.id); }}
+                      disabled={deletingId === run.id}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+
+                  {/* Prompt */}
+                  <p className="text-xs font-medium leading-snug line-clamp-2 mb-2"
+                    style={{ color: "var(--text-primary)" }}>
+                    {run.prompt}
+                  </p>
+
+                  {/* Meta row */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs tabular-nums px-1.5 py-0.5 rounded-md"
+                      style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-tertiary)" }}>
+                      {run.leadCount} lead{run.leadCount !== 1 ? "s" : ""}
+                    </span>
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {new Date(run.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
           )}
-          {runs.map((run) => {
-            const s = statusStyle(run.status);
-            const isSelected = selectedRun?.id === run.id;
-            return (
-              <div
-                key={run.id}
-                onClick={() => loadLeads(run)}
-                className="rounded-xl p-4 cursor-pointer transition-all"
-                style={{
-                  background: isSelected ? "rgba(255,59,59,0.06)" : "var(--bg-surface)",
-                  border: `1px solid ${isSelected ? "rgba(255,59,59,0.3)" : "var(--border-default)"}`,
-                }}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="text-sm font-medium line-clamp-2" style={{ color: "var(--text-primary)" }}>{run.prompt}</p>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteRun(run.id); }}
-                    disabled={deletingId === run.id}
-                    className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
-                    {run.status}
-                  </span>
-                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    <Users size={10} className="inline mr-1" />{run.leadCount}
-                  </span>
-                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    {run.mode}
-                  </span>
-                </div>
-                <p className="text-xs mt-1.5" style={{ color: "var(--text-tertiary)" }}>
-                  {new Date(run.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            );
-          })}
         </div>
 
         {/* Leads panel */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col rounded-2xl overflow-hidden"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+
           {!selectedRun ? (
-            <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-              <Users size={32} className="mx-auto mb-3" style={{ color: "var(--text-tertiary)" }} />
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Select a run to view its leads</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-2">
+              <Zap size={22} style={{ color: "var(--text-tertiary)", opacity: 0.5 }} />
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Select a run</p>
             </div>
           ) : (
-            <div className="rounded-xl" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-              {/* Run header */}
-              <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border-default)" }}>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{selectedRun.prompt}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                    {leads.length} lead{leads.length !== 1 ? "s" : ""}
-                    {selectedRun.offer && <span className="ml-2 opacity-60">· {selectedRun.offer.slice(0, 40)}{selectedRun.offer.length > 40 ? "…" : ""}</span>}
+            <>
+              {/* Panel header */}
+              <div className="flex items-center gap-3 px-5 py-3.5 flex-shrink-0"
+                style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: chip(selectedRun.status).bg, color: chip(selectedRun.status).color, border: `1px solid ${chip(selectedRun.status).border}` }}>
+                      {selectedRun.status}
+                    </span>
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {leads.length} lead{leads.length !== 1 ? "s" : ""}
+                      &nbsp;·&nbsp; {selectedRun.mode} mode
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
+                    {selectedRun.prompt}
                   </p>
                 </div>
                 <button
-                  onClick={() => setShowAddLead(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "var(--accent)" }}
+                  onClick={() => setShowAddLead((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                  style={{ background: showAddLead ? "transparent" : "rgba(255,59,59,0.1)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}
                 >
-                  <Plus size={12} />
-                  Add Lead
+                  {showAddLead ? <X size={11} /> : <Plus size={11} />}
+                  {showAddLead ? "Cancel" : "Add Lead"}
                 </button>
               </div>
 
               {/* Add lead form */}
               {showAddLead && (
-                <div className="px-6 py-4 space-y-3" style={{ borderBottom: "1px solid var(--border-default)", background: "rgba(255,255,255,0.01)" }}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>New Lead</p>
-                    <button onClick={() => setShowAddLead(false)}><X size={13} color="var(--text-tertiary)" /></button>
+                <div className="px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.01)" }}>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {[
+                      { key: "company", label: "Company *", placeholder: "Acme Corp" },
+                      { key: "website", label: "Website", placeholder: "acme.com" },
+                      { key: "decisionMaker", label: "Contact", placeholder: "Jane Smith" },
+                      { key: "dmRole", label: "Role", placeholder: "CMO" },
+                      { key: "dmEmail", label: "Email", placeholder: "jane@acme.com" },
+                      { key: "instagramHandle", label: "Instagram", placeholder: "@acme" },
+                    ].map(({ key, label, placeholder }) => (
+                      <div key={key}>
+                        <label className="block text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{label}</label>
+                        <input
+                          value={leadForm[key as keyof typeof leadForm]}
+                          onChange={(e) => setLeadForm((p) => ({ ...p, [key]: e.target.value }))}
+                          placeholder={placeholder}
+                          style={{ ...inputStyle, fontSize: 12 }}
+                        />
+                      </div>
+                    ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Company *</label>
-                      <input value={leadForm.company} onChange={(e) => setLeadForm((p) => ({ ...p, company: e.target.value }))} style={inputStyle} placeholder="Acme Corp" />
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>What it is</label>
+                      <input
+                        value={leadForm.whatItIs}
+                        onChange={(e) => setLeadForm((p) => ({ ...p, whatItIs: e.target.value }))}
+                        placeholder="Brief description…"
+                        style={{ ...inputStyle, fontSize: 12 }}
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Website</label>
-                      <input value={leadForm.website} onChange={(e) => setLeadForm((p) => ({ ...p, website: e.target.value }))} style={inputStyle} placeholder="acme.com" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Decision Maker</label>
-                      <input value={leadForm.decisionMaker} onChange={(e) => setLeadForm((p) => ({ ...p, decisionMaker: e.target.value }))} style={inputStyle} placeholder="Jane Smith" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Role</label>
-                      <input value={leadForm.dmRole} onChange={(e) => setLeadForm((p) => ({ ...p, dmRole: e.target.value }))} style={inputStyle} placeholder="CMO" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Email</label>
-                      <input value={leadForm.dmEmail} onChange={(e) => setLeadForm((p) => ({ ...p, dmEmail: e.target.value }))} style={inputStyle} placeholder="jane@acme.com" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Instagram</label>
-                      <input value={leadForm.instagramHandle} onChange={(e) => setLeadForm((p) => ({ ...p, instagramHandle: e.target.value }))} style={inputStyle} placeholder="@acme" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>X / Twitter</label>
-                      <input value={leadForm.xHandle} onChange={(e) => setLeadForm((p) => ({ ...p, xHandle: e.target.value }))} style={inputStyle} placeholder="@acme" />
-                    </div>
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Grade</label>
-                      <select value={leadForm.grade} onChange={(e) => setLeadForm((p) => ({ ...p, grade: e.target.value }))} style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+                      <label className="block text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>Grade</label>
+                      <select
+                        value={leadForm.grade}
+                        onChange={(e) => setLeadForm((p) => ({ ...p, grade: e.target.value }))}
+                        style={{ ...inputStyle, fontSize: 12, appearance: "none", cursor: "pointer" }}
+                      >
                         <option value="">—</option>
-                        {["A", "B", "C", "D", "F"].map((g) => <option key={g} value={g}>{g}</option>)}
+                        {["A", "B", "C", "D", "F"].map((g) => <option key={g}>{g}</option>)}
                       </select>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>What It Is</label>
-                    <textarea value={leadForm.whatItIs} onChange={(e) => setLeadForm((p) => ({ ...p, whatItIs: e.target.value }))} rows={2}
-                      style={{ ...inputStyle, resize: "vertical" }} placeholder="Brief description of this company..." />
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={handleAddLead} disabled={leadSaving || !leadForm.company.trim()}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "var(--accent)", opacity: leadSaving || !leadForm.company.trim() ? 0.5 : 1 }}>
-                      {leadSaving ? "Adding..." : "Add Lead"}
-                    </button>
-                    <button onClick={() => setShowAddLead(false)} className="px-3 py-1.5 rounded-lg text-xs"
-                      style={{ color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
-                      Cancel
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleAddLead}
+                    disabled={leadSaving || !leadForm.company.trim()}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{
+                      background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)",
+                      color: "var(--accent)", opacity: leadSaving || !leadForm.company.trim() ? 0.4 : 1,
+                    }}
+                  >
+                    {leadSaving ? "Adding…" : "Add Lead"}
+                  </button>
                 </div>
               )}
 
               {/* Leads list */}
-              {leadsLoading ? (
-                <div className="p-8 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Loading leads…</div>
-              ) : leads.length === 0 ? (
-                <div className="p-8 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No leads in this run yet.</div>
-              ) : (
-                <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
-                  {leads.map((lead) => {
-                    const gradeStyle = lead.grade ? (GRADE_COLORS[lead.grade] ?? {}) : {};
-                    const isExpanded = expandedLead === lead.id;
-                    return (
-                      <div key={lead.id}>
-                        <div
-                          className="flex items-center gap-3 px-6 py-3.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
-                          onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
-                        >
-                          {lead.grade && (
-                            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                              style={{ background: (gradeStyle as { bg?: string }).bg, color: (gradeStyle as { color?: string }).color }}>
-                              {lead.grade}
-                            </span>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{lead.company}</span>
-                              {lead.score != null && (
-                                <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{lead.score}/100</span>
-                              )}
-                              {lead.status === "do_not_contact" && (
-                                <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(255,59,59,0.1)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.2)" }}>DNC</span>
+              <div className="flex-1 overflow-y-auto">
+                {leadsLoading ? (
+                  <div className="flex items-center justify-center h-32 text-sm" style={{ color: "var(--text-tertiary)" }}>
+                    Loading…
+                  </div>
+                ) : leads.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 gap-1.5">
+                    <User size={18} style={{ color: "var(--text-tertiary)", opacity: 0.4 }} />
+                    <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No leads yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                    {leads.map((lead) => {
+                      const g = lead.grade ? GRADE[lead.grade] : null;
+                      const isExpanded = expandedLead === lead.id;
+                      const dnc = lead.status === "do_not_contact";
+                      return (
+                        <div key={lead.id}>
+                          {/* Lead row */}
+                          <div
+                            onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
+                            className="flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors hover:bg-white/[0.015]"
+                            style={{ opacity: dnc ? 0.5 : 1 }}
+                          >
+                            {/* Grade */}
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                              style={g
+                                ? { background: g.bg, color: g.color, border: `1px solid ${g.border}` }
+                                : { background: "rgba(255,255,255,0.04)", color: "var(--text-tertiary)", border: "1px solid rgba(255,255,255,0.06)" }
+                              }>
+                              {lead.grade ?? "—"}
+                            </div>
+
+                            {/* Name + description */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                                  {lead.company}
+                                </span>
+                                {lead.score != null && (
+                                  <span className="text-xs tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                                    {lead.score}
+                                  </span>
+                                )}
+                                {dnc && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                    style={{ background: "rgba(255,59,59,0.08)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                                    DNC
+                                  </span>
+                                )}
+                              </div>
+                              {lead.whatItIs && (
+                                <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                                  {lead.whatItIs}
+                                </p>
                               )}
                             </div>
-                            {lead.whatItIs && (
-                              <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{lead.whatItIs}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {lead.website && (
-                              <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ color: "var(--text-tertiary)" }}>
-                                <ExternalLink size={13} />
-                              </a>
-                            )}
-                            {isExpanded ? <ChevronUp size={14} color="var(--text-tertiary)" /> : <ChevronDown size={14} color="var(--text-tertiary)" />}
-                          </div>
-                        </div>
 
-                        {isExpanded && (
-                          <div className="px-6 pb-4 pt-1" style={{ background: "rgba(255,255,255,0.01)" }}>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs mb-3">
-                              {lead.decisionMaker && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>Contact: </span><span style={{ color: "var(--text-primary)" }}>{lead.decisionMaker}{lead.dmRole ? ` · ${lead.dmRole}` : ""}</span></div>
+                            {/* Social icons */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {lead.website && (
+                                <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                                  target="_blank" rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                                  style={{ color: "var(--text-tertiary)" }}>
+                                  <Globe size={12} />
+                                </a>
                               )}
                               {lead.dmEmail && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>Email: </span><span style={{ color: "var(--text-primary)" }}>{lead.dmEmail}</span></div>
+                                <a href={`mailto:${lead.dmEmail}`} onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                                  style={{ color: "var(--text-tertiary)" }}>
+                                  <Mail size={12} />
+                                </a>
                               )}
-                              {lead.instagramHandle && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>Instagram: </span><span style={{ color: "var(--text-primary)" }}>{lead.instagramHandle}</span></div>
-                              )}
-                              {lead.xHandle && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>X: </span><span style={{ color: "var(--text-primary)" }}>{lead.xHandle}</span></div>
+                              {(lead.instagramHandle || lead.xHandle) && (
+                                <span className="p-1.5 rounded-lg" style={{ color: "var(--text-tertiary)" }}>
+                                  <AtSign size={12} />
+                                </span>
                               )}
                               {lead.linkedinUrl && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>LinkedIn: </span>
-                                  <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa" }}>View</a>
-                                </div>
+                                <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                                  style={{ color: "var(--text-tertiary)" }}>
+                                  <Link size={12} />
+                                </a>
                               )}
-                              {lead.segment && (
-                                <div><span style={{ color: "var(--text-tertiary)" }}>Segment: </span><span style={{ color: "var(--text-primary)" }}>{lead.segment}</span></div>
-                              )}
-                            </div>
-                            {lead.notes && (
-                              <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>{lead.notes}</p>
-                            )}
-                            <div className="flex gap-2">
-                              {lead.status === "active" ? (
-                                <button onClick={() => handleLeadStatus(lead.id, "do_not_contact")}
-                                  className="text-xs px-3 py-1 rounded-lg"
-                                  style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
-                                  Mark DNC
-                                </button>
-                              ) : (
-                                <button onClick={() => handleLeadStatus(lead.id, "active")}
-                                  className="text-xs px-3 py-1 rounded-lg"
-                                  style={{ background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DD68C" }}>
-                                  Mark Active
-                                </button>
-                              )}
+                              <button className="p-1.5 ml-0.5" style={{ color: "var(--text-tertiary)" }}>
+                                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              </button>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+
+                          {/* Expanded detail */}
+                          {isExpanded && (
+                            <div className="px-5 pb-4 pt-1 mx-5 mb-3 rounded-xl"
+                              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs mt-3 mb-3">
+                                {lead.decisionMaker && (
+                                  <div className="flex items-center gap-1.5">
+                                    <User size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <span style={{ color: "var(--text-primary)" }}>{lead.decisionMaker}</span>
+                                    {lead.dmRole && <span style={{ color: "var(--text-tertiary)" }}>· {lead.dmRole}</span>}
+                                  </div>
+                                )}
+                                {lead.dmEmail && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Mail size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <span style={{ color: "var(--text-primary)" }}>{lead.dmEmail}</span>
+                                  </div>
+                                )}
+                                {lead.instagramHandle && (
+                                  <div className="flex items-center gap-1.5">
+                                    <AtSign size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <span style={{ color: "var(--text-primary)" }}>{lead.instagramHandle}</span>
+                                    <span style={{ color: "var(--text-tertiary)", fontSize: 10 }}>ig</span>
+                                  </div>
+                                )}
+                                {lead.xHandle && (
+                                  <div className="flex items-center gap-1.5">
+                                    <AtSign size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <span style={{ color: "var(--text-primary)" }}>{lead.xHandle}</span>
+                                    <span style={{ color: "var(--text-tertiary)", fontSize: 10 }}>x</span>
+                                  </div>
+                                )}
+                                {lead.linkedinUrl && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Link size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1" style={{ color: "#60a5fa" }}>
+                                      LinkedIn <ExternalLink size={9} />
+                                    </a>
+                                  </div>
+                                )}
+                                {lead.segment && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span style={{ color: "var(--text-tertiary)" }}>Segment:</span>
+                                    <span style={{ color: "var(--text-primary)" }}>{lead.segment}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleLeadStatus(lead.id, dnc ? "active" : "do_not_contact")}
+                                className="text-xs px-3 py-1 rounded-lg font-medium"
+                                style={dnc
+                                  ? { background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DD68C" }
+                                  : { background: "rgba(255,59,59,0.07)", border: "1px solid rgba(255,59,59,0.18)", color: "var(--accent)" }
+                                }
+                              >
+                                {dnc ? "Remove DNC" : "Mark DNC"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
