@@ -7,9 +7,13 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { processLeadRun } from "../lib/lead-factory/pipeline";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error("DATABASE_URL is not set");
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter } as any);
 
 // Runs currently being processed by this worker instance
 const processing = new Set<string>();
