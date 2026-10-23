@@ -135,10 +135,10 @@ const MEGA_COMPANY_NAMES = [
   "universal games", "lego games", "dreamworks",
 ];
 
-// Upper size limits — games/channels this big are owned by teams that won't
-// respond to a cold pitch from a small agency.
+// Upper size limits for non-Roblox sources.
+// Roblox studios are allowed at any size — large Roblox devs are still
+// reachable and actively look for content partnerships.
 const SIZE_CEILING = {
-  robloxCCU:    50_000,   // ~top 20 Roblox games; below this = indie/mid-size
   youtubeSubs: 5_000_000, // 5M+ = media company, not a creator looking for help
 };
 
@@ -152,11 +152,7 @@ function isTooLarge(c: Candidate): boolean {
   // Blocklist match in description (only first 200 chars — company self-description)
   if (MEGA_COMPANY_NAMES.some((n) => n.length > 6 && desc.includes(n))) return true;
 
-  // Platform signals — too-big numbers
-  if (c.type === "roblox") {
-    const raw = c.rawData as { playerCount?: number };
-    if ((raw.playerCount ?? 0) > SIZE_CEILING.robloxCCU) return true;
-  }
+  // YouTube ceiling only — Roblox has no size cap
   if (c.type === "youtube") {
     const raw = c.rawData as { subCount?: number };
     if ((raw.subCount ?? 0) > SIZE_CEILING.youtubeSubs) return true;
@@ -187,8 +183,7 @@ interface CriteriaSignals {
   requireSocial:   boolean;
   requireLinkedin: boolean;
   requireRealSite: boolean; // must have own domain, not just a platform URL
-  // Tighter size ceiling (overrides SIZE_CEILING defaults)
-  robloxCCUCeiling:   number;
+  // Tighter YouTube ceiling when user asks for small/indie
   youtubeSubsCeiling: number;
 }
 
@@ -201,13 +196,11 @@ function parseCriteria(text: string): CriteriaSignals {
     bonusEmail: 0, bonusLinkedin: 0, bonusSocial: 0, bonusDiscord: 0,
     engagementMult: 1,
     requireEmail: false, requireSocial: false, requireLinkedin: false, requireRealSite: false,
-    robloxCCUCeiling:   SIZE_CEILING.robloxCCU,
     youtubeSubsCeiling: SIZE_CEILING.youtubeSubs,
   };
 
   // ── Size constraints — tighten ceilings when user explicitly wants small/indie ──
   if (/indie|small.{0,15}(company|studio|dev|team)|not.{0,15}(big|large|huge|massive)|no.{0,15}(big|large|huge|corporate)|avoid.{0,15}(big|large|corporate)|accessible|micro studio|solo dev/.test(t)) {
-    s.robloxCCUCeiling   = Math.min(s.robloxCCUCeiling,   10_000); // only mid-size Roblox devs
     s.youtubeSubsCeiling = Math.min(s.youtubeSubsCeiling, 500_000); // under 500k subs
   }
 
@@ -275,11 +268,7 @@ function meetsHardCriteria(c: Candidate, signals: CriteriaSignals): boolean {
   if (signals.requireLinkedin && !c.contacts.linkedin)  return false;
   if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) return false;
 
-  // Criteria-specific size ceilings (tighter than global defaults when user asks for small/indie)
-  if (c.type === "roblox") {
-    const raw = c.rawData as { playerCount?: number };
-    if ((raw.playerCount ?? 0) > signals.robloxCCUCeiling) return false;
-  }
+  // Criteria-specific YouTube ceiling (tighter when user asks for small/indie)
   if (c.type === "youtube") {
     const raw = c.rawData as { subCount?: number };
     if ((raw.subCount ?? 0) > signals.youtubeSubsCeiling) return false;
