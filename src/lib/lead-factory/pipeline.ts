@@ -103,6 +103,68 @@ function generatePlan(prompt: string, count: number): Plan {
   };
 }
 
+// ─── Size filter — always-on, blocks mega-companies and AAA studios ───────────
+// These leads are unreachable for a small clipping agency. Filtered out before
+// scoring so they never waste quota.
+
+const MEGA_COMPANY_NAMES = [
+  // Major publishers / parent companies
+  "nintendo", "hasbro", "activision", "electronic arts", "ea sports", "ea games",
+  "ubisoft", "blizzard", "blizzard entertainment", "valve corporation", "riot games",
+  "epic games", "take-two interactive", "2k games", "2k sports", "bethesda",
+  "bethesda softworks", "rockstar games", "rockstar north", "sony interactive",
+  "sony computer entertainment", "microsoft game studios", "xbox game studios",
+  "square enix", "capcom", "bandai namco", "sega", "konami", "naughty dog",
+  "bungie", "insomniac games", "treyarch", "infinity ward", "respawn entertainment",
+  "dice", "bioware", "obsidian entertainment", "double fine", "cd projekt",
+  "cd projekt red", "techland", "paradox interactive", "505 games",
+  "deep silver", "thq nordic", "warhorse studios", "giants software",
+  // Mega mobile
+  "supercell", "king digital", "zynga", "netmarble", "nexon", "ncsoft",
+  "mihoyo", "hoyoverse", "cognosphere", "tencent games", "netease games",
+  "gameloft", "jam city", "scopely", "playtika",
+  // Mega Roblox games (the studios behind them are corporations)
+  "adopt me", "blox fruits", "brookhaven", "arsenal roblox",
+  // Famous titles that are mega-brands (not the indie dev we want)
+  "counter-strike", "counter strike", "call of duty", "world of warcraft",
+  "fortnite", "league of legends", "valorant", "apex legends",
+  "overwatch", "hearthstone", "diablo", "genshin impact", "honkai",
+  "pokemon", "zelda", "mario", "halo", "fifa", "madden", "nba 2k",
+  // Media conglomerates that make games as a side business
+  "disney interactive", "warner bros. games", "wb games",
+  "universal games", "lego games", "dreamworks",
+];
+
+// Upper size limits — games/channels this big are owned by teams that won't
+// respond to a cold pitch from a small agency.
+const SIZE_CEILING = {
+  robloxCCU:    50_000,   // ~top 20 Roblox games; below this = indie/mid-size
+  youtubeSubs: 5_000_000, // 5M+ = media company, not a creator looking for help
+};
+
+function isTooLarge(c: Candidate): boolean {
+  const name = c.name.toLowerCase();
+  const desc = c.description.toLowerCase().slice(0, 200);
+
+  // Blocklist match on name
+  if (MEGA_COMPANY_NAMES.some((n) => name === n || name.includes(n))) return true;
+
+  // Blocklist match in description (only first 200 chars — company self-description)
+  if (MEGA_COMPANY_NAMES.some((n) => n.length > 6 && desc.includes(n))) return true;
+
+  // Platform signals — too-big numbers
+  if (c.type === "roblox") {
+    const raw = c.rawData as { playerCount?: number };
+    if ((raw.playerCount ?? 0) > SIZE_CEILING.robloxCCU) return true;
+  }
+  if (c.type === "youtube") {
+    const raw = c.rawData as { subCount?: number };
+    if ((raw.subCount ?? 0) > SIZE_CEILING.youtubeSubs) return true;
+  }
+
+  return false;
+}
+
 // ─── Criteria parsing — translates free-text requirements into scoring signals ──
 // Handles phrases like "active downloads", "VC backed", "must have instagram", etc.
 
@@ -125,6 +187,9 @@ interface CriteriaSignals {
   requireSocial:   boolean;
   requireLinkedin: boolean;
   requireRealSite: boolean; // must have own domain, not just a platform URL
+  // Tighter size ceiling (overrides SIZE_CEILING defaults)
+  robloxCCUCeiling:   number;
+  youtubeSubsCeiling: number;
 }
 
 const PLATFORM_DOMAINS = ["roblox.com", "youtube.com", "twitter.com", "instagram.com", "linkedin.com", "apple.com", "steampowered.com"];
@@ -136,7 +201,15 @@ function parseCriteria(text: string): CriteriaSignals {
     bonusEmail: 0, bonusLinkedin: 0, bonusSocial: 0, bonusDiscord: 0,
     engagementMult: 1,
     requireEmail: false, requireSocial: false, requireLinkedin: false, requireRealSite: false,
+    robloxCCUCeiling:   SIZE_CEILING.robloxCCU,
+    youtubeSubsCeiling: SIZE_CEILING.youtubeSubs,
   };
+
+  // ── Size constraints — tighten ceilings when user explicitly wants small/indie ──
+  if (/indie|small.{0,15}(company|studio|dev|team)|not.{0,15}(big|large|huge|massive)|no.{0,15}(big|large|huge|corporate)|avoid.{0,15}(big|large|corporate)|accessible|micro studio|solo dev/.test(t)) {
+    s.robloxCCUCeiling   = Math.min(s.robloxCCUCeiling,   10_000); // only mid-size Roblox devs
+    s.youtubeSubsCeiling = Math.min(s.youtubeSubsCeiling, 500_000); // under 500k subs
+  }
 
   // ── Downloads / active installs ──
   if (/download|install|app store|play store|active app/.test(t)) {
@@ -201,6 +274,17 @@ function meetsHardCriteria(c: Candidate, signals: CriteriaSignals): boolean {
   if (signals.requireSocial   && !c.contacts.instagram && !c.contacts.twitter) return false;
   if (signals.requireLinkedin && !c.contacts.linkedin)  return false;
   if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) return false;
+
+  // Criteria-specific size ceilings (tighter than global defaults when user asks for small/indie)
+  if (c.type === "roblox") {
+    const raw = c.rawData as { playerCount?: number };
+    if ((raw.playerCount ?? 0) > signals.robloxCCUCeiling) return false;
+  }
+  if (c.type === "youtube") {
+    const raw = c.rawData as { subCount?: number };
+    if ((raw.subCount ?? 0) > signals.youtubeSubsCeiling) return false;
+  }
+
   return true;
 }
 
@@ -897,9 +981,21 @@ export async function processLeadRun(runId: string): Promise<void> {
     if (await isStopped(runId)) return;
 
     // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 2.5: FREE DOMAIN INFERENCE (no Serper cost here)
-    // Serper enrichment happens POST-score — only on leads that actually pass.
+    // PHASE 2.5: SIZE FILTER + DOMAIN INFERENCE
+    // Remove mega-companies / AAA studios before scoring. These are unreachable
+    // for a small agency regardless of what the prompt says.
     // ──────────────────────────────────────────────────────────────────────────
+    const beforeFilter = candidates.length;
+    const filtered = candidates.filter((c) => !isTooLarge(c));
+    // Replace candidates array in-place
+    candidates.length = 0;
+    candidates.push(...filtered);
+    const removedCount = beforeFilter - candidates.length;
+    if (removedCount > 0) {
+      await log(runId, "discovering", `Filtered out ${removedCount} large/enterprise companies`);
+    }
+
+    // Domain inference for email
     for (const c of candidates) {
       if (!c.contacts.email) {
         const inferred = inferEmailFromDomain(c.website);

@@ -377,6 +377,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     [/subscriber|youtube|creator/i, "subscribers → YouTube boost"],
                     [/roblox/i, "Roblox focus"],
                     [/active|engagement|popular/i, "high engagement → amplified signals"],
+                    [/indie|small.{0,15}(company|studio|dev)|not.{0,15}(big|large)|no.{0,15}(big|large)|accessible|micro|solo dev/i, "small/indie → tighter size caps"],
                     [/must have email|require email/i, "email required (hard filter)"],
                     [/must have instagram|require instagram/i, "Instagram required (hard filter)"],
                     [/website|real site/i, "real website required (hard filter)"],
