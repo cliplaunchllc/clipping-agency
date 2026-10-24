@@ -1,16 +1,16 @@
 /**
- * Lead Factory Pipeline — 100% FREE, zero external accounts required
+ * Lead Factory Pipeline — chart/rank-based discovery, zero keyword searches
  *
- * Sources (all free, no keys required):
- *   - Roblox Games API    → FREE  (no key)
- *   - Steam Store API     → FREE  (no key)
- *   - iTunes Search API   → FREE  (no key)
- *   - Invidious           → FREE  (open-source YouTube — no key, no quota)
- *   - SearXNG             → FREE  (open-source meta-search — no key, no account)
- *   - GitHub Search API   → FREE  (no key: 60 req/hr · GITHUB_TOKEN: 5000 req/hr)
+ * Sources:
+ *   - Roblox Games API    → top games with 1,000+ live concurrent players
+ *   - Steam Store API     → top sellers + new releases (last 24 months)
+ *   - Apple App Store     → top-grossing Games chart, ranks 50–200
  *
+ * Contact enrichment (not discovery):
+ *   - SearXNG             → email / social lookup per passing lead
+ *
+ * No keyword app-store searches. No GitHub. No YouTube keyword search.
  * Planning + scoring: rule-based — no AI, no API key, no account needed.
- * Approximate cost: $0
  */
 
 import { Prisma } from "@prisma/client";
@@ -66,40 +66,19 @@ function extractKeywords(prompt: string, max = 6): string[] {
     .slice(0, max);
 }
 
-function generatePlan(prompt: string, count: number): Plan {
-  const qCount = count <= 50 ? 3 : count <= 200 ? 6 : count <= 500 ? 10 : 15;
+// Discovery is chart/rank-based — no keyword queries needed.
+// This function only derives segment labels used during scoring.
+function generatePlan(prompt: string, _count: number): Plan {
   const kw = extractKeywords(prompt);
-
-  const robloxBank = ["pvp combat","tycoon simulator","roleplay adventure","fps shooter","tower defense","horror escape","racing car","battle royale","obstacle course","fighting martial","open world","social hangout","clicker idle","space exploration","zombie survival"];
-  const steamBank  = ["indie pvp game","survival multiplayer","battle royale indie","roguelike action","co-op adventure","indie rpg","indie shooter","open world survival","platformer indie","card game indie","city builder","strategy indie","souls-like indie","auto battler","extraction shooter"];
-  const mobileBank = ["mobile pvp game","idle clicker game","mobile strategy game","battle game mobile","mobile rpg","mobile shooter","match 3 puzzle","mobile card game","tower defense mobile","gacha game mobile","mobile battle royale","mobile racing","mobile farming sim","mobile sports game","mobile survival"];
-  const youtubeBank = ["game developer channel","indie game studio youtube","roblox game creator","mobile game developer","game review channel","gaming tips creator","multiplayer gameplay","esports gaming channel","game design tutorial","game dev vlog"];
-  const webBank    = ["indie game studio contact","game developer press kit","mobile game company","online multiplayer developer","esports game studio","game publisher indie","browser game developer","game startup hiring","game company about","competitive game studio"];
-  const githubBank = ["game studio org","indie game developer","mobile game company","unity game developer","unreal engine studio","godot game developer","roblox developer","multiplayer game","game engine","web game developer"];
-
-  const blend = (bank: string[]) => {
-    const keywordQueries = kw.map((k) => `${k} game`);
-    const merged = [...new Set([...keywordQueries, ...bank])].slice(0, qCount);
-    return merged;
-  };
-
-  // Derive segment labels from the prompt keywords
   const segments = [
-    kw.some((k) => ["roblox","rbx"].includes(k)) ? "Roblox Studio" : "Roblox Developer",
-    kw.some((k) => ["steam","pc"].includes(k))   ? "PC Game Studio" : "Indie Game Studio",
-    kw.some((k) => ["mobile","ios","android"].includes(k)) ? "Mobile Game Publisher" : "Mobile Game Developer",
+    kw.some((k) => ["roblox", "rbx"].includes(k)) ? "Roblox Studio" : "Roblox Developer",
+    kw.some((k) => ["steam", "pc"].includes(k))    ? "PC Game Studio" : "Indie Game Studio",
+    kw.some((k) => ["mobile", "ios", "android"].includes(k)) ? "Mobile Game Publisher" : "Mobile Game Developer",
     "Online PvP Studio",
-    "Gaming Content Creator",
   ];
-
   return {
-    youtubeQueries: blend(youtubeBank),
-    webQueries:     blend(webBank),
-    robloxQueries:  blend(robloxBank),
-    steamQueries:   blend(steamBank),
-    mobileQueries:  blend(mobileBank),
-    githubQueries:  blend(githubBank),
     segments,
+    sources: ["Roblox Top CCU", "Steam Featured", "App Store Top Grossing"],
   };
 }
 
@@ -149,12 +128,15 @@ const ACTIVE_WINDOW_MS = 6 * 30 * 24 * 60 * 60 * 1000; // 6 months
 
 function isInactive(c: Candidate): boolean {
   if (c.type === "mobile") {
-    // App Store returns currentVersionReleaseDate — skip apps stale for 2+ years
-    const raw = c.rawData as { currentVersionReleaseDate?: string; releaseDate?: string };
-    const dateStr = raw.currentVersionReleaseDate ?? raw.releaseDate;
-    if (dateStr) {
-      const updated = new Date(dateStr);
-      if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > ACTIVE_WINDOW_MS) return true;
+    // Chart-sourced apps are active by definition (on the grossing chart right now).
+    // Only apply the staleness check for any non-chart app that might slip through.
+    const raw = c.rawData as { currentVersionReleaseDate?: string; releaseDate?: string; chartRank?: number };
+    if (!raw.chartRank) {
+      const dateStr = raw.currentVersionReleaseDate ?? raw.releaseDate;
+      if (dateStr) {
+        const updated = new Date(dateStr);
+        if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > ACTIVE_WINDOW_MS) return true;
+      }
     }
   }
 
@@ -474,45 +456,6 @@ function hasContacts(c: Contacts): boolean {
   return !!(c.email || c.instagram || c.twitter || c.linkedin);
 }
 
-// ─── Invidious (free open-source YouTube, no key required) ───────────────────
-// Falls through multiple public instances until one responds.
-
-const INVIDIOUS_INSTANCES = [
-  "https://invidious.fdn.fr",
-  "https://invidious.privacydev.net",
-  "https://yt.artemislena.eu",
-  "https://invidious.nerdvpn.de",
-  "https://iv.melmac.space",
-];
-
-async function invidiousFetch<T>(path: string): Promise<T | null> {
-  for (const base of INVIDIOUS_INSTANCES) {
-    try {
-      const res = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) return await res.json() as T;
-    } catch { /* try next instance */ }
-  }
-  return null;
-}
-
-interface InvChannel {
-  authorId: string;
-  author: string;
-  description?: string;
-  subCount?: number;
-  authorUrl?: string;
-}
-
-async function ytSearch(query: string, max = 25): Promise<InvChannel[]> {
-  const path = `/api/v1/search?q=${encodeURIComponent(query)}&type=channel&fields=authorId,author,description,subCount,authorUrl`;
-  const data = await invidiousFetch<InvChannel[]>(path);
-  return (data ?? []).slice(0, max);
-}
-
-async function ytChannelDetail(channelId: string): Promise<InvChannel | null> {
-  return invidiousFetch<InvChannel>(`/api/v1/channels/${channelId}?fields=authorId,author,description,subCount,authorUrl`);
-}
-
 // ─── Roblox (FREE — no key required) ─────────────────────────────────────────
 
 interface RobloxGame {
@@ -545,25 +488,40 @@ async function robloxFetchGroupDescription(groupId: number): Promise<string> {
   return data.description ?? "";
 }
 
-async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
-  const url = `https://games.roblox.com/v1/games/list?model.keyword=${encodeURIComponent(query)}&model.gameFilter=0&model.genreFilter=all&model.maxRows=${max}`;
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => null);
-  if (!res?.ok) return [];
+// ─── Roblox top games by live players (no keyword) ────────────────────────────
+// Pages through Roblox's popular games list and keeps only games with
+// minCCU+ concurrent players. This is the "Rolimons / top CCU" equivalent.
 
-  const data = await res.json() as { games?: RobloxGame[] };
-  const games = data.games ?? [];
-
-  // Deduplicate by creatorId
+async function robloxTopGames(minCCU = 1000, take = 150): Promise<Candidate[]> {
   const seenCreators = new Map<number, RobloxGame>();
-  for (const g of games) {
-    if (!seenCreators.has(g.creatorId)) seenCreators.set(g.creatorId, g);
+  let cursor = "";
+  let pages = 0;
+
+  while (seenCreators.size < take && pages < 6) {
+    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+    }).catch(() => null);
+    if (!res?.ok) break;
+
+    const data = await res.json() as { games?: RobloxGame[]; nextPageCursor?: string };
+    const games = data.games ?? [];
+
+    for (const g of games) {
+      if (g.playerCount >= minCCU && !seenCreators.has(g.creatorId)) {
+        seenCreators.set(g.creatorId, g);
+      }
+    }
+
+    cursor = data.nextPageCursor ?? "";
+    pages++;
+    // Games list is roughly sorted by popularity; once CCU drops below threshold stop early
+    if (games.length > 0 && games[games.length - 1].playerCount < minCCU * 0.5) break;
+    if (!cursor) break;
   }
 
-  // Batch-fetch profiles for contact info (parallel, cap at 20 per query)
-  const entries = [...seenCreators.entries()].slice(0, 10);
+  const entries = [...seenCreators.entries()].slice(0, take);
   const profileResults = await Promise.allSettled(
     entries.map(async ([creatorId, g]) => {
       const desc = g.creatorType === "Group"
@@ -577,132 +535,144 @@ async function robloxSearch(query: string, max = 30): Promise<Candidate[]> {
   for (const r of profileResults) {
     if (r.status !== "fulfilled") continue;
     const { creatorId, g, desc } = r.value;
-
     const profileUrl = g.creatorType === "Group"
       ? `https://www.roblox.com/groups/${creatorId}`
       : `https://www.roblox.com/users/${creatorId}/profile`;
-
-    const contacts = extractContacts(desc);
-
     candidates.push({
       type: "roblox",
       name: g.creatorName,
       website: profileUrl,
       description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes.${desc ? ` Bio: ${desc.slice(0, 200)}` : ""}`,
-      contacts,
+      contacts: extractContacts(desc),
       rawData: { ...g, profileDesc: desc } as unknown as Record<string, unknown>,
     });
   }
   return candidates;
 }
 
-// ─── Steam (FREE — no key required) ──────────────────────────────────────────
+// ─── Steam featured: top sellers + new releases (no keyword) ─────────────────
+// Pulls Steam's official top_sellers and new_releases lists, filters to
+// games released within maxAgeMonths. Skips coming_soon titles.
 
-async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
-  const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&cc=us&l=en`;
-  const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!searchRes?.ok) return [];
+async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
+  const res = await fetch("https://store.steampowered.com/api/getfeaturedcategories?cc=us&l=en", {
+    signal: AbortSignal.timeout(12000),
+  }).catch(() => null);
+  if (!res?.ok) return [];
 
-  const searchData = await searchRes.json() as {
-    items?: Array<{ id: number; name: string; type: string }>;
+  const data = await res.json() as {
+    top_sellers?:  { items?: Array<{ id: number; name: string }> };
+    new_releases?: { items?: Array<{ id: number; name: string }> };
+    coming_soon?:  { items?: Array<{ id: number; name: string }> };
   };
-  const games = (searchData.items ?? []).filter((i) => i.type === "game").slice(0, max);
-  if (!games.length) return [];
 
+  const seen = new Set<number>();
+  const queue: Array<{ id: number; name: string; source: string }> = [];
+  for (const g of data.top_sellers?.items  ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "Top Seller" }); } }
+  for (const g of data.new_releases?.items ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "New Release" }); } }
+  for (const g of data.coming_soon?.items  ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "Upcoming" }); } }
+
+  const cutoff = new Date(Date.now() - maxAgeMonths * 30 * 24 * 60 * 60 * 1000);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
-  await Promise.allSettled(
-    games.map(async (game) => {
-      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website,release_date`;
-      const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
-      if (!detRes?.ok) return;
+  await Promise.allSettled(queue.map(async (game) => {
+    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website,release_date`;
+    const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (!detRes?.ok) return;
 
-      const detData = await detRes.json() as Record<string, {
-        success: boolean;
-        data?: {
-          developers?: string[];
-          publishers?: string[];
-          short_description?: string;
-          website?: string;
-          support_info?: { url?: string; email?: string };
-          release_date?: { coming_soon: boolean; date: string };
-        };
-      }>;
-      const app = detData[String(game.id)];
-      if (!app?.success || !app.data) return;
-
-      const devName = app.data.developers?.[0] ?? app.data.publishers?.[0];
-      if (!devName) return;
-
-      const key = devName.toLowerCase().trim();
-      if (seenDevs.has(key)) return;
-      seenDevs.add(key);
-
-      const supportEmail = app.data.support_info?.email ?? null;
-      const contacts: Contacts = {
-        email: supportEmail,
-        instagram: null,
-        twitter: null,
-        linkedin: null,
-        discord: null,
+    const detData = await detRes.json() as Record<string, {
+      success: boolean;
+      data?: {
+        developers?: string[];
+        publishers?: string[];
+        short_description?: string;
+        website?: string;
+        support_info?: { url?: string; email?: string };
+        release_date?: { coming_soon: boolean; date: string };
       };
+    }>;
+    const app = detData[String(game.id)];
+    if (!app?.success || !app.data) return;
 
-      candidates.push({
-        type: "steam",
-        name: devName,
-        website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
-        description: `Steam game developer. Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
-        contacts,
-        rawData: { appId: game.id, gameName: game.name, supportUrl: app.data.support_info?.url, coming_soon: app.data.release_date?.coming_soon ?? false, ...app.data },
-      });
-    })
-  );
+    // For top sellers, enforce the age window; new releases and upcoming are already recent
+    if (game.source === "Top Seller" && app.data.release_date?.date) {
+      const rel = new Date(app.data.release_date.date);
+      if (!isNaN(rel.getTime()) && rel < cutoff) return;
+    }
+
+    const devName = app.data.developers?.[0] ?? app.data.publishers?.[0];
+    if (!devName) return;
+    const key = devName.toLowerCase().trim();
+    if (seenDevs.has(key)) return;
+    seenDevs.add(key);
+
+    candidates.push({
+      type: "steam",
+      name: devName,
+      website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
+      description: `Steam developer (${game.source}). Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
+      contacts: { email: app.data.support_info?.email ?? null, instagram: null, twitter: null, linkedin: null, discord: null },
+      rawData: { appId: game.id, gameName: game.name, coming_soon: app.data.release_date?.coming_soon ?? false, source: game.source, ...app.data },
+    });
+  }));
 
   return candidates;
 }
 
-// ─── iTunes / App Store (FREE — no key required) ──────────────────────────────
+// ─── App Store top-grossing chart (ranks 50–200, no keyword) ─────────────────
+// Uses Apple's RSS feed for top-grossing Games, skips ranks 1–49 (too large),
+// then batch-looks up full metadata via the iTunes Lookup API.
 
-async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
-  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=software&genreId=6014&limit=${max}&country=us`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!res?.ok) return [];
+async function appStoreChartSearch(rankStart = 50, rankEnd = 200): Promise<Candidate[]> {
+  const limit = Math.min(rankEnd, 200);
+  const rssUrl = `https://rss.applemarketingtools.com/api/v2/us/apps/top-grossing/${limit}/games.json`;
+  const rssRes = await fetch(rssUrl, { signal: AbortSignal.timeout(12000) }).catch(() => null);
+  if (!rssRes?.ok) return [];
 
-  const data = await res.json() as {
-    results?: Array<{
-      trackName: string;
-      sellerName: string;
-      sellerUrl?: string;
-      trackViewUrl: string;
-      description?: string;
-      currentVersionReleaseDate?: string;
-      releaseDate?: string;
-      averageUserRatingForCurrentVersion?: number;
-      userRatingCountForCurrentVersion?: number;
-    }>;
+  const rssData = await rssRes.json() as {
+    feed?: { results?: Array<{ id: string; name: string; artistName: string; url: string }> };
   };
+  const chartItems = (rssData.feed?.results ?? []).slice(rankStart - 1);
+  if (!chartItems.length) return [];
 
-  const seenSellers = new Set<string>();
+  // Batch iTunes lookup for full metadata (description, sellerUrl, update date)
+  const ids = chartItems.map((r) => r.id).join(",");
+  const lookupRes = await fetch(`https://itunes.apple.com/lookup?id=${ids}&country=us`, {
+    signal: AbortSignal.timeout(20000),
+  }).catch(() => null);
+
+  const detailMap = new Map<string, Record<string, unknown>>();
+  if (lookupRes?.ok) {
+    const lookupData = await lookupRes.json() as { results?: Array<Record<string, unknown>> };
+    for (const d of lookupData.results ?? []) {
+      if (d.trackId) detailMap.set(String(d.trackId), d);
+    }
+  }
+
   const candidates: Candidate[] = [];
+  const seenDevs = new Set<string>();
 
-  for (const r of data.results ?? []) {
-    const key = r.sellerName.toLowerCase().trim();
-    if (seenSellers.has(key) || !key) continue;
-    seenSellers.add(key);
+  chartItems.forEach((r, idx) => {
+    const detail = detailMap.get(r.id) ?? {};
+    const devName = String(detail.sellerName ?? r.artistName);
+    const key = devName.toLowerCase().trim();
+    if (!key || seenDevs.has(key)) return;
+    seenDevs.add(key);
 
-    const desc = `Mobile game developer (App Store). Game: "${r.trackName}".${r.description ? ` ${r.description.slice(0, 200)}` : ""}`;
-    const contacts = extractContacts(r.description ?? "");
+    const rank = rankStart + idx;
+    const descText = String(detail.description ?? "");
 
     candidates.push({
       type: "mobile",
-      name: r.sellerName,
-      website: r.sellerUrl ?? r.trackViewUrl,
-      description: desc,
-      contacts,
-      rawData: r as unknown as Record<string, unknown>,
+      name: devName,
+      website: String(detail.sellerUrl ?? r.url),
+      description: `Mobile game studio (App Store Top Grossing #${rank}). Game: "${r.name}".${descText ? ` ${descText.slice(0, 200)}` : ""}`,
+      contacts: extractContacts(descText),
+      rawData: { ...r, ...detail, chartRank: rank, chartType: "top-grossing" },
     });
-  }
+  });
+
   return candidates;
 }
 
@@ -791,66 +761,11 @@ function inferEmailFromDomain(website: string): string | null {
   }
 }
 
-// ─── GitHub (FREE — 60 req/hr anonymous, 5000 req/hr with GITHUB_TOKEN) ───────
-
-async function githubSearch(query: string, max = 20): Promise<Candidate[]> {
-  const token = process.env.GITHUB_TOKEN;
-  const headers: Record<string, string> = {
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  // Search GitHub orgs — game studios almost always use org accounts
-  const searchUrl = `https://api.github.com/search/users?q=${encodeURIComponent(query + " type:org")}&per_page=${Math.min(max, 30)}`;
-  const res = await fetch(searchUrl, { headers, signal: AbortSignal.timeout(10000) }).catch(() => null);
-  if (!res?.ok) return [];
-
-  const data = await res.json() as { items?: Array<{ login: string }> };
-  const items = (data.items ?? []).slice(0, 10); // cap profile fetches to avoid rate limits
-
-  const candidates: Candidate[] = [];
-  await Promise.allSettled(items.map(async (user) => {
-    const profileRes = await fetch(`https://api.github.com/users/${user.login}`, {
-      headers,
-      signal: AbortSignal.timeout(6000),
-    }).catch(() => null);
-    if (!profileRes?.ok) return;
-
-    const p = await profileRes.json() as {
-      login: string; name?: string; email?: string; bio?: string;
-      blog?: string; twitter_username?: string; html_url: string;
-    };
-
-    const website = (p.blog && p.blog.startsWith("http")) ? p.blog : p.html_url;
-    const rawText = [p.bio, p.email, p.blog, p.twitter_username].filter(Boolean).join(" ");
-    const contacts = extractContacts(rawText);
-    if (p.email) contacts.email = p.email;
-    if (p.twitter_username) contacts.twitter = `@${p.twitter_username}`;
-
-    candidates.push({
-      type: "web",
-      name: p.name || p.login,
-      website,
-      description: `Game studio on GitHub. ${p.bio ?? ""}`.trim(),
-      contacts,
-      rawData: p as unknown as Record<string, unknown>,
-    });
-  }));
-
-  return candidates;
-}
-
 // ─── Plan type ────────────────────────────────────────────────────────────────
 
 interface Plan {
-  youtubeQueries: string[];
-  webQueries: string[];
-  robloxQueries: string[];
-  steamQueries: string[];
-  mobileQueries: string[];
-  githubQueries: string[];
   segments: string[];
+  sources: string[];
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -878,13 +793,7 @@ export async function processLeadRun(runId: string): Promise<void> {
     }
 
     await prisma.leadRun.update({ where: { id: runId }, data: { plan: plan as unknown as Prisma.InputJsonValue } });
-    await log(runId, "planning", [
-      `YouTube: ${plan.youtubeQueries.length}`,
-      `Web: ${plan.webQueries.length}`,
-      `Roblox: ${plan.robloxQueries.length}`,
-      `Steam: ${plan.steamQueries.length}`,
-      `Mobile: ${plan.mobileQueries.length}`,
-    ].join("  ·  ") + " queries");
+    await log(runId, "planning", `Sources: ${plan.sources.join("  ·  ")}`);
 
     if (await isStopped(runId)) return;
 
@@ -905,107 +814,22 @@ export async function processLeadRun(runId: string): Promise<void> {
     };
     const addMany = (list: Candidate[]) => list.forEach(addCandidate);
 
-    // Scale per-source fetch size with count (need ~3x candidates vs target to filter down)
-    const robloxMax  = Math.min(Math.ceil(run.count * 3 / Math.max(plan.robloxQueries.length, 1)), 200);
-    const steamMax   = Math.min(Math.ceil(run.count * 2 / Math.max(plan.steamQueries.length, 1)), 50);
-    const itunesMax  = Math.min(Math.ceil(run.count * 3 / Math.max(plan.mobileQueries.length, 1)), 200);
-
-    // ── Roblox (free, profile descriptions fetched for contacts) ──
-    await setStage(runId, "Searching Roblox games…");
-    for (const q of plan.robloxQueries) {
-      if (await isStopped(runId)) return;
-      const results = await robloxSearch(q, robloxMax);
-      addMany(results);
-      await setStage(runId, `Roblox: ${candidates.filter((c) => c.type === "roblox").length} developers found…`);
-    }
-    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} developers`);
-
+    // ── Roblox: top games with 1,000+ live players ────────────────────────────
+    await setStage(runId, "Fetching Roblox top games (1,000+ live players)…");
+    addMany(await robloxTopGames(1000, Math.max(run.count * 3, 150)));
+    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} studios`);
     if (await isStopped(runId)) return;
 
-    // ── Steam (free, support email extracted from appdetails) ──
-    await setStage(runId, "Searching Steam…");
-    for (const q of plan.steamQueries) {
-      if (await isStopped(runId)) return;
-      const results = await steamSearch(q, steamMax);
-      addMany(results);
-      await setStage(runId, `Steam: ${candidates.filter((c) => c.type === "steam").length} developers found…`);
-    }
+    // ── Steam: top sellers + new releases (last 24 months) ───────────────────
+    await setStage(runId, "Fetching Steam top sellers & new releases…");
+    addMany(await steamFeaturedGames(24));
     await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} developers`);
-
     if (await isStopped(runId)) return;
 
-    // ── iTunes / App Store (free) ──
-    await setStage(runId, "Searching App Store…");
-    for (const q of plan.mobileQueries) {
-      if (await isStopped(runId)) return;
-      const results = await itunesSearch(q, itunesMax);
-      addMany(results);
-      await setStage(runId, `Mobile: ${candidates.filter((c) => c.type === "mobile").length} developers found…`);
-    }
-    await log(runId, "discovering", `Mobile: ${candidates.filter((c) => c.type === "mobile").length} developers`);
-
-    if (await isStopped(runId)) return;
-
-    // ── YouTube via Invidious (free, no key required) ──
-    await setStage(runId, "Searching YouTube channels…");
-    const perQuery = Math.ceil((run.count * 1.5) / Math.max(plan.youtubeQueries.length, 1));
-    for (const q of plan.youtubeQueries) {
-      if (await isStopped(runId)) return;
-      const channels = await ytSearch(q, Math.min(perQuery + 5, 50));
-      // Fetch full channel detail for description/sub count (in parallel, capped at 10)
-      await Promise.allSettled(channels.slice(0, 10).map(async (ch) => {
-        const detail = await ytChannelDetail(ch.authorId) ?? ch;
-        const contacts = extractContacts(detail.description ?? "");
-        addCandidate({
-          type: "youtube",
-          name: detail.author,
-          website: `https://youtube.com/channel/${detail.authorId}`,
-          description: (detail.description ?? "").slice(0, 300),
-          contacts,
-          rawData: detail as unknown as Record<string, unknown>,
-        });
-      }));
-    }
-    await log(runId, "discovering", `YouTube: ${candidates.filter((c) => c.type === "youtube").length} channels`);
-
-    if (await isStopped(runId)) return;
-
-    // ── Brave Search (free web results) ──
-    if (true) {
-      await setStage(runId, "Searching web…");
-      for (const q of plan.webQueries) {
-        if (await isStopped(runId)) return;
-        const results = await braveSearch(q);
-        await trackCost(runId, "brave", "search", 1, 0);
-        for (const r of results) {
-          try {
-            const host = new URL(r.link.startsWith("http") ? r.link : `https://${r.link}`).hostname;
-            const contacts = extractContacts(`${r.title} ${r.snippet}`);
-            addCandidate({
-              type: "web",
-              name: r.title.replace(/ [-|].*/, "").trim(),
-              website: r.link,
-              description: r.snippet,
-              contacts,
-              rawData: { ...r, host },
-            });
-          } catch { /* skip invalid URLs */ }
-        }
-      }
-      await log(runId, "discovering", `Web: ${candidates.filter((c) => c.type === "web").length} results`);
-    }
-
-    if (await isStopped(runId)) return;
-
-    // ── GitHub orgs (free, no key required — GITHUB_TOKEN increases rate limit) ──
-    await setStage(runId, "Searching GitHub…");
-    for (const q of (plan.githubQueries ?? [])) {
-      if (await isStopped(runId)) return;
-      const results = await githubSearch(q, 20);
-      addMany(results);
-      await setStage(runId, `GitHub: ${candidates.filter((c) => c.type === "web").length} studios found…`);
-    }
-    await log(runId, "discovering", `GitHub: ${candidates.filter((c) => c.rawData?.html_url !== undefined).length} orgs`);
+    // ── App Store: top-grossing chart ranks 50–200 ────────────────────────────
+    await setStage(runId, "Fetching App Store top-grossing chart (ranks 50–200)…");
+    addMany(await appStoreChartSearch(50, 200));
+    await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} studios`);
 
     await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
     await log(runId, "discovering", `Total: ${candidates.length} candidates`);
