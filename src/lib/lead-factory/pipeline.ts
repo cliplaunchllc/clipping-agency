@@ -142,6 +142,49 @@ const SIZE_CEILING = {
   youtubeSubs: 5_000_000, // 5M+ = media company, not a creator looking for help
 };
 
+// ─── Activity filter — always-on, removes dead/abandoned projects ─────────────
+// Every lead must show signs of active development or live users.
+
+const TWO_YEARS_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+
+function isInactive(c: Candidate): boolean {
+  if (c.type === "mobile") {
+    // App Store returns currentVersionReleaseDate — skip apps stale for 2+ years
+    const raw = c.rawData as { currentVersionReleaseDate?: string; releaseDate?: string };
+    const dateStr = raw.currentVersionReleaseDate ?? raw.releaseDate;
+    if (dateStr) {
+      const updated = new Date(dateStr);
+      if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > TWO_YEARS_MS) return true;
+    }
+  }
+
+  if (c.type === "roblox") {
+    // Both CCU and upvotes at essentially zero = abandoned game
+    const raw = c.rawData as { playerCount?: number; totalUpVotes?: number };
+    const ccu   = raw.playerCount  ?? 0;
+    const votes = raw.totalUpVotes ?? 0;
+    if (ccu === 0 && votes < 50) return true;
+  }
+
+  if (c.type === "steam") {
+    // coming_soon: true = unreleased, no active player base yet
+    const raw = c.rawData as { coming_soon?: boolean };
+    if (raw.coming_soon === true) return true;
+  }
+
+  if (c.type === "web") {
+    // GitHub org profiles expose pushed_at — skip orgs dormant for 2+ years
+    const raw = c.rawData as { pushed_at?: string; updated_at?: string };
+    const dateStr = raw.pushed_at ?? raw.updated_at;
+    if (dateStr) {
+      const pushed = new Date(dateStr);
+      if (!isNaN(pushed.getTime()) && Date.now() - pushed.getTime() > TWO_YEARS_MS) return true;
+    }
+  }
+
+  return false;
+}
+
 function isTooLarge(c: Candidate): boolean {
   const name = c.name.toLowerCase();
   const desc = c.description.toLowerCase().slice(0, 200);
@@ -571,7 +614,7 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
 
   await Promise.allSettled(
     games.map(async (game) => {
-      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website`;
+      const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website,release_date`;
       const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
       if (!detRes?.ok) return;
 
@@ -583,6 +626,7 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
           short_description?: string;
           website?: string;
           support_info?: { url?: string; email?: string };
+          release_date?: { coming_soon: boolean; date: string };
         };
       }>;
       const app = detData[String(game.id)];
@@ -610,7 +654,7 @@ async function steamSearch(query: string, max = 15): Promise<Candidate[]> {
         website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
         description: `Steam game developer. Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
         contacts,
-        rawData: { appId: game.id, gameName: game.name, supportUrl: app.data.support_info?.url, ...app.data },
+        rawData: { appId: game.id, gameName: game.name, supportUrl: app.data.support_info?.url, coming_soon: app.data.release_date?.coming_soon ?? false, ...app.data },
       });
     })
   );
@@ -632,6 +676,10 @@ async function itunesSearch(query: string, max = 30): Promise<Candidate[]> {
       sellerUrl?: string;
       trackViewUrl: string;
       description?: string;
+      currentVersionReleaseDate?: string;
+      releaseDate?: string;
+      averageUserRatingForCurrentVersion?: number;
+      userRatingCountForCurrentVersion?: number;
     }>;
   };
 
@@ -975,13 +1023,13 @@ export async function processLeadRun(runId: string): Promise<void> {
     // for a small agency regardless of what the prompt says.
     // ──────────────────────────────────────────────────────────────────────────
     const beforeFilter = candidates.length;
-    const filtered = candidates.filter((c) => !isTooLarge(c));
+    const filtered = candidates.filter((c) => !isTooLarge(c) && !isInactive(c));
     // Replace candidates array in-place
     candidates.length = 0;
     candidates.push(...filtered);
     const removedCount = beforeFilter - candidates.length;
     if (removedCount > 0) {
-      await log(runId, "discovering", `Filtered out ${removedCount} large/enterprise companies`);
+      await log(runId, "discovering", `Filtered out ${removedCount} inactive / large companies`);
     }
 
     // Domain inference for email
