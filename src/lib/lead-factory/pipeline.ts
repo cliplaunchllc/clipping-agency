@@ -145,7 +145,7 @@ const SIZE_CEILING = {
 // ─── Activity filter — always-on, removes dead/abandoned projects ─────────────
 // Every lead must show signs of active development or live users.
 
-const TWO_YEARS_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+const ACTIVE_WINDOW_MS = 6 * 30 * 24 * 60 * 60 * 1000; // 6 months
 
 function isInactive(c: Candidate): boolean {
   if (c.type === "mobile") {
@@ -154,7 +154,7 @@ function isInactive(c: Candidate): boolean {
     const dateStr = raw.currentVersionReleaseDate ?? raw.releaseDate;
     if (dateStr) {
       const updated = new Date(dateStr);
-      if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > TWO_YEARS_MS) return true;
+      if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > ACTIVE_WINDOW_MS) return true;
     }
   }
 
@@ -178,7 +178,7 @@ function isInactive(c: Candidate): boolean {
     const dateStr = raw.pushed_at ?? raw.updated_at;
     if (dateStr) {
       const pushed = new Date(dateStr);
-      if (!isNaN(pushed.getTime()) && Date.now() - pushed.getTime() > TWO_YEARS_MS) return true;
+      if (!isNaN(pushed.getTime()) && Date.now() - pushed.getTime() > ACTIVE_WINDOW_MS) return true;
     }
   }
 
