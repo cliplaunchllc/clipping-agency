@@ -498,7 +498,7 @@ async function robloxTopGames(minCCU = 1000, take = 150): Promise<Candidate[]> {
   let pages = 0;
 
   while (seenCreators.size < take && pages < 6) {
-    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
@@ -555,29 +555,28 @@ async function robloxTopGames(minCCU = 1000, take = 150): Promise<Candidate[]> {
 // games released within maxAgeMonths. Skips coming_soon titles.
 
 async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
-  const res = await fetch("https://store.steampowered.com/api/getfeaturedcategories?cc=us&l=en", {
+  // SteamSpy top100in2weeks — free, no key, reliably returns ~100 trending games
+  const res = await fetch("https://steamspy.com/api.php?request=top100in2weeks", {
     signal: AbortSignal.timeout(12000),
   }).catch(() => null);
   if (!res?.ok) return [];
 
-  const data = await res.json() as {
-    top_sellers?:  { items?: Array<{ id: number; name: string }> };
-    new_releases?: { items?: Array<{ id: number; name: string }> };
-    coming_soon?:  { items?: Array<{ id: number; name: string }> };
-  };
+  const data = await res.json() as Record<string, {
+    appid: number;
+    name: string;
+    developer: string;
+    publisher: string;
+    owners: string;
+  }>;
 
-  const seen = new Set<number>();
-  const queue: Array<{ id: number; name: string; source: string }> = [];
-  for (const g of data.top_sellers?.items  ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "Top Seller" }); } }
-  for (const g of data.new_releases?.items ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "New Release" }); } }
-  for (const g of data.coming_soon?.items  ?? []) { if (!seen.has(g.id)) { seen.add(g.id); queue.push({ ...g, source: "Upcoming" }); } }
-
+  const games = Object.values(data).slice(0, 60); // cap at 60 to avoid too many appdetails calls
   const cutoff = new Date(Date.now() - maxAgeMonths * 30 * 24 * 60 * 60 * 1000);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
-  await Promise.allSettled(queue.map(async (game) => {
-    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.id}&filters=basic,developers,publishers,support_info,website,release_date`;
+  await Promise.allSettled(games.map(async (game) => {
+    const appid = game.appid;
+    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic,developers,publishers,support_info,website,release_date`;
     const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
     if (!detRes?.ok) return;
 
@@ -592,16 +591,16 @@ async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
         release_date?: { coming_soon: boolean; date: string };
       };
     }>;
-    const app = detData[String(game.id)];
+    const app = detData[String(appid)];
     if (!app?.success || !app.data) return;
 
-    // For top sellers, enforce the age window; new releases and upcoming are already recent
-    if (game.source === "Top Seller" && app.data.release_date?.date) {
+    // Skip games older than the age window
+    if (app.data.release_date?.date) {
       const rel = new Date(app.data.release_date.date);
       if (!isNaN(rel.getTime()) && rel < cutoff) return;
     }
 
-    const devName = app.data.developers?.[0] ?? app.data.publishers?.[0];
+    const devName = app.data.developers?.[0] ?? app.data.publishers?.[0] ?? game.developer;
     if (!devName) return;
     const key = devName.toLowerCase().trim();
     if (seenDevs.has(key)) return;
@@ -610,10 +609,10 @@ async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
     candidates.push({
       type: "steam",
       name: devName,
-      website: app.data.website ?? `https://store.steampowered.com/app/${game.id}`,
-      description: `Steam developer (${game.source}). Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
+      website: app.data.website ?? `https://store.steampowered.com/app/${appid}`,
+      description: `Steam developer (Top Trending). Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
       contacts: { email: app.data.support_info?.email ?? null, instagram: null, twitter: null, linkedin: null, discord: null },
-      rawData: { appId: game.id, gameName: game.name, coming_soon: app.data.release_date?.coming_soon ?? false, source: game.source, ...app.data },
+      rawData: { appId: appid, gameName: game.name, coming_soon: app.data.release_date?.coming_soon ?? false, source: "SteamSpy Top 100", ...app.data },
     });
   }));
 
@@ -626,18 +625,26 @@ async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
 
 async function appStoreChartSearch(rankStart = 50, rankEnd = 200): Promise<Candidate[]> {
   const limit = Math.min(rankEnd, 200);
-  const rssUrl = `https://rss.applemarketingtools.com/api/v2/us/apps/top-grossing/${limit}/games.json`;
+  // iTunes legacy RSS feed — confirmed working (rss.applemarketingtools.com returns 405)
+  const rssUrl = `https://itunes.apple.com/us/rss/topgrossingapplications/limit=${limit}/genre=6014/json`;
   const rssRes = await fetch(rssUrl, { signal: AbortSignal.timeout(12000) }).catch(() => null);
   if (!rssRes?.ok) return [];
 
   const rssData = await rssRes.json() as {
-    feed?: { results?: Array<{ id: string; name: string; artistName: string; url: string }> };
+    feed?: {
+      entry?: Array<{
+        "im:name": { label: string };
+        "im:artist": { label: string };
+        id: { attributes: { "im:id": string }; label: string };
+      }>;
+    };
   };
-  const chartItems = (rssData.feed?.results ?? []).slice(rankStart - 1);
-  if (!chartItems.length) return [];
+
+  const entries = (rssData.feed?.entry ?? []).slice(rankStart - 1);
+  if (!entries.length) return [];
 
   // Batch iTunes lookup for full metadata (description, sellerUrl, update date)
-  const ids = chartItems.map((r) => r.id).join(",");
+  const ids = entries.map((e) => e.id.attributes["im:id"]).join(",");
   const lookupRes = await fetch(`https://itunes.apple.com/lookup?id=${ids}&country=us`, {
     signal: AbortSignal.timeout(20000),
   }).catch(() => null);
@@ -653,9 +660,11 @@ async function appStoreChartSearch(rankStart = 50, rankEnd = 200): Promise<Candi
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
-  chartItems.forEach((r, idx) => {
-    const detail = detailMap.get(r.id) ?? {};
-    const devName = String(detail.sellerName ?? r.artistName);
+  entries.forEach((e, idx) => {
+    const appId = e.id.attributes["im:id"];
+    const detail = detailMap.get(appId) ?? {};
+    const devName = String(detail.sellerName ?? detail.artistName ?? e["im:artist"].label);
+    const appName = e["im:name"].label;
     const key = devName.toLowerCase().trim();
     if (!key || seenDevs.has(key)) return;
     seenDevs.add(key);
@@ -666,10 +675,10 @@ async function appStoreChartSearch(rankStart = 50, rankEnd = 200): Promise<Candi
     candidates.push({
       type: "mobile",
       name: devName,
-      website: String(detail.sellerUrl ?? r.url),
-      description: `Mobile game studio (App Store Top Grossing #${rank}). Game: "${r.name}".${descText ? ` ${descText.slice(0, 200)}` : ""}`,
+      website: String(detail.sellerUrl ?? `https://apps.apple.com/us/app/id${appId}`),
+      description: `Mobile game studio (App Store Top Grossing #${rank}). Game: "${appName}".${descText ? ` ${descText.slice(0, 200)}` : ""}`,
       contacts: extractContacts(descText),
-      rawData: { ...r, ...detail, chartRank: rank, chartType: "top-grossing" },
+      rawData: { appId, appName, chartRank: rank, chartType: "top-grossing", ...detail },
     });
   });
 
