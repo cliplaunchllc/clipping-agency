@@ -398,63 +398,77 @@ interface RobloxGamesListGame {
   };
 }
 
-async function robloxTopGames(minPlaying: number, take: number, rejections: RejectionRecord[]): Promise<Candidate[]> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractGamesArray(body: any): Array<Record<string, unknown>> {
+  // Roblox has changed response shapes across API versions — check all known field names
+  const arr = body?.games ?? body?.data ?? body?.items ?? body?.Games ?? [];
+  return Array.isArray(arr) ? arr : [];
+}
+
+async function robloxTopGames(
+  minPlaying: number,
+  take: number,
+  rejections: RejectionRecord[],
+  dbLog: (msg: string) => void,
+): Promise<Candidate[]> {
   const ROBLOX_HEADERS = {
     "User-Agent": SCRAPE_UA,
     Accept: "application/json",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.roblox.com/",
+    "Origin": "https://www.roblox.com",
   };
 
-  // Try multiple URL strategies in order until one yields games.
-  // The sort token approach requires an extra round-trip that can fail;
-  // the fallback URLs work directly without a token.
-  const urlStrategies = [
-    // Strategy 1: fetch a valid sort token from the sorts endpoint
-    async () => {
-      try {
-        const r = await fetch(
-          "https://games.roblox.com/v1/games/sorts?GameSortsContext=GamesDefaultSorts",
-          { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(8000) }
-        ).catch(() => null);
-        if (r?.ok) {
-          const d = await r.json() as { sorts?: Array<{ token: string; name: string }> };
-          const t = d.sorts?.find((s) => /engaging|popular|top rated|visited|trending/i.test(s.name))?.token
-            ?? d.sorts?.[0]?.token ?? "";
-          if (t) return `https://games.roblox.com/v1/games/list?model.sortToken=${encodeURIComponent(t)}&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`;
-        }
-      } catch { /* fall through */ }
-      return null;
-    },
-    // Strategy 2: no sort token, numeric genre filter
-    async () => `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`,
-    // Strategy 3: original string genre filter
-    async () => `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100`,
-  ];
+  // ── Step 1: fetch sort tokens ─────────────────────────────────────────────
+  let sortToken = "";
+  const sortsRes = await fetch(
+    "https://games.roblox.com/v1/games/sorts?GameSortsContext=GamesDefaultSorts",
+    { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(10000) }
+  ).catch(() => null);
+
+  dbLog(`Roblox sorts API → status=${sortsRes?.status ?? "network-error"}`);
+
+  if (sortsRes?.ok) {
+    const sortsRaw = await sortsRes.text().catch(() => "");
+    dbLog(`Roblox sorts raw (200 chars): ${sortsRaw.slice(0, 200)}`);
+    try {
+      const sortsData = JSON.parse(sortsRaw) as { sorts?: Array<{ token: string; name: string }> };
+      const preferred = sortsData.sorts?.find((s) => /engaging|popular|top rated|visited|trending/i.test(s.name))
+        ?? sortsData.sorts?.[0];
+      sortToken = preferred?.token ?? "";
+      dbLog(`Roblox sort token selected: "${sortToken.slice(0, 60)}" (${preferred?.name ?? "none"})`);
+    } catch { dbLog("Roblox sorts JSON parse failed"); }
+  }
+
+  // ── Step 2: probe game-list URLs until one returns games ──────────────────
+  const candidateUrls = [
+    sortToken
+      ? `https://games.roblox.com/v1/games/list?model.sortToken=${encodeURIComponent(sortToken)}&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`
+      : null,
+    `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`,
+    `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100`,
+    `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.maxRows=100`,
+  ].filter(Boolean) as string[];
 
   let baseUrl: string | null = null;
-  for (const strategy of urlStrategies) {
-    const u = await strategy();
-    if (!u) continue;
-    // Quick probe: one request to see if games come back
+  for (const u of candidateUrls) {
     const probe = await fetch(u, { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(10000) }).catch(() => null);
-    console.log(`[roblox] strategy probe ${u.slice(0, 80)} → status=${probe?.status}`);
+    const rawText = probe ? await probe.text().catch(() => "") : "";
+    dbLog(`Probe ${u.slice(50, 120)} → status=${probe?.status ?? "err"} body=${rawText.slice(0, 150)}`);
     if (probe?.ok) {
-      const probeData = await probe.json().catch(() => ({ games: [] })) as { games?: unknown[] };
-      console.log(`[roblox] strategy games count=${probeData.games?.length ?? 0}`);
-      if ((probeData.games?.length ?? 0) > 0) {
-        baseUrl = u;
-        break;
-      }
+      let body: unknown;
+      try { body = JSON.parse(rawText); } catch { continue; }
+      const games = extractGamesArray(body);
+      if (games.length > 0) { baseUrl = u; break; }
     }
   }
 
   if (!baseUrl) {
-    console.log("[roblox] all URL strategies failed — no games returned");
+    dbLog("Roblox: all URL strategies returned 0 games — API may be blocking server requests");
     return [];
   }
 
-  // Map: placeId → game data (use placeId as key, not creatorId)
+  // ── Step 3: paginate ──────────────────────────────────────────────────────
   const seenGames = new Map<number, RobloxGamesListGame>();
   let cursor = "";
   let pages = 0;
@@ -463,49 +477,44 @@ async function robloxTopGames(minPlaying: number, take: number, rejections: Reje
   while (seenGames.size < take * 3 && pages < maxPages) {
     const url = `${baseUrl}${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
     const res = await fetch(url, { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(12000) }).catch(() => null);
-    if (!res?.ok) { console.log(`[roblox] page ${pages} failed status=${res?.status}`); break; }
+    if (!res?.ok) { dbLog(`Roblox page ${pages} failed status=${res?.status}`); break; }
 
-    const data = await res.json() as {
-      games?: Array<{
-        placeId?: number; name?: string; playerCount?: number;
-        totalUpVotes?: number; updated?: string;
-        creatorId?: number; creatorName?: string; creatorType?: string;
-        // newer field names
-        id?: number; rootPlaceId?: number; playing?: number;
-        creator?: { id: number; name: string; type: string };
-      }>;
-      nextPageCursor?: string;
-    };
-
-    const games = data.games ?? [];
-    console.log(`[roblox] page ${pages}: ${games.length} games, seenGames=${seenGames.size}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body = await res.json().catch(() => ({})) as any;
+    const games = extractGamesArray(body);
 
     for (const g of games) {
-      const placeId = g.placeId ?? g.rootPlaceId ?? g.id ?? 0;
-      const playing = g.playerCount ?? g.playing ?? 0;
+      const placeId = Number(g.placeId ?? g.rootPlaceId ?? g.id ?? 0);
+      const playing = Number(g.playerCount ?? g.playing ?? g.activePlayers ?? 0);
       if (placeId && playing >= minPlaying && !seenGames.has(placeId)) {
         seenGames.set(placeId, {
-          id: g.id ?? placeId,
+          id: (g.id as number) ?? placeId,
           rootPlaceId: placeId,
-          name: g.name ?? "",
+          name: (g.name as string) ?? "",
           playing,
           visits: 0,
-          totalUpVotes: g.totalUpVotes ?? 0,
+          totalUpVotes: (g.totalUpVotes as number) ?? 0,
           totalDownVotes: 0,
-          updated: g.updated ?? "",
-          creator: g.creator ?? { id: g.creatorId ?? 0, name: g.creatorName ?? "", type: g.creatorType ?? "Group" },
+          updated: (g.updated as string) ?? "",
+          creator: (g.creator as { id: number; name: string; type: string }) ?? {
+            id: (g.creatorId as number) ?? 0,
+            name: (g.creatorName as string) ?? "",
+            type: (g.creatorType as string) ?? "Group",
+          },
         });
       }
     }
 
-    cursor = data.nextPageCursor ?? "";
+    cursor = body?.nextPageCursor ?? "";
     pages++;
     if (!cursor) break;
-    const lastPlaying = games.length > 0 ? (games[games.length - 1].playerCount ?? games[games.length - 1].playing ?? 0) : 0;
+    const lastPlaying: number = games.length > 0
+      ? ((games[games.length - 1].playerCount as number) ?? (games[games.length - 1].playing as number) ?? 0)
+      : 0;
     if (lastPlaying > 0 && lastPlaying < minPlaying * 0.3) break;
   }
 
-  console.log(`[roblox] total seenGames after fetch: ${seenGames.size} (minPlaying=${minPlaying})`);
+  dbLog(`Roblox fetch done: ${seenGames.size} games passed playerCount≥${minPlaying} filter`);
   if (!seenGames.size) return [];
 
   const entries = [...seenGames.values()].slice(0, take * 2);
@@ -1279,7 +1288,12 @@ export async function processLeadRun(runId: string): Promise<void> {
     if (flags.sources.has("roblox")) {
       const minPlaying = flags.minPlayers ?? cfg.sources.roblox_min_ccu;
       await setStage(runId, `Fetching Roblox top games (≥${minPlaying} playing)…`);
-      const robloxResults = await robloxTopGames(minPlaying, Math.max(run.count * 4, 200), rejections);
+      const robloxResults = await robloxTopGames(
+        minPlaying,
+        Math.max(run.count * 4, 200),
+        rejections,
+        (msg) => { log(runId, "discovering", msg).catch(() => {}); },
+      );
       totalPulled += Math.max(run.count * 4, 200);
       robloxResults.forEach(tryAdd);
       await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates`);
