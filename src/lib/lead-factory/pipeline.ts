@@ -825,7 +825,7 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     // ── Roblox: top games with 1,000+ live players ────────────────────────────
     await setStage(runId, "Fetching Roblox top games (1,000+ live players)…");
-    addMany(await robloxTopGames(1000, Math.max(run.count * 3, 150)));
+    addMany(await robloxTopGames(1000, Math.max(run.count * 6, 300)));
     await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} studios`);
     if (await isStopped(runId)) return;
 
@@ -884,7 +884,7 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     let savedCount = 0;
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    const processCap = run.count * 3; // enough headroom to fill quota after filtering
+    const processCap = run.count * 6; // wide headroom — many leads drop if no email found
     const toProcess = shuffled.slice(0, Math.min(shuffled.length, processCap));
 
     const BATCH = 20; // process in batches to update progress periodically
@@ -908,7 +908,7 @@ export async function processLeadRun(runId: string): Promise<void> {
         // Hard criteria filter — skip candidates that don't meet required conditions
         if (criteriaSignals && !meetsHardCriteria(c, criteriaSignals)) continue;
 
-        // Serper email enrichment — best-effort, leads are saved even without an email
+        // Serper email enrichment — try hard to find an email before saving
         let finalEmail = a.dmEmail || c.contacts.email || null;
         if (!finalEmail) {
           const found = await serperEmailSearch(c.name, c.website);
@@ -918,7 +918,6 @@ export async function processLeadRun(runId: string): Promise<void> {
             c.contacts.email = found;
           }
         }
-        // Last resort: contact enrichment via Serper general search
         if (!finalEmail) {
           const { contacts } = await serperContactEnrich(c.name, c.website);
           await trackCost(runId, "brave", "contact_enrich", 1, 0);
@@ -926,7 +925,8 @@ export async function processLeadRun(runId: string): Promise<void> {
           if (contacts.email) c.contacts = mergeContacts(c.contacts, contacts);
         }
 
-        // Save regardless — no email just means outreach via social/discord/direct
+        if (!finalEmail) continue; // no email found — skip this lead
+
         savedCount++;
 
         await prisma.leadFactoryLead.create({
