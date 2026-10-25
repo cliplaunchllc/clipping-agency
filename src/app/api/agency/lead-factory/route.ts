@@ -18,16 +18,14 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { prompt, offer, criteria, count, mode } = await req.json();
-  if (!prompt?.trim()) return NextResponse.json({ error: "Prompt required" }, { status: 400 });
+  const { criteria, count, mode } = await req.json();
 
   const run = await prisma.leadRun.create({
     data: {
-      prompt: prompt.trim(),
-      offer: offer?.trim() || null,
+      prompt: criteria?.trim() || "game studio or app developer",
       criteria: criteria?.trim() || null,
       count: count || 25,
-      mode: mode || "deep",
+      mode: mode || "bulk",
       status: "pending",
     },
     include: { _count: { select: { leads: true } } },

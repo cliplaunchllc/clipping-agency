@@ -130,13 +130,9 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // New run form
-  const [prompt, setPrompt] = useState("");
-  const [offer, setOffer] = useState("");
   const [criteria, setCriteria] = useState("");
   const [count, setCount] = useState(25);
-  const [mode, setMode] = useState<"bulk" | "deep">("bulk");
   const [runSaving, setRunSaving] = useState(false);
-  const [showOffer, setShowOffer] = useState(false);
 
   // ── Polling ────────────────────────────────────────────────────────────────
   const pollRun = useCallback(async (runId: string) => {
@@ -183,8 +179,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   });
   const [leadSaving, setLeadSaving] = useState(false);
 
-  const estCost = estimateCost(count, mode);
-  const rateLabel = `$${COST_PER_LEAD[mode].toFixed(3)}/lead`;
+  const estCost = estimateCost(count, "bulk");
+  const rateLabel = `$${COST_PER_LEAD["bulk"].toFixed(3)}/lead`;
 
   async function loadLeads(run: LeadRun) {
     setSelectedRun(run);
@@ -204,18 +200,17 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   }
 
   async function handleCreateRun() {
-    if (!prompt.trim()) return;
     setRunSaving(true);
     const res = await fetch("/api/agency/lead-factory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, offer, criteria, count, mode }),
+      body: JSON.stringify({ criteria, count, mode: "bulk" }),
     });
     if (res.ok) {
       const run = await res.json();
       setRuns((prev) => [run, ...prev]);
-      setPrompt(""); setOffer(""); setCriteria(""); setCount(25); setMode("bulk");
-      setShowNewRun(false); setShowOffer(false);
+      setCriteria(""); setCount(25);
+      setShowNewRun(false);
     }
     setRunSaving(false);
   }
@@ -315,57 +310,18 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
           style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
 
           <div className="px-6 pt-5 pb-4 space-y-4">
-            {/* Target prompt */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                Target audience
-              </label>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={2}
-                placeholder="e.g. Gaming creators with 100K–2M subscribers focused on FPS content"
-                style={{ ...inputStyle, resize: "none" }}
-                autoFocus
-              />
-            </div>
-
-            {/* Offer (collapsible) */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowOffer((v) => !v)}
-                className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {showOffer ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                {showOffer ? "Hide offer/pitch" : "Add offer/pitch"}
-              </button>
-              {showOffer && (
-                <textarea
-                  value={offer}
-                  onChange={(e) => setOffer(e.target.value)}
-                  rows={2}
-                  placeholder="What you're offering these leads…"
-                  style={{ ...inputStyle, resize: "none", marginTop: 8 }}
-                />
-              )}
-            </div>
-
             {/* Criteria */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
                 Criteria
-                <span className="ml-2 font-normal" style={{ color: "var(--text-tertiary)" }}>
-                  (optional — describe what makes a good lead)
-                </span>
               </label>
               <textarea
                 value={criteria}
                 onChange={(e) => setCriteria(e.target.value)}
-                rows={2}
+                rows={3}
                 placeholder="e.g. must have active downloads, backed by VC with capital, has instagram, min 100k subscribers…"
                 style={{ ...inputStyle, resize: "none" }}
+                autoFocus
               />
               {criteria.trim() && (
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -394,43 +350,20 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
               )}
             </div>
 
-            {/* Count + Mode */}
-            <div className="flex items-end gap-4">
-              <div style={{ width: 100 }}>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                  # Leads
-                </label>
-                <input
-                  type="number" min={1} max={200} value={count}
-                  onChange={(e) => setCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
-                  style={inputStyle}
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Mode</label>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                  {(["bulk", "deep"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMode(m)}
-                      className="flex-1 py-2 text-xs font-medium transition-all"
-                      style={{
-                        background: mode === m ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.03)",
-                        color: mode === m ? "var(--accent)" : "var(--text-tertiary)",
-                        borderRight: m === "bulk" ? "1px solid rgba(255,255,255,0.08)" : undefined,
-                      }}
-                    >
-                      {m === "bulk" ? "Bulk · fast" : "Deep · thorough"}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Count */}
+            <div style={{ width: 120 }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                # Leads
+              </label>
+              <input
+                type="number" min={1} max={200} value={count}
+                onChange={(e) => setCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                style={inputStyle}
+              />
             </div>
           </div>
 
-          {/* Cost estimate footer */}
+          {/* Footer */}
           <div className="px-6 py-3 flex items-center justify-between"
             style={{ background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-center gap-3">
@@ -441,19 +374,19 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                 </span>
               </div>
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                {rateLabel} &nbsp;·&nbsp; {count} lead{count !== 1 ? "s" : ""} &nbsp;·&nbsp; {mode} mode
+                {rateLabel} &nbsp;·&nbsp; {count} lead{count !== 1 ? "s" : ""}
               </span>
             </div>
             <button
               onClick={handleCreateRun}
-              disabled={runSaving || !prompt.trim()}
+              disabled={runSaving}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: "rgba(255,59,59,0.15)",
                 border: "1px solid rgba(255,59,59,0.3)",
                 color: "var(--accent)",
-                opacity: runSaving || !prompt.trim() ? 0.4 : 1,
-                cursor: runSaving || !prompt.trim() ? "not-allowed" : "pointer",
+                opacity: runSaving ? 0.4 : 1,
+                cursor: runSaving ? "not-allowed" : "pointer",
               }}
             >
               <Zap size={11} />
@@ -532,10 +465,10 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                     </div>
                   </div>
 
-                  {/* Prompt */}
+                  {/* Criteria or fallback */}
                   <p className="text-xs font-medium leading-snug line-clamp-2 mb-2"
                     style={{ color: "var(--text-primary)" }}>
-                    {run.prompt}
+                    {run.criteria || "No criteria"}
                   </p>
 
                   {/* Progress bar (active only) */}
@@ -597,13 +530,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                       </span>
                     </div>
                     <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
-                      {selectedRun.prompt}
+                      {selectedRun.criteria || "No criteria"}
                     </p>
-                    {selectedRun.criteria && (
-                      <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-tertiary)" }}>
-                        Criteria: {selectedRun.criteria}
-                      </p>
-                    )}
                     {selectedRun.stage && (
                       <p className="text-xs mt-1" style={{ color: selectedRun.status === "failed" ? "#FF3B3B" : "var(--text-tertiary)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                         {selectedRun.stage}
