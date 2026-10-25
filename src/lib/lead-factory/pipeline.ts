@@ -908,9 +908,9 @@ export async function processLeadRun(runId: string): Promise<void> {
         // Hard criteria filter — skip candidates that don't meet required conditions
         if (criteriaSignals && !meetsHardCriteria(c, criteriaSignals)) continue;
 
-        // Serper email enrichment — only runs for leads that passed scoring
+        // Serper email enrichment — best-effort, leads are saved even without an email
         let finalEmail = a.dmEmail || c.contacts.email || null;
-        if (!finalEmail && true) {
+        if (!finalEmail) {
           const found = await serperEmailSearch(c.name, c.website);
           await trackCost(runId, "brave", "email_enrich", 2, 0);
           if (found) {
@@ -919,15 +919,14 @@ export async function processLeadRun(runId: string): Promise<void> {
           }
         }
         // Last resort: contact enrichment via Serper general search
-        if (!finalEmail && true) {
+        if (!finalEmail) {
           const { contacts } = await serperContactEnrich(c.name, c.website);
           await trackCost(runId, "brave", "contact_enrich", 1, 0);
           finalEmail = contacts.email;
           if (contacts.email) c.contacts = mergeContacts(c.contacts, contacts);
         }
 
-        if (!finalEmail) continue; // still no email — skip
-
+        // Save regardless — no email just means outreach via social/discord/direct
         savedCount++;
 
         await prisma.leadFactoryLead.create({
