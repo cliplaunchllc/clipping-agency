@@ -12,8 +12,23 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import cfg from "./config.json";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const gplay = (require("google-play-scraper").default ?? require("google-play-scraper")) as typeof import("google-play-scraper").default;
+
+// google-play-scraper is loaded lazily inside googlePlayTopGames() to prevent
+// a module-load crash from breaking the entire pipeline.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _gplay: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getGplay(): any {
+  if (_gplay) return _gplay;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const m = require("google-play-scraper");
+    _gplay = m.default ?? m;
+  } catch {
+    _gplay = null;
+  }
+  return _gplay;
+}
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -58,7 +73,7 @@ function blankEnrichment(): Pick<Candidate, "decisionMaker" | "decisionMakerTitl
 }
 
 interface Candidate {
-  type:       "roblox" | "steam" | "mobile" | "android";
+  type:       "roblox" | "steam" | "mobile";
   name:       string;  // developer / studio name
   website:    string;  // own website (not platform profile)
   storeLink:  string;  // actual store page
@@ -812,166 +827,10 @@ async function appStoreTopGames(rejections: RejectionRecord[]): Promise<Candidat
   return candidates;
 }
 
-// ─── Google Play source ───────────────────────────────────────────────────────
-// google-play-scraper: no API key, exposes developerEmail directly.
-
-const GPLAY_CATEGORIES = [
-  "GAME_ACTION", "GAME_ADVENTURE", "GAME_ARCADE",
-  "GAME_MUSIC", "GAME_RACING", "GAME_ROLE_PLAYING",
-  "GAME_SIMULATION", "GAME_SPORTS", "GAME_STRATEGY",
-] as const;
-
-async function googlePlayTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
-  const countries = cfg.sources.app_store_countries;
-  // Map developer name (lowercased) → {appId, country, category} for one representative app
-  const devToApp = new Map<string, { appId: string; country: string; category: string }>();
-
-  // Step 1: Fetch basic list data concurrently (no full detail — fast)
-  await Promise.allSettled(
-    countries.flatMap((country) =>
-      GPLAY_CATEGORIES.map(async (cat) => {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const apps: Array<{ appId: string; developer?: string }> = await (gplay as any).list({
-            collection: "GROSSING",
-            category: cat,
-            country,
-            num: 100,
-            throttle: 10,
-          });
-          for (const a of apps) {
-            if (a.developer && !devToApp.has(a.developer.toLowerCase())) {
-              devToApp.set(a.developer.toLowerCase(), { appId: a.appId, country, category: cat });
-            }
-          }
-        } catch { /* non-fatal */ }
-      })
-    )
-  );
-
-  if (!devToApp.size) return [];
-
-  // Step 2: Fetch full details in concurrent batches — cap at 300 devs, hard timeout 3 min
-  const MAX_DEVS = 300;
-  const BATCH = 15;
-  const entries = [...devToApp.entries()].slice(0, MAX_DEVS);
-  const candidates: Candidate[] = [];
-  const seenDevs = new Set<string>();
-  const maxAge = cfg.activity.max_age_days;
-  const minRatings = cfg.activity.min_ratings_mobile;
-  const deadline = Date.now() + 3 * 60 * 1000; // 3-minute hard stop
-
-  for (let i = 0; i < entries.length; i += BATCH) {
-    if (Date.now() > deadline) break;
-    const batch = entries.slice(i, i + BATCH);
-
-    const results = await Promise.allSettled(
-      batch.map(async ([devKey, meta]) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const detail: Record<string, any> = await (gplay as any).app({
-          appId: meta.appId,
-          country: meta.country,
-          throttle: 10,
-        });
-        return { devKey, meta, detail };
-      })
-    );
-
-    for (const r of results) {
-      if (r.status !== "fulfilled") continue;
-      const { devKey, meta, detail } = r.value;
-      if (!detail || seenDevs.has(devKey)) continue;
-
-      const devName: string = detail.developer ?? "";
-      if (!devName) continue;
-      seenDevs.add(devKey);
-
-      if (isCompanyBlocked(devName)) {
-        rejections.push({ name: devName, reason: "Company blocklisted", source: "android" });
-        continue;
-      }
-
-      const primaryGenre: string = detail.genre ?? "";
-      const gameName: string = detail.title ?? "";
-      const desc: string = detail.description ?? "";
-
-      if (isRejectedGenre(primaryGenre, gameName, desc)) {
-        rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}"`, source: "android" });
-        continue;
-      }
-
-      const ratings: number = detail.ratings ?? 0;
-      if (ratings < minRatings) {
-        rejections.push({ name: devName, reason: `Only ${ratings} ratings (min ${minRatings})`, source: "android" });
-        continue;
-      }
-
-      const updatedMs = typeof detail.updated === "number" ? detail.updated : null;
-      const lastUpdate = updatedMs ? new Date(updatedMs).toISOString() : null;
-      if (!lastUpdate || isActivityStale(lastUpdate, maxAge)) {
-        rejections.push({ name: devName, reason: `Not updated within ${maxAge} days`, source: "android" });
-        continue;
-      }
-
-      const storeLink: string = detail.url ?? `https://play.google.com/store/apps/details?id=${meta.appId}`;
-      const rawDevSite: string | null = detail.developerWebsite ?? null;
-      const ownWebsite = rawDevSite && !isDomainBlocked(rawDevSite) ? rawDevSite : null;
-
-      const rawEmail: string | null = detail.developerEmail ?? null;
-      let contactEmail: string | null = null;
-      let contactGeneric = false;
-      if (rawEmail) {
-        const ec = classifyEmail(rawEmail);
-        if (ec) { contactEmail = ec.email; contactGeneric = ec.generic; }
-      }
-
-      const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
-      const earnsRealMoney = (detail.price ?? 0) > 0 || detail.free === false;
-
-      candidates.push({
-        type: "android",
-        name: devName,
-        website: ownWebsite ?? storeLink,
-        storeLink,
-        gameName,
-        description: `Android developer (Google Play, ${meta.country.toUpperCase()}). Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
-        genre: primaryGenre,
-        chartRank: null,
-        ratingsCount: ratings,
-        installCount: detail.minInstalls ?? null,
-        lastUpdateDate: lastUpdate,
-        updateProofUrl: storeLink,
-        country: meta.country.toUpperCase(),
-        earnsRealMoney,
-        contacts: {
-          email: contactEmail,
-          emailSource: contactEmail ? "published" : null,
-          genericInbox: contactGeneric,
-          ...handles,
-        },
-        ...blankEnrichment(),
-        rawData: {
-          source: "Google Play",
-          appId: meta.appId,
-          storeDeveloperEmail: rawEmail,
-          storeDeveloperWebsite: rawDevSite,
-          installsString: detail.installs,
-          storeMinInstalls: detail.minInstalls,
-          storeTitle: gameName,
-          storeGenre: primaryGenre,
-          storeRatings: ratings,
-          storeScore: detail.score,
-          storeUpdated: detail.updated,
-          storeUrl: storeLink,
-          storeFree: detail.free,
-          storePrice: detail.price,
-          storeDeveloper: devName,
-        },
-      });
-    }
-  }
-
-  return candidates;
+// Google Play removed at user request — stub returns empty.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function googlePlayTopGames(_rejections: RejectionRecord[]): Promise<Candidate[]> {
+  return [];
 }
 
 // ─── Named contact finder (SearXNG → LinkedIn pattern) ────────────────────────
@@ -1217,14 +1076,6 @@ export async function processLeadRun(runId: string): Promise<void> {
     totalPulled += (cfg.sources.app_store_countries.length * (cfg.sources.app_store_allowed_subcategory_ids.length + 1)) * 400; // grossing + free
     mobileResults.forEach(tryAdd);
     await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates`);
-    if (await isStopped(runId)) return;
-
-    // Google Play
-    await setStage(runId, "Fetching Google Play top grossing games…");
-    const androidResults = await googlePlayTopGames(rejections);
-    totalPulled += GPLAY_CATEGORIES.length * cfg.sources.app_store_countries.length * 100;
-    androidResults.forEach(tryAdd);
-    await log(runId, "discovering", `Google Play: ${candidates.filter((c) => c.type === "android").length} candidates`);
 
     const preFilterCount = candidates.length;
     await setStage(runId, `Discovered ${preFilterCount} unique candidates`);
@@ -1277,121 +1128,149 @@ export async function processLeadRun(runId: string): Promise<void> {
     // ── PHASE 3: SCORE + ENRICH ───────────────────────────────────────────────
     await setStatus(runId, "researching", "Scoring and enriching leads…");
 
-    // Sort: android first (has developer emails), then steam/mobile, roblox last
-    const typeOrder: Record<string, number> = { android: 0, steam: 1, mobile: 2, roblox: 3 };
-    candidates.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
+    // Sort: steam/mobile first (own website = better email hit rate), roblox last
+    const typeOrder: Record<string, number> = { steam: 0, mobile: 1, roblox: 2 };
+    candidates.sort((a, b) => (typeOrder[a.type] ?? 2) - (typeOrder[b.type] ?? 2));
 
     let savedCount = 0;
-    const processCap = run.count * 6;
-    const toProcess = candidates.slice(0, Math.min(candidates.length, processCap));
+    const toProcess = candidates.slice(0, Math.min(candidates.length, run.count * 8));
 
-    const BATCH = 15;
+    // ── Per-candidate enrichment (run in parallel batches) ────────────────────
+    type EnrichedResult = {
+      c: Candidate;
+      finalScored: ReturnType<typeof scoreCandidate>;
+      finalGrade: string;
+      moneySignals: string[];
+      ownWebsite: string | null;
+    } | null;
 
-    for (let i = 0; i < toProcess.length && savedCount < run.count; i += BATCH) {
+    async function enrichOne(c: Candidate): Promise<EnrichedResult> {
+      const scored = scoreCandidate(c);
+      if (scored.grade === "F") return null;
+
+      const ownSite = !isDomainBlocked(c.website) ? c.website : null;
+
+      // ── Email + social handles (one website fetch for both) ──────────────────
+      if (!c.contacts.email || (!c.contacts.instagram && !c.contacts.twitter)) {
+        if (ownSite) {
+          try {
+            const res = await fetch(ownSite, {
+              headers: { "User-Agent": SCRAPE_UA, Accept: "text/html" },
+              signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok) {
+              const html = await res.text();
+              // Email from homepage
+              if (!c.contacts.email) {
+                // mailto: links first
+                const mLinks = [...html.matchAll(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi)];
+                const mailtoEmails = mLinks.map((m) => classifyEmail(m[1])).filter(Boolean) as Array<{ email: string; generic: boolean }>;
+                const bestMailto = mailtoEmails.find((e) => !e.generic) ?? mailtoEmails[0];
+                if (bestMailto) {
+                  c.contacts.email = bestMailto.email;
+                  c.contacts.emailSource = "published";
+                  c.contacts.genericInbox = bestMailto.generic;
+                } else {
+                  const fallback = extractEmail(html);
+                  if (fallback.email) {
+                    c.contacts.email = fallback.email;
+                    c.contacts.emailSource = "published";
+                    c.contacts.genericInbox = fallback.generic;
+                  }
+                }
+              }
+              // Social handles from homepage
+              const h = extractSocialHandles(html);
+              if (!c.contacts.instagram) c.contacts.instagram = h.instagram;
+              if (!c.contacts.twitter) c.contacts.twitter = h.twitter;
+              if (!c.contacts.discord) c.contacts.discord = h.discord;
+              if (!c.contacts.linkedin) c.contacts.linkedin = h.linkedin;
+            }
+          } catch { /* best-effort */ }
+        }
+
+        // /contact page if still no email
+        if (!c.contacts.email && ownSite) {
+          const r = await scrapePageForEmail(ownSite.replace(/\/+$/, "") + "/contact");
+          if (r.email) { c.contacts.email = r.email; c.contacts.emailSource = "published"; c.contacts.genericInbox = r.generic; }
+        }
+
+        // SearXNG fallback — single fast query only
+        if (!c.contacts.email) {
+          const domain = ownSite ? extractDomain(ownSite) : null;
+          const q = domain ? `site:${domain} email OR contact` : `"${c.name}" contact email game studio`;
+          const results = await searxSearch(q);
+          const text = results.map((r) => `${r.content} ${r.title} ${r.url}`).join(" ");
+          const found = extractEmail(text);
+          if (found.email) {
+            c.contacts.email = found.email;
+            c.contacts.emailSource = "searxng";
+            c.contacts.genericInbox = found.generic;
+          }
+        }
+      }
+
+      if (!c.contacts.email) return null; // no email found — skip
+
+      // ── Named contact + funding (parallel, 15s combined deadline) ────────────
+      const domainForEnrich = ownSite ? extractDomain(ownSite) : null;
+      const ENRICH_TIMEOUT = 15000;
+      const timed = <T>(p: Promise<T>, fb: T) =>
+        Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fb), ENRICH_TIMEOUT))]);
+
+      const [dmResult, fundingResult] = await Promise.all([
+        timed(findNamedContact(c.name, domainForEnrich), { name: null, title: null, linkedin: null }),
+        timed(findFundingSignals(c.name, domainForEnrich), { backed: false, details: null, proofUrl: null }),
+      ]);
+
+      if (dmResult.name) {
+        c.decisionMaker = dmResult.name;
+        c.decisionMakerTitle = dmResult.title;
+        c.decisionMakerLinkedin = dmResult.linkedin ?? c.contacts.linkedin;
+        if (dmResult.linkedin && !c.contacts.linkedin) c.contacts.linkedin = dmResult.linkedin;
+      }
+      if (fundingResult.backed) {
+        c.investorBacked = true;
+        c.fundingDetails = fundingResult.details;
+        c.fundingProofUrl = fundingResult.proofUrl;
+      }
+
+      const finalScored = scoreCandidate(c);
+      const moneySignals: string[] = [];
+      if (c.chartRank !== null) moneySignals.push(`App Store chart rank ${c.chartRank}`);
+      if (c.installCount !== null && c.installCount > 0) moneySignals.push(`${c.installCount.toLocaleString()}+ installs`);
+      if (c.earnsRealMoney) moneySignals.push("Paid / real-money gameplay");
+      if (c.investorBacked) moneySignals.push(c.fundingDetails ?? "Investor-backed");
+
+      let finalGrade = finalScored.grade;
+      if (finalGrade === "A" && (!moneySignals.length || !c.decisionMaker || c.contacts.genericInbox)) {
+        finalGrade = "B";
+      }
+
+      return { c, finalScored, finalGrade, moneySignals, ownWebsite: ownSite };
+    }
+
+    // Process in parallel batches of 8
+    const ENRICH_BATCH = 8;
+    for (let i = 0; i < toProcess.length && savedCount < run.count; i += ENRICH_BATCH) {
       if (await isStopped(runId)) return;
 
-      const batch = toProcess.slice(i, Math.min(i + BATCH, toProcess.length));
+      const batch = toProcess.slice(i, Math.min(i + ENRICH_BATCH, toProcess.length));
+      const results = await Promise.allSettled(batch.map((c) => enrichOne(c)));
 
-      for (const c of batch) {
+      for (const r of results) {
         if (savedCount >= run.count) break;
-
-        const scored = scoreCandidate(c);
-
-        // Skip F-grade leads (failed required checks)
-        if (scored.grade === "F") {
-          rejections.push({ name: c.name, reason: `Grade F (score ${scored.score}): ${scored.breakdown}`, source: c.type });
+        if (r.status !== "fulfilled" || !r.value) {
+          if (r.status === "fulfilled" && !r.value) {
+            // enrichOne returned null — candidate had no email or was grade F
+            const idx = results.indexOf(r);
+            if (idx >= 0) rejections.push({ name: batch[idx]?.name ?? "?", reason: "No email found or grade F", source: batch[idx]?.type ?? "?" });
+          }
           continue;
         }
 
-        // Email enrichment — only if no real email found from source
-        if (!c.contacts.email) {
-          const ownSite = !isDomainBlocked(c.website) ? c.website : null;
-
-          // 1. Scrape the studio's own website (highest hit rate, no API key)
-          if (ownSite) {
-            const webResult = await findEmailOnWebsite(ownSite);
-            if (webResult.email) {
-              c.contacts.email = webResult.email;
-              c.contacts.emailSource = "published";
-              c.contacts.genericInbox = webResult.generic;
-            }
-          }
-
-          // 2. Also scrape social handles from website while we have the HTML
-          if (ownSite && !c.contacts.instagram && !c.contacts.twitter) {
-            try {
-              const res = await fetch(ownSite, {
-                headers: { "User-Agent": SCRAPE_UA, Accept: "text/html" },
-                signal: AbortSignal.timeout(6000),
-              });
-              if (res.ok) {
-                const html = await res.text();
-                const siteHandles = extractSocialHandles(html);
-                if (!c.contacts.instagram) c.contacts.instagram = siteHandles.instagram;
-                if (!c.contacts.twitter) c.contacts.twitter = siteHandles.twitter;
-                if (!c.contacts.discord) c.contacts.discord = siteHandles.discord;
-                if (!c.contacts.linkedin) c.contacts.linkedin = siteHandles.linkedin;
-              }
-            } catch { /* best-effort */ }
-          }
-
-          // 3. Fall back to SearXNG if website scrape didn't yield an email
-          if (!c.contacts.email) {
-            const { email, generic } = await findEmailViaSearx(c.name, ownSite ?? "");
-            if (email) {
-              c.contacts.email = email;
-              c.contacts.emailSource = "searxng";
-              c.contacts.genericInbox = generic;
-            }
-          }
-        }
-
-        // Require email
-        if (!c.contacts.email) {
-          rejections.push({ name: c.name, reason: "No email found (source + website scrape + SearXNG exhausted)", source: c.type });
-          continue;
-        }
-
-        // ── Deep enrichment (now that we know this lead will be saved) ──────────
-        const ownSiteForEnrich = !isDomainBlocked(c.website) ? c.website : null;
-        const domainForEnrich = ownSiteForEnrich ? extractDomain(ownSiteForEnrich) : null;
-
-        // Hard 20-second deadline so a slow SearXNG instance can't stall the run
-        const enrichDeadline = AbortSignal.timeout(20000);
-        const withDeadline = <T>(p: Promise<T>, fallback: T): Promise<T> => {
-          return Promise.race([
-            p,
-            new Promise<T>((resolve) => enrichDeadline.addEventListener("abort", () => resolve(fallback), { once: true })),
-          ]);
-        };
-
-        const [dmResult, fundingResult] = await Promise.all([
-          withDeadline(findNamedContact(c.name, domainForEnrich), { name: null, title: null, linkedin: null }),
-          withDeadline(findFundingSignals(c.name, domainForEnrich), { backed: false, details: null, proofUrl: null }),
-        ]);
-
-        if (dmResult.name) {
-          c.decisionMaker = dmResult.name;
-          c.decisionMakerTitle = dmResult.title;
-          c.decisionMakerLinkedin = dmResult.linkedin ?? c.contacts.linkedin;
-          if (dmResult.linkedin && !c.contacts.linkedin) c.contacts.linkedin = dmResult.linkedin;
-        }
-        if (fundingResult.backed) {
-          c.investorBacked = true;
-          c.fundingDetails = fundingResult.details;
-          c.fundingProofUrl = fundingResult.proofUrl;
-        }
-
-        // Re-score with all enriched signals
-        const finalScored = scoreCandidate(c);
-
+        const { c, finalScored, finalGrade, moneySignals, ownWebsite } = r.value;
         savedCount++;
-
-        const moneySignals: string[] = [];
-        if (c.chartRank !== null) moneySignals.push(`App Store chart rank ${c.chartRank}`);
-        if (c.installCount !== null && c.installCount > 0) moneySignals.push(`${c.installCount.toLocaleString()}+ installs`);
-        if (c.earnsRealMoney) moneySignals.push("Paid / real-money gameplay");
-        if (c.investorBacked) moneySignals.push(c.fundingDetails ?? "Investor-backed");
 
         const signals = {
           activityVerified: finalScored.activityVerified,
@@ -1408,61 +1287,51 @@ export async function processLeadRun(runId: string): Promise<void> {
           total: finalScored.score,
         };
 
-        // Grade A: requires activity + genre + money signal + named DM (now achievable from open data)
-        let finalGrade = finalScored.grade;
-        if (finalGrade === "A" && (!moneySignals.length || !c.decisionMaker || c.contacts.genericInbox)) {
-          finalGrade = "B";
-        }
-
-        const ownWebsite = !isDomainBlocked(c.website) ? c.website : null;
-        const segmentLabel =
-          c.type === "roblox" ? "Roblox Studio" :
-          c.type === "steam" ? "PC/Steam Developer" :
-          c.type === "android" ? "Android Developer" : "Mobile Developer";
+        const segmentLabel = c.type === "roblox" ? "Roblox Studio" : c.type === "steam" ? "PC/Steam Developer" : "Mobile Developer";
 
         await prisma.leadFactoryLead.create({
           data: {
             runId,
             num: savedCount,
-            company:        c.name.slice(0, 100),
-            website:        ownWebsite ?? c.storeLink,
-            whatItIs:       c.description.replace(/\n/g, " ").slice(0, 250),
-            segment:        segmentLabel,
-            grade:          finalGrade,
-            score:          finalScored.score,
-            country:        c.country,
-            decisionMaker:  c.decisionMaker,
-            dmRole:         c.decisionMakerTitle,
-            dmEmail:        c.contacts.email,
+            company:         c.name.slice(0, 100),
+            website:         ownWebsite ?? c.storeLink,
+            whatItIs:        c.description.replace(/\n/g, " ").slice(0, 250),
+            segment:         segmentLabel,
+            grade:           finalGrade,
+            score:           finalScored.score,
+            country:         c.country,
+            decisionMaker:   c.decisionMaker,
+            dmRole:          c.decisionMakerTitle,
+            dmEmail:         c.contacts.email,
             instagramHandle: c.contacts.instagram,
-            xHandle:        c.contacts.twitter,
-            linkedinUrl:    c.decisionMakerLinkedin ?? c.contacts.linkedin,
-            bestChannel:    c.contacts.email ? (c.contacts.genericInbox ? "generic-inbox" : "email") : "direct",
-            whyItFits:      Prisma.JsonNull,
-            signals:        signals as unknown as Prisma.InputJsonValue,
+            xHandle:         c.contacts.twitter,
+            linkedinUrl:     c.decisionMakerLinkedin ?? c.contacts.linkedin,
+            bestChannel:     c.contacts.email ? (c.contacts.genericInbox ? "generic-inbox" : "email") : "direct",
+            whyItFits:       Prisma.JsonNull,
+            signals:         signals as unknown as Prisma.InputJsonValue,
             rawData: {
-              source:           c.type,
-              gameName:         c.gameName,
-              storeLink:        c.storeLink,
-              genre:            c.genre,
-              chartRank:        c.chartRank,
-              ratingsCount:     c.ratingsCount,
-              installCount:     c.installCount,
-              lastUpdateDate:   c.lastUpdateDate,
-              updateProofUrl:   c.updateProofUrl,
-              country:          c.country,
-              earnsRealMoney:   c.earnsRealMoney,
-              employees:        null,
+              source:            c.type,
+              gameName:          c.gameName,
+              storeLink:         c.storeLink,
+              genre:             c.genre,
+              chartRank:         c.chartRank,
+              ratingsCount:      c.ratingsCount,
+              installCount:      c.installCount,
+              lastUpdateDate:    c.lastUpdateDate,
+              updateProofUrl:    c.updateProofUrl,
+              country:           c.country,
+              earnsRealMoney:    c.earnsRealMoney,
+              employees:         null,
               employeesVerified: false,
-              investorBacked:   c.investorBacked,
-              latestFunding:    c.fundingDetails,
-              fundingProof:     c.fundingProofUrl,
+              investorBacked:    c.investorBacked,
+              latestFunding:     c.fundingDetails,
+              fundingProof:      c.fundingProofUrl,
               moneySignals,
-              moneySignalProof: c.fundingProofUrl ?? c.updateProofUrl,
-              emailSource:      c.contacts.emailSource,
-              genericInbox:     c.contacts.genericInbox,
-              discord:          c.contacts.discord,
-              contactLinkedin:  c.decisionMakerLinkedin,
+              moneySignalProof:  c.fundingProofUrl ?? c.updateProofUrl,
+              emailSource:       c.contacts.emailSource,
+              genericInbox:      c.contacts.genericInbox,
+              discord:           c.contacts.discord,
+              contactLinkedin:   c.decisionMakerLinkedin,
               ownWebsite,
             } as unknown as Prisma.InputJsonValue,
           },
@@ -1472,12 +1341,7 @@ export async function processLeadRun(runId: string): Promise<void> {
           where: { id: runId },
           data: {
             stage: `Saved ${savedCount} / ${run.count} leads`,
-            stats: {
-              pulled: preFilterCount,
-              filtered: preFilterCount - candidates.length,
-              saved: savedCount,
-              rejectedTotal: rejections.length,
-            },
+            stats: { pulled: preFilterCount, filtered: preFilterCount - candidates.length, saved: savedCount, rejectedTotal: rejections.length },
           },
         });
       }
