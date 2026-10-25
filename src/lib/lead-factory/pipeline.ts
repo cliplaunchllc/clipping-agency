@@ -207,15 +207,14 @@ async function scrapePageForEmail(url: string): Promise<{ email: string | null; 
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": SCRAPE_UA, Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5" },
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(5000), // reduced from 9s
     });
     if (!res.ok) return { email: null, generic: false };
-    // Limit read to first 300 KB to avoid stalling on huge pages
     const reader = res.body?.getReader();
     if (!reader) return { email: null, generic: false };
     const chunks: Uint8Array[] = [];
     let total = 0;
-    while (total < 307200) {
+    while (total < 200000) { // 200 KB is plenty
       const { done, value } = await reader.read();
       if (done || !value) break;
       chunks.push(value);
@@ -224,7 +223,7 @@ async function scrapePageForEmail(url: string): Promise<{ email: string | null; 
     reader.cancel().catch(() => {});
     const html = Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
 
-    // Priority 1: mailto: links (most deliberate signal)
+    // Priority 1: mailto: links
     const mailtoMatches = [...html.matchAll(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi)];
     const mailtoEmails: Array<{ email: string; generic: boolean }> = [];
     for (const m of mailtoMatches) {
@@ -235,25 +234,31 @@ async function scrapePageForEmail(url: string): Promise<{ email: string | null; 
     if (namedMailto) return namedMailto;
     if (mailtoEmails.length) return mailtoEmails[0];
 
-    // Priority 2: any email pattern in page source
     return extractEmail(html);
   } catch {
     return { email: null, generic: false };
   }
 }
 
-/** Try homepage then standard subpages. Stop on first non-generic hit; keep best generic as fallback. */
+/** Try homepage then up to 3 subpages. Stop on first non-generic hit. */
 async function findEmailOnWebsite(ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
   if (!ownWebsite || isDomainBlocked(ownWebsite)) return { email: null, generic: false };
   const base = ownWebsite.replace(/\/+$/, "");
 
-  const pages = ["", "/contact", "/contact-us", "/about", "/about-us", "/team", "/contact.html", "/about.html"];
-  let bestGeneric: { email: string; generic: boolean } | null = null;
+  // Homepage first
+  const home = await scrapePageForEmail(base);
+  if (home.email && !home.generic) return home;
 
-  for (const path of pages) {
+  // Try 3 subpages only (not 7) to keep per-lead time reasonable
+  const subpages = ["/contact", "/about", "/contact-us"];
+  let bestGeneric: { email: string; generic: boolean } | null = home.email
+    ? home as { email: string; generic: boolean }
+    : null;
+
+  for (const path of subpages) {
     const result = await scrapePageForEmail(base + path);
-    if (result.email && !result.generic) return result;        // non-generic — done
-    if (result.email && !bestGeneric) bestGeneric = result as { email: string; generic: boolean };    // save first generic as fallback
+    if (result.email && !result.generic) return result;
+    if (result.email && !bestGeneric) bestGeneric = result as { email: string; generic: boolean };
   }
 
   return bestGeneric ?? { email: null, generic: false };
@@ -817,148 +822,153 @@ const GPLAY_CATEGORIES = [
 ] as const;
 
 async function googlePlayTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
-  const countries = cfg.sources.app_store_countries; // reuse same country list
-  const appIdToMeta = new Map<string, { country: string; category: string }>();
+  const countries = cfg.sources.app_store_countries;
+  // Map developer name (lowercased) → {appId, country, category} for one representative app
+  const devToApp = new Map<string, { appId: string; country: string; category: string }>();
 
-  // Collect unique app IDs from top-grossing across categories × countries
+  // Step 1: Fetch basic list data concurrently (no full detail — fast)
   await Promise.allSettled(
     countries.flatMap((country) =>
       GPLAY_CATEGORIES.map(async (cat) => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const gp = gplay as any;
-          const apps: Array<{ appId: string }> = await gp.list({
+          const apps: Array<{ appId: string; developer?: string }> = await (gplay as any).list({
             collection: "GROSSING",
             category: cat,
             country,
             num: 100,
-            throttle: 5,
+            throttle: 10,
           });
           for (const a of apps) {
-            if (!appIdToMeta.has(a.appId)) {
-              appIdToMeta.set(a.appId, { country, category: cat });
+            if (a.developer && !devToApp.has(a.developer.toLowerCase())) {
+              devToApp.set(a.developer.toLowerCase(), { appId: a.appId, country, category: cat });
             }
           }
-        } catch { /* per-chart failure is non-fatal */ }
+        } catch { /* non-fatal */ }
       })
     )
   );
 
-  if (!appIdToMeta.size) return [];
+  if (!devToApp.size) return [];
 
+  // Step 2: Fetch full details in concurrent batches — cap at 300 devs, hard timeout 3 min
+  const MAX_DEVS = 300;
+  const BATCH = 15;
+  const entries = [...devToApp.entries()].slice(0, MAX_DEVS);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
   const maxAge = cfg.activity.max_age_days;
   const minRatings = cfg.activity.min_ratings_mobile;
+  const deadline = Date.now() + 3 * 60 * 1000; // 3-minute hard stop
 
-  // Fetch full detail for each unique app (throttled to avoid rate-limits)
-  const ids = [...appIdToMeta.keys()];
-  for (const appId of ids) {
-    const meta = appIdToMeta.get(appId)!;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let detail: Record<string, any> | null = null;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      detail = await (gplay as any).app({ appId, country: meta.country, throttle: 5 });
-    } catch { continue; }
-    if (!detail) continue;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    if (Date.now() > deadline) break;
+    const batch = entries.slice(i, i + BATCH);
 
-    const devName = detail.developer ?? "";
-    if (!devName) continue;
-    const key = devName.toLowerCase().trim();
-    if (seenDevs.has(key)) continue;
+    const results = await Promise.allSettled(
+      batch.map(async ([devKey, meta]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const detail: Record<string, any> = await (gplay as any).app({
+          appId: meta.appId,
+          country: meta.country,
+          throttle: 10,
+        });
+        return { devKey, meta, detail };
+      })
+    );
 
-    // Blocklist
-    if (isCompanyBlocked(devName)) {
-      rejections.push({ name: devName, reason: "Company blocklisted", source: "android" });
-      seenDevs.add(key);
-      continue;
+    for (const r of results) {
+      if (r.status !== "fulfilled") continue;
+      const { devKey, meta, detail } = r.value;
+      if (!detail || seenDevs.has(devKey)) continue;
+
+      const devName: string = detail.developer ?? "";
+      if (!devName) continue;
+      seenDevs.add(devKey);
+
+      if (isCompanyBlocked(devName)) {
+        rejections.push({ name: devName, reason: "Company blocklisted", source: "android" });
+        continue;
+      }
+
+      const primaryGenre: string = detail.genre ?? "";
+      const gameName: string = detail.title ?? "";
+      const desc: string = detail.description ?? "";
+
+      if (isRejectedGenre(primaryGenre, gameName, desc)) {
+        rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}"`, source: "android" });
+        continue;
+      }
+
+      const ratings: number = detail.ratings ?? 0;
+      if (ratings < minRatings) {
+        rejections.push({ name: devName, reason: `Only ${ratings} ratings (min ${minRatings})`, source: "android" });
+        continue;
+      }
+
+      const updatedMs = typeof detail.updated === "number" ? detail.updated : null;
+      const lastUpdate = updatedMs ? new Date(updatedMs).toISOString() : null;
+      if (!lastUpdate || isActivityStale(lastUpdate, maxAge)) {
+        rejections.push({ name: devName, reason: `Not updated within ${maxAge} days`, source: "android" });
+        continue;
+      }
+
+      const storeLink: string = detail.url ?? `https://play.google.com/store/apps/details?id=${meta.appId}`;
+      const rawDevSite: string | null = detail.developerWebsite ?? null;
+      const ownWebsite = rawDevSite && !isDomainBlocked(rawDevSite) ? rawDevSite : null;
+
+      const rawEmail: string | null = detail.developerEmail ?? null;
+      let contactEmail: string | null = null;
+      let contactGeneric = false;
+      if (rawEmail) {
+        const ec = classifyEmail(rawEmail);
+        if (ec) { contactEmail = ec.email; contactGeneric = ec.generic; }
+      }
+
+      const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
+      const earnsRealMoney = (detail.price ?? 0) > 0 || detail.free === false;
+
+      candidates.push({
+        type: "android",
+        name: devName,
+        website: ownWebsite ?? storeLink,
+        storeLink,
+        gameName,
+        description: `Android developer (Google Play, ${meta.country.toUpperCase()}). Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
+        genre: primaryGenre,
+        chartRank: null,
+        ratingsCount: ratings,
+        installCount: detail.minInstalls ?? null,
+        lastUpdateDate: lastUpdate,
+        updateProofUrl: storeLink,
+        country: meta.country.toUpperCase(),
+        earnsRealMoney,
+        contacts: {
+          email: contactEmail,
+          emailSource: contactEmail ? "published" : null,
+          genericInbox: contactGeneric,
+          ...handles,
+        },
+        ...blankEnrichment(),
+        rawData: {
+          source: "Google Play",
+          appId: meta.appId,
+          storeDeveloperEmail: rawEmail,
+          storeDeveloperWebsite: rawDevSite,
+          installsString: detail.installs,
+          storeMinInstalls: detail.minInstalls,
+          storeTitle: gameName,
+          storeGenre: primaryGenre,
+          storeRatings: ratings,
+          storeScore: detail.score,
+          storeUpdated: detail.updated,
+          storeUrl: storeLink,
+          storeFree: detail.free,
+          storePrice: detail.price,
+          storeDeveloper: devName,
+        },
+      });
     }
-
-    // Genre check
-    const primaryGenre = detail.genre ?? "";
-    const gameName = detail.title ?? "";
-    const desc = detail.description ?? "";
-    if (isRejectedGenre(primaryGenre, gameName, desc)) {
-      rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}" / title: "${gameName}"`, source: "android" });
-      seenDevs.add(key);
-      continue;
-    }
-
-    // Ratings check
-    const ratings = detail.ratings ?? 0;
-    if (ratings < minRatings) {
-      rejections.push({ name: devName, reason: `Only ${ratings} ratings (min ${minRatings})`, source: "android" });
-      seenDevs.add(key);
-      continue;
-    }
-
-    // Activity check via `updated` timestamp
-    const updatedMs = typeof detail.updated === "number" ? detail.updated : null;
-    const lastUpdate = updatedMs ? new Date(updatedMs).toISOString() : null;
-    if (!lastUpdate || isActivityStale(lastUpdate, maxAge)) {
-      rejections.push({ name: devName, reason: `App not updated within ${maxAge} days`, source: "android" });
-      seenDevs.add(key);
-      continue;
-    }
-
-    const storeLink = detail.url ?? `https://play.google.com/store/apps/details?id=${appId}`;
-    const rawDeveloperWebsite = detail.developerWebsite ?? null;
-    const ownWebsite = rawDeveloperWebsite && !isDomainBlocked(rawDeveloperWebsite) ? rawDeveloperWebsite : null;
-
-    // developerEmail is the gold here — Play Store shows it publicly
-    const rawEmail = detail.developerEmail ?? null;
-    let contactEmail: string | null = null;
-    let contactGeneric = false;
-    if (rawEmail) {
-      const ec = classifyEmail(rawEmail);
-      if (ec) { contactEmail = ec.email; contactGeneric = ec.generic; }
-    }
-
-    const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
-    const earnsRealMoney = (detail.price ?? 0) > 0 || detail.free === false;
-
-    seenDevs.add(key);
-    candidates.push({
-      type: "android",
-      name: devName,
-      website: ownWebsite ?? storeLink,
-      storeLink,
-      gameName,
-      description: `Android developer (Google Play, ${meta.country.toUpperCase()}). Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
-      genre: primaryGenre,
-      chartRank: null,
-      ratingsCount: ratings,
-      installCount: detail.minInstalls ?? null,
-      lastUpdateDate: lastUpdate,
-      updateProofUrl: storeLink,
-      country: meta.country.toUpperCase(),
-      earnsRealMoney,
-      contacts: {
-        email: contactEmail,
-        emailSource: contactEmail ? "published" : null,
-        genericInbox: contactGeneric,
-        ...handles,
-      },
-      ...blankEnrichment(),
-      rawData: {
-        source: "Google Play",
-        appId,
-        storeDeveloperEmail: rawEmail,
-        storeDeveloperWebsite: rawDeveloperWebsite,
-        installsString: detail.installs,
-        storeMinInstalls: detail.minInstalls,
-        storeTitle: detail.title,
-        storeGenre: detail.genre,
-        storeRatings: detail.ratings,
-        storeScore: detail.score,
-        storeUpdated: detail.updated,
-        storeUrl: detail.url,
-        storeFree: detail.free,
-        storePrice: detail.price,
-        storeDeveloper: detail.developer,
-      },
-    });
   }
 
   return candidates;
@@ -1346,9 +1356,18 @@ export async function processLeadRun(runId: string): Promise<void> {
         const ownSiteForEnrich = !isDomainBlocked(c.website) ? c.website : null;
         const domainForEnrich = ownSiteForEnrich ? extractDomain(ownSiteForEnrich) : null;
 
+        // Hard 20-second deadline so a slow SearXNG instance can't stall the run
+        const enrichDeadline = AbortSignal.timeout(20000);
+        const withDeadline = <T>(p: Promise<T>, fallback: T): Promise<T> => {
+          return Promise.race([
+            p,
+            new Promise<T>((resolve) => enrichDeadline.addEventListener("abort", () => resolve(fallback), { once: true })),
+          ]);
+        };
+
         const [dmResult, fundingResult] = await Promise.all([
-          findNamedContact(c.name, domainForEnrich),
-          findFundingSignals(c.name, domainForEnrich),
+          withDeadline(findNamedContact(c.name, domainForEnrich), { name: null, title: null, linkedin: null }),
+          withDeadline(findFundingSignals(c.name, domainForEnrich), { backed: false, details: null, proofUrl: null }),
         ]);
 
         if (dmResult.name) {
