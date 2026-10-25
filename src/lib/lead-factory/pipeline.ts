@@ -538,13 +538,20 @@ async function robloxTopGames(minCCU = 1000, take = 150): Promise<Candidate[]> {
     const profileUrl = g.creatorType === "Group"
       ? `https://www.roblox.com/groups/${creatorId}`
       : `https://www.roblox.com/users/${creatorId}/profile`;
+
+    // Extract own website from bio — if present, domain inference can find an email
+    const ownUrlMatch = desc.match(
+      /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook)\.)[^\s<>"']{4,}/i
+    );
+    const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
+
     candidates.push({
       type: "roblox",
       name: g.creatorName,
-      website: profileUrl,
+      website: ownWebsite ?? profileUrl,
       description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes.${desc ? ` Bio: ${desc.slice(0, 200)}` : ""}`,
       contacts: extractContacts(desc),
-      rawData: { ...g, profileDesc: desc } as unknown as Record<string, unknown>,
+      rawData: { ...g, profileDesc: desc, robloxProfileUrl: profileUrl } as unknown as Record<string, unknown>,
     });
   }
   return candidates;
@@ -569,7 +576,7 @@ async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
     owners: string;
   }>;
 
-  const games = Object.values(data).slice(0, 60); // cap at 60 to avoid too many appdetails calls
+  const games = Object.values(data).slice(0, 100); // cap at 100 to stay within rate limits
   const cutoff = new Date(Date.now() - maxAgeMonths * 30 * 24 * 60 * 60 * 1000);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
@@ -835,9 +842,9 @@ export async function processLeadRun(runId: string): Promise<void> {
     await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} developers`);
     if (await isStopped(runId)) return;
 
-    // ── App Store: top-grossing chart ranks 50–200 ────────────────────────────
-    await setStage(runId, "Fetching App Store top-grossing chart (ranks 50–200)…");
-    addMany(await appStoreChartSearch(50, 200));
+    // ── App Store: top-grossing chart ranks 1–200 (isTooLarge filters mega corps) ─
+    await setStage(runId, "Fetching App Store top-grossing chart (ranks 1–200)…");
+    addMany(await appStoreChartSearch(1, 200));
     await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} studios`);
 
     await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
@@ -883,9 +890,18 @@ export async function processLeadRun(runId: string): Promise<void> {
     await setStatus(runId, "researching", `Analyzing leads…`);
 
     let savedCount = 0;
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+    // Sort by email-findability: steam/mobile (own domain → inferred email) first,
+    // roblox last (platform URL only → depends on SearXNG which can be flaky).
+    // Within each tier, shuffle for variety.
+    const typeOrder = { steam: 0, mobile: 1, roblox: 2, web: 1, youtube: 1 };
+    const sorted = [...candidates].sort((a, b) => {
+      const ta = typeOrder[a.type] ?? 1;
+      const tb = typeOrder[b.type] ?? 1;
+      if (ta !== tb) return ta - tb;
+      return Math.random() - 0.5;
+    });
     const processCap = run.count * 6; // wide headroom — many leads drop if no email found
-    const toProcess = shuffled.slice(0, Math.min(shuffled.length, processCap));
+    const toProcess = sorted.slice(0, Math.min(sorted.length, processCap));
 
     const BATCH = 20; // process in batches to update progress periodically
 

@@ -124,6 +124,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
   const [showNewRun, setShowNewRun] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  const [expandedCriteria, setExpandedCriteria] = useState<string | null>(null);
+  const [showPanelCriteria, setShowPanelCriteria] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [stoppingId, setStoppingId] = useState<string | null>(null);
@@ -187,6 +189,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
     setLeadsLoading(true);
     setLeads([]);
     setLogs([]);
+    setShowPanelCriteria(false);
     try {
       const [lr, ll] = await Promise.all([
         fetch(`/api/agency/lead-factory/${run.id}/leads`),
@@ -466,10 +469,23 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   </div>
 
                   {/* Criteria or fallback */}
-                  <p className="text-xs font-medium leading-snug line-clamp-2 mb-2"
-                    style={{ color: "var(--text-primary)" }}>
-                    {run.criteria || "No criteria"}
-                  </p>
+                  <div className="mb-2">
+                    <p
+                      className={`text-xs font-medium leading-snug ${expandedCriteria === run.id ? "" : "line-clamp-2"}`}
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {run.criteria || "No criteria"}
+                    </p>
+                    {run.criteria && run.criteria.length > 60 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedCriteria(expandedCriteria === run.id ? null : run.id); }}
+                        className="text-xs mt-0.5 transition-opacity hover:opacity-70"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {expandedCriteria === run.id ? "show less" : "show more"}
+                      </button>
+                    )}
+                  </div>
 
                   {/* Progress bar (active only) */}
                   {isActive && (
@@ -529,9 +545,22 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                         {selectedRun.totalCost > 0 && <span>&nbsp;·&nbsp; ${selectedRun.totalCost.toFixed(4)} spent</span>}
                       </span>
                     </div>
-                    <p className="text-sm font-medium mt-0.5 truncate" style={{ color: "var(--text-primary)" }}>
-                      {selectedRun.criteria || "No criteria"}
-                    </p>
+                    <div className="mt-0.5">
+                      <button
+                        onClick={() => setShowPanelCriteria((v) => !v)}
+                        className="flex items-center gap-1 text-sm font-medium text-left w-full group"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        <span className={showPanelCriteria ? "" : "truncate"}>
+                          {selectedRun.criteria || "No criteria"}
+                        </span>
+                        {selectedRun.criteria && (
+                          <span className="flex-shrink-0 opacity-40 group-hover:opacity-70 transition-opacity ml-1">
+                            {showPanelCriteria ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                     {selectedRun.stage && (
                       <p className="text-xs mt-1" style={{ color: selectedRun.status === "failed" ? "#FF3B3B" : "var(--text-tertiary)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                         {selectedRun.stage}
