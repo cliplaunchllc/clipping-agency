@@ -277,27 +277,6 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                 style={{ ...inputStyle, resize: "none" }}
                 autoFocus
               />
-              {criteria.trim() && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {([
-                    [/download|install|app store/i, "active downloads"],
-                    [/vc|funded|investor|capital|backed/i, "VC-backed"],
-                    [/instagram|social/i, "social presence"],
-                    [/linkedin|b2b|professional/i, "LinkedIn"],
-                    [/subscriber|youtube|creator/i, "YouTube boost"],
-                    [/roblox/i, "Roblox focus"],
-                    [/active|engagement|popular/i, "high engagement"],
-                    [/indie|small.{0,15}(company|studio|dev)|not.{0,15}(big|large)|no.{0,15}(big|large)/i, "indie/small"],
-                    [/must have email|require email/i, "email required"],
-                    [/must have instagram|require instagram/i, "Instagram required"],
-                  ] as [RegExp, string][]).filter(([rx]) => rx.test(criteria)).map(([, label]) => (
-                    <span key={label} className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.2)", color: "#3DD68C" }}>
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
             <div style={{ width: 120 }}>
               <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}># Leads</label>

@@ -1182,21 +1182,27 @@ function parseCriteria(raw: string | null): CriteriaFlags {
   }
 
   // ── Funding requirement ───────────────────────────────────────────────────
-  const requireFunding = /\b(vc|venture|funded|investor|backed|raised|series [abc]|seed round)\b/.test(t);
+  // Only require funding if the user EXPLICITLY asks for it with very specific language.
+  // Vague words like "backed by community", "active", "growing" must NOT trigger this —
+  // it would filter out almost every lead and produce 0 results.
+  const requireFunding = /\b(vc.backed|vc funded|venture.backed|venture funded|investor.backed|investor funded|seed funded|series [abc] funded|raise[sd] funding|looking for investor)\b/.test(t);
 
   // ── Country filter ────────────────────────────────────────────────────────
+  // Only filter country if user says "US only", "United States only", "only UK", etc.
+  // A mention of "US" alone inside a paragraph does NOT mean filter to US.
   const requireCountries: Set<string> | null = (() => {
-    if (/\b(us|usa|united states|american)\b/.test(t)) return new Set(["US"]);
-    if (/\b(uk|united kingdom|british)\b/.test(t))     return new Set(["GB"]);
-    if (/\b(canada|canadian)\b/.test(t))                return new Set(["CA"]);
-    if (/\b(australia|australian)\b/.test(t))           return new Set(["AU"]);
-    if (/\b(europe|european)\b/.test(t))                return new Set(["DE", "FR", "NL", "SE", "NO", "DK", "FI", "GB"]);
+    if (/\b(us|usa|united states)\s+only\b|\bonly\s+(us|usa|united states)\b/.test(t)) return new Set(["US"]);
+    if (/\b(uk|united kingdom)\s+only\b|\bonly\s+(uk|united kingdom)\b/.test(t))       return new Set(["GB"]);
+    if (/\bcanada\s+only\b|\bonly\s+canada\b/.test(t))                                  return new Set(["CA"]);
+    if (/\baustralia\s+only\b|\bonly\s+australia\b/.test(t))                            return new Set(["AU"]);
     return null;
   })();
 
   // ── Size/activity overrides ───────────────────────────────────────────────
-  const minRatings = /\b(big|large|popular|viral)\b/.test(t) ? 10000 : null;
-  const minPlayers = /\b(big|large|popular|viral)\b/.test(t) ? 2000  : null;
+  // Only override thresholds when user gives an explicit number or says "top X".
+  const explicitLarge = /\b(millions? of players|top\s+10\b|top\s+5\b|#1 game|100k\+?\s+players|500k\+?\s+players)\b/.test(t);
+  const minRatings = explicitLarge ? 50000 : null;
+  const minPlayers = explicitLarge ? 5000  : null;
 
   // ── Summary for log ───────────────────────────────────────────────────────
   const parts: string[] = [];
@@ -1449,7 +1455,11 @@ export async function processLeadRun(runId: string): Promise<void> {
         }
       }
 
-      if (!c.contacts.email) return null; // no email found — skip
+      // For Roblox, creators rarely publish email — allow through if they have social handles.
+      // For Steam/Mobile, email is the primary outreach channel so still require it.
+      const hasSocial = !!(c.contacts.instagram || c.contacts.twitter || c.contacts.discord);
+      if (!c.contacts.email && c.type !== "roblox") return null;
+      if (!c.contacts.email && c.type === "roblox" && !hasSocial) return null;
 
       // ── Named contact + funding (parallel, 15s combined deadline) ────────────
       const domainForEnrich = ownSite ? extractDomain(ownSite) : null;
