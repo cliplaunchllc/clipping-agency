@@ -157,25 +157,92 @@ function isActivityStale(lastUpdateDate: string | null, maxDays: number): boolea
 // ─── Email extraction (no fabrication) ───────────────────────────────────────
 // Only extracts emails actually present in text. Never builds contact@domain.
 
-function extractEmail(text: string): { email: string | null; generic: boolean } {
-  if (!text) return { email: null, generic: false };
+const EMAIL_RE = /\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g;
 
-  // Full RFC-lite email regex
-  const match = text.match(/\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
-  if (!match) return { email: null, generic: false };
-
-  const prefix = match[1].toLowerCase();
-  const domain = match[2].toLowerCase();
-
-  // Reject if email domain is on blocklist
-  if (DOMAIN_BLOCKLIST.has(domain) || [...DOMAIN_BLOCKLIST].some((d) => domain.endsWith("." + d))) {
-    return { email: null, generic: false };
-  }
-
+function classifyEmail(raw: string): { email: string; generic: boolean } | null {
+  const m = raw.match(/^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/);
+  if (!m) return null;
+  const prefix = m[1].toLowerCase();
+  const domain = m[2].toLowerCase();
+  if (DOMAIN_BLOCKLIST.has(domain) || [...DOMAIN_BLOCKLIST].some((d) => domain.endsWith("." + d))) return null;
   const generic = GENERIC_EMAIL_PREFIXES.has(prefix) ||
     [...GENERIC_EMAIL_PREFIXES].some((p) => prefix.startsWith(p + ".") || prefix.startsWith(p + "_"));
+  return { email: raw.toLowerCase(), generic };
+}
 
-  return { email: match[0], generic };
+/** Scan all emails in text, prefer non-generic, fallback to first generic. */
+function extractEmail(text: string): { email: string | null; generic: boolean } {
+  if (!text) return { email: null, generic: false };
+  const matches = [...text.matchAll(EMAIL_RE)];
+  const all: Array<{ email: string; generic: boolean }> = [];
+  for (const m of matches) {
+    const c = classifyEmail(m[0]);
+    if (c) all.push(c);
+  }
+  if (!all.length) return { email: null, generic: false };
+  const named = all.find((e) => !e.generic);
+  return named ?? all[0];
+}
+
+// ─── Website scraping for email ───────────────────────────────────────────────
+// Fetches the studio's actual website — no API key needed, highest hit rate.
+
+const SCRAPE_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+async function scrapePageForEmail(url: string): Promise<{ email: string | null; generic: boolean }> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": SCRAPE_UA, Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5" },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!res.ok) return { email: null, generic: false };
+    // Limit read to first 300 KB to avoid stalling on huge pages
+    const reader = res.body?.getReader();
+    if (!reader) return { email: null, generic: false };
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (total < 307200) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      chunks.push(value);
+      total += value.length;
+    }
+    reader.cancel().catch(() => {});
+    const html = Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
+
+    // Priority 1: mailto: links (most deliberate signal)
+    const mailtoMatches = [...html.matchAll(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi)];
+    const mailtoEmails: Array<{ email: string; generic: boolean }> = [];
+    for (const m of mailtoMatches) {
+      const c = classifyEmail(m[1]);
+      if (c) mailtoEmails.push(c);
+    }
+    const namedMailto = mailtoEmails.find((e) => !e.generic);
+    if (namedMailto) return namedMailto;
+    if (mailtoEmails.length) return mailtoEmails[0];
+
+    // Priority 2: any email pattern in page source
+    return extractEmail(html);
+  } catch {
+    return { email: null, generic: false };
+  }
+}
+
+/** Try homepage then standard subpages. Stop on first non-generic hit; keep best generic as fallback. */
+async function findEmailOnWebsite(ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
+  if (!ownWebsite || isDomainBlocked(ownWebsite)) return { email: null, generic: false };
+  const base = ownWebsite.replace(/\/+$/, "");
+
+  const pages = ["", "/contact", "/contact-us", "/about", "/about-us", "/team", "/contact.html", "/about.html"];
+  let bestGeneric: { email: string; generic: boolean } | null = null;
+
+  for (const path of pages) {
+    const result = await scrapePageForEmail(base + path);
+    if (result.email && !result.generic) return result;        // non-generic — done
+    if (result.email && !bestGeneric) bestGeneric = result as { email: string; generic: boolean };    // save first generic as fallback
+  }
+
+  return bestGeneric ?? { email: null, generic: false };
 }
 
 // ─── Social handle extraction (URL-only, no @word scraping) ──────────────────
@@ -237,19 +304,32 @@ async function searxSearch(query: string): Promise<Array<{ title: string; url: s
 }
 
 async function findEmailViaSearx(studioName: string, ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
-  // Query 1: studio name + email
-  const r1 = await searxSearch(`"${studioName}" contact email`);
-  const text1 = r1.map((r) => `${r.content} ${r.url}`).join(" ");
-  const e1 = extractEmail(text1);
-  if (e1.email) return e1;
+  const domain = ownWebsite && !isDomainBlocked(ownWebsite) ? extractDomain(ownWebsite) : null;
 
-  // Query 2: site:domain email (if they have a real domain)
-  if (ownWebsite && !isDomainBlocked(ownWebsite)) {
-    const domain = extractDomain(ownWebsite);
-    const r2 = await searxSearch(`site:${domain} email contact`);
-    const text2 = r2.map((r) => `${r.content} ${r.url}`).join(" ");
-    const e2 = extractEmail(text2);
-    if (e2.email) return e2;
+  const queries = [
+    // Most likely to surface a real named email in snippet
+    domain ? `site:${domain} "@${domain}"` : `"${studioName}" "@" email contact`,
+    domain ? `site:${domain} contact` : `"${studioName}" contact press email`,
+    // Broader fallback
+    `"${studioName}" email studio`,
+  ];
+
+  for (const q of queries) {
+    const results = await searxSearch(q);
+    const text = results.map((r) => `${r.content} ${r.url} ${r.title}`).join(" ");
+    const found = extractEmail(text);
+    if (found.email && !found.generic) return found; // named email — stop immediately
+    if (found.email) {
+      // Keep searching for a named one before accepting generic
+      const remaining = queries.slice(queries.indexOf(q) + 1);
+      for (const q2 of remaining) {
+        const r2 = await searxSearch(q2);
+        const t2 = r2.map((r) => `${r.content} ${r.url} ${r.title}`).join(" ");
+        const f2 = extractEmail(t2);
+        if (f2.email && !f2.generic) return f2;
+      }
+      return found; // best we found is generic
+    }
   }
 
   return { email: null, generic: false };
@@ -919,11 +999,44 @@ export async function processLeadRun(runId: string): Promise<void> {
 
         // Email enrichment — only if no real email found from source
         if (!c.contacts.email) {
-          const { email, generic } = await findEmailViaSearx(c.name, isDomainBlocked(c.website) ? "" : c.website);
-          if (email) {
-            c.contacts.email = email;
-            c.contacts.emailSource = "searxng";
-            c.contacts.genericInbox = generic;
+          const ownSite = !isDomainBlocked(c.website) ? c.website : null;
+
+          // 1. Scrape the studio's own website (highest hit rate, no API key)
+          if (ownSite) {
+            const webResult = await findEmailOnWebsite(ownSite);
+            if (webResult.email) {
+              c.contacts.email = webResult.email;
+              c.contacts.emailSource = "published";
+              c.contacts.genericInbox = webResult.generic;
+            }
+          }
+
+          // 2. Also scrape social handles from website while we have the HTML
+          if (ownSite && !c.contacts.instagram && !c.contacts.twitter) {
+            try {
+              const res = await fetch(ownSite, {
+                headers: { "User-Agent": SCRAPE_UA, Accept: "text/html" },
+                signal: AbortSignal.timeout(6000),
+              });
+              if (res.ok) {
+                const html = await res.text();
+                const siteHandles = extractSocialHandles(html);
+                if (!c.contacts.instagram) c.contacts.instagram = siteHandles.instagram;
+                if (!c.contacts.twitter) c.contacts.twitter = siteHandles.twitter;
+                if (!c.contacts.discord) c.contacts.discord = siteHandles.discord;
+                if (!c.contacts.linkedin) c.contacts.linkedin = siteHandles.linkedin;
+              }
+            } catch { /* best-effort */ }
+          }
+
+          // 3. Fall back to SearXNG if website scrape didn't yield an email
+          if (!c.contacts.email) {
+            const { email, generic } = await findEmailViaSearx(c.name, ownSite ?? "");
+            if (email) {
+              c.contacts.email = email;
+              c.contacts.emailSource = "searxng";
+              c.contacts.genericInbox = generic;
+            }
           }
         }
 
