@@ -639,11 +639,17 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{lead.company}</span>
+                                {lead.segment && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-md font-medium flex-shrink-0"
+                                    style={{ background: "rgba(129,140,248,0.1)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.2)" }}>
+                                    {lead.segment}
+                                  </span>
+                                )}
                                 {lead.score != null && (
-                                  <span className="text-xs tabular-nums" style={{ color: "var(--text-tertiary)" }}>{lead.score}</span>
+                                  <span className="text-xs tabular-nums flex-shrink-0" style={{ color: "var(--text-tertiary)" }}>{lead.score}</span>
                                 )}
                                 {dnc && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
                                     style={{ background: "rgba(255,59,59,0.08)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.15)" }}>
                                     DNC
                                   </span>
@@ -725,12 +731,6 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                                       className="flex items-center gap-1" style={{ color: "#60a5fa" }}>
                                       LinkedIn <ExternalLink size={9} />
                                     </a>
-                                  </div>
-                                )}
-                                {lead.segment && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span style={{ color: "var(--text-tertiary)" }}>Segment:</span>
-                                    <span style={{ color: "var(--text-primary)" }}>{lead.segment}</span>
                                   </div>
                                 )}
                               </div>

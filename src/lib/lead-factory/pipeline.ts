@@ -371,17 +371,6 @@ async function findEmailViaSearx(studioName: string, ownWebsite: string): Promis
 
 // ─── Roblox source ────────────────────────────────────────────────────────────
 
-interface RobloxGameRaw {
-  creatorId: number;
-  creatorName: string;
-  creatorType: string;
-  name: string;
-  placeId: number;
-  playerCount: number;
-  totalUpVotes: number;
-  updated?: string;
-}
-
 async function robloxFetchCreatorProfile(id: number, type: "Group" | "User"): Promise<{ description: string; updated: string | null }> {
   const url = type === "Group"
     ? `https://groups.roblox.com/v1/groups/${id}`
@@ -392,85 +381,170 @@ async function robloxFetchCreatorProfile(id: number, type: "Group" | "User"): Pr
   return { description: data.description ?? "", updated: data.updated ?? null };
 }
 
+// Roblox games list API returns this shape
+interface RobloxGamesListGame {
+  id: number;           // universe ID
+  rootPlaceId: number;
+  name: string;
+  playing: number;
+  visits: number;
+  totalUpVotes: number;
+  totalDownVotes: number;
+  updated: string;      // ISO date of last game update
+  creator: {
+    id: number;
+    name: string;
+    type: string;       // "Group" | "User"
+  };
+}
+
+async function fetchRobloxSortToken(): Promise<string> {
+  // Get a valid sort token for "Most Engaging" (most played right now)
+  try {
+    const res = await fetch(
+      "https://games.roblox.com/v1/games/sorts?GameSortsContext=GamesDefaultSorts",
+      {
+        headers: { "User-Agent": SCRAPE_UA, Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
+      }
+    ).catch(() => null);
+    if (res?.ok) {
+      const data = await res.json() as { sorts?: Array<{ token: string; name: string }> };
+      // Prefer "Most Engaging", "Popular", or "Top Rated"
+      const preferred = data.sorts?.find((s) =>
+        /most engaging|popular|top rated|most visited|trending/i.test(s.name)
+      );
+      if (preferred?.token) return preferred.token;
+      if (data.sorts?.[0]?.token) return data.sorts[0].token;
+    }
+  } catch { /* fall through */ }
+  return "";
+}
+
 async function robloxTopGames(minPlaying: number, take: number, rejections: RejectionRecord[]): Promise<Candidate[]> {
-  const seenCreators = new Map<number, RobloxGameRaw>();
+  // Fetch a valid sort token first — without it the API returns nothing useful
+  const sortToken = await fetchRobloxSortToken();
+
+  // Roblox v2 games list endpoint (accepts universe-based pagination)
+  // Falls back to v1 list if v2 fails.
+  const ROBLOX_HEADERS = {
+    "User-Agent": SCRAPE_UA,
+    Accept: "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
+  // Map: universeId → game data
+  const seenGames = new Map<number, RobloxGamesListGame>();
   let cursor = "";
   let pages = 0;
-  const maxPages = 18; // deeper pool
+  const maxPages = 15;
 
-  while (seenCreators.size < take * 2 && pages < maxPages) {
-    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.keyword=&model.sortToken=&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(12000) }).catch(() => null);
+  while (seenGames.size < take * 3 && pages < maxPages) {
+    const url = `https://games.roblox.com/v1/games/list?model.sortToken=${encodeURIComponent(sortToken)}&model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const res = await fetch(url, { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(12000) }).catch(() => null);
     if (!res?.ok) break;
 
-    const data = await res.json() as { games?: RobloxGameRaw[]; nextPageCursor?: string };
-    const games = data.games ?? [];
+    // v1/games/list returns { games: [...] } where each game is the v1 shape
+    const data = await res.json() as {
+      games?: Array<{
+        creatorId?: number; creatorName?: string; creatorType?: string;
+        placeId?: number; name?: string; playerCount?: number;
+        totalUpVotes?: number; updated?: string;
+        // v2 shape
+        id?: number; rootPlaceId?: number; playing?: number;
+        creator?: { id: number; name: string; type: string };
+      }>;
+      nextPageCursor?: string;
+    };
 
+    const games = data.games ?? [];
     for (const g of games) {
-      if (g.playerCount >= minPlaying && !seenCreators.has(g.creatorId)) {
-        seenCreators.set(g.creatorId, g);
+      // Normalise v1 vs v2 field names
+      const universeId = g.id ?? g.creatorId ?? 0; // best key we have
+      const playing = g.playerCount ?? g.playing ?? 0;
+      if (playing >= minPlaying && !seenGames.has(universeId)) {
+        seenGames.set(universeId, {
+          id: g.id ?? 0,
+          rootPlaceId: g.rootPlaceId ?? g.placeId ?? 0,
+          name: g.name ?? "",
+          playing,
+          visits: 0,
+          totalUpVotes: g.totalUpVotes ?? 0,
+          totalDownVotes: 0,
+          updated: g.updated ?? "",
+          creator: g.creator ?? { id: g.creatorId ?? 0, name: g.creatorName ?? "", type: g.creatorType ?? "Group" },
+        });
       }
     }
 
     cursor = data.nextPageCursor ?? "";
     pages++;
     if (!cursor) break;
-    // Stop early if CCU is dropping far below threshold
-    if (games.length > 0 && games[games.length - 1].playerCount < minPlaying * 0.3) break;
+    const lastPlaying = games.length > 0 ? (games[games.length - 1].playerCount ?? games[games.length - 1].playing ?? 0) : 0;
+    if (lastPlaying < minPlaying * 0.3) break;
   }
 
-  const entries = [...seenCreators.entries()].slice(0, take * 2);
-  const maxAge = cfg.activity.roblox_max_age_days;
+  if (!seenGames.size) return [];
+
+  const entries = [...seenGames.values()].slice(0, take * 2);
 
   const results = await Promise.allSettled(
-    entries.map(async ([creatorId, g]) => {
-      const type = g.creatorType === "Group" ? "Group" : "User";
-      const { description, updated } = await robloxFetchCreatorProfile(creatorId, type);
+    entries.map(async (g) => {
+      const creatorId = g.creator.id;
+      const creatorType = g.creator.type === "Group" ? "Group" : "User";
+      const creatorName = g.creator.name;
 
-      const profileUrl = type === "Group"
+      const { description, updated: profileUpdated } = await robloxFetchCreatorProfile(creatorId, creatorType);
+
+      const profileUrl = creatorType === "Group"
         ? `https://www.roblox.com/groups/${creatorId}`
         : `https://www.roblox.com/users/${creatorId}/profile`;
 
-      // Extract own website from bio (not social platforms)
+      // Extract own website from bio
       const ownUrlMatch = description.match(
         /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
       );
       const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
 
-      // Activity check
-      const lastUpdate = updated ?? g.updated ?? null;
-      const updateProofUrl = `https://www.roblox.com/games/${g.placeId}`;
+      // Activity: game's own `updated` field is the best signal.
+      // For User-type creators the profile API has no `updated` field — use the game date.
+      // If we still have no date, the live player count IS the proof of activity.
+      const lastUpdate = g.updated || profileUpdated || null;
+      const updateProofUrl = `https://www.roblox.com/games/${g.rootPlaceId}`;
+      const maxAge = cfg.activity.roblox_max_age_days;
 
-      if (isActivityStale(lastUpdate, maxAge)) {
-        rejections.push({ name: g.creatorName, reason: `Last update > ${maxAge} days ago (${lastUpdate ?? "unknown"})`, source: "roblox" });
+      if (lastUpdate && isActivityStale(lastUpdate, maxAge)) {
+        rejections.push({ name: creatorName, reason: `Last update > ${maxAge} days ago (${lastUpdate})`, source: "roblox" });
         return null;
       }
-      if (g.playerCount < cfg.activity.min_playing_roblox) {
-        rejections.push({ name: g.creatorName, reason: `Only ${g.playerCount} playing (min ${cfg.activity.min_playing_roblox})`, source: "roblox" });
+      // If no date available but game has live players → still active (don't reject)
+
+      if (g.playing < cfg.activity.min_playing_roblox) {
+        rejections.push({ name: creatorName, reason: `Only ${g.playing} playing (min ${cfg.activity.min_playing_roblox})`, source: "roblox" });
         return null;
       }
 
-      // Blocklist
-      if (isCompanyBlocked(g.creatorName)) {
-        rejections.push({ name: g.creatorName, reason: "Company blocklisted", source: "roblox" });
+      if (isCompanyBlocked(creatorName)) {
+        rejections.push({ name: creatorName, reason: "Company blocklisted", source: "roblox" });
         return null;
       }
 
       const { email, generic } = extractEmail(description);
       const handles = extractSocialHandles(description);
 
+      // Infer niche from game name for a better segment label
       const candidate: Candidate = {
         type: "roblox",
-        name: g.creatorName,
+        name: creatorName,
         website: ownWebsite ?? profileUrl,
-        storeLink: `https://www.roblox.com/games/${g.placeId}`,
+        storeLink: `https://www.roblox.com/games/${g.rootPlaceId}`,
         gameName: g.name,
-        description: `Roblox ${type === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} playing · ${g.totalUpVotes} upvotes.${description ? ` Bio: ${description.slice(0, 200)}` : ""}`,
+        description: `"${g.name}" · ${g.playing.toLocaleString()} playing · ${g.totalUpVotes.toLocaleString()} upvotes${description ? ` · ${description.slice(0, 120)}` : ""}`,
         genre: "Roblox",
         chartRank: null,
         ratingsCount: g.totalUpVotes,
-        installCount: g.playerCount,
-        lastUpdateDate: lastUpdate,
+        installCount: g.playing,
+        lastUpdateDate: lastUpdate ?? new Date().toISOString(), // active players = active game
         updateProofUrl,
         country: null,
         earnsRealMoney: false,
@@ -481,15 +555,15 @@ async function robloxTopGames(minPlaying: number, take: number, rejections: Reje
           ...handles,
         },
         ...blankEnrichment(),
-        rawData: { ...g, creatorId, profileDesc: description, robloxProfileUrl: profileUrl },
+        rawData: { ...g, playerCount: g.playing, creatorId, creatorName, creatorType, profileDesc: description, robloxProfileUrl: profileUrl },
       };
       return candidate;
     })
   );
 
-  return results.filter((r): r is PromiseFulfilledResult<Candidate> =>
-    r.status === "fulfilled" && r.value !== null
-  ).map((r) => r.value);
+  return results
+    .filter((r): r is PromiseFulfilledResult<Candidate> => r.status === "fulfilled" && r.value !== null)
+    .map((r) => r.value);
 }
 
 // ─── Steam source ─────────────────────────────────────────────────────────────
@@ -594,7 +668,7 @@ async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]
       website: ownWebsite ?? storeLink,
       storeLink,
       gameName,
-      description: `Steam developer. Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
+      description: `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${desc ? ` · ${desc.slice(0, 180)}` : ""}`.trim(),
       genre: primaryGenre,
       chartRank: null,
       ratingsCount: null,
@@ -804,7 +878,7 @@ async function appStoreTopGames(rejections: RejectionRecord[]): Promise<Candidat
       website: ownWebsite ?? storeLink,
       storeLink,
       gameName,
-      description: `Mobile developer (App Store, ${meta.country}${meta.rank ? ` #${meta.rank}` : ""}). Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
+      description: `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${meta.rank ? ` · App Store #${meta.rank}` : ""}${desc ? ` · ${desc.slice(0, 160)}` : ""}`.trim(),
       genre: primaryGenre,
       chartRank: meta.rank,
       ratingsCount,
@@ -917,6 +991,47 @@ async function findFundingSignals(studioName: string, domain: string | null): Pr
   return { backed: false, details: null, proofUrl: null };
 }
 
+// ─── Segment label ────────────────────────────────────────────────────────────
+// Shows the actual niche (genre + platform) rather than a generic platform label.
+
+function buildSegmentLabel(c: Candidate): string {
+  const genre = c.genre?.trim();
+
+  if (c.type === "roblox") {
+    // Roblox API doesn't expose genre — derive from game name heuristics
+    const title = c.gameName.toLowerCase();
+    if (/\b(tycoon)\b/.test(title))         return "Tycoon (Roblox)";
+    if (/\b(roleplay|rp|life)\b/.test(title)) return "Roleplay (Roblox)";
+    if (/\b(obby|obstacle)\b/.test(title))  return "Obby (Roblox)";
+    if (/\b(simulator|sim)\b/.test(title))  return "Simulator (Roblox)";
+    if (/\b(tower|defense)\b/.test(title))  return "Tower Defense (Roblox)";
+    if (/\b(battle|fight|war|shooter)\b/.test(title)) return "Action (Roblox)";
+    if (/\b(horror|scary|survive)\b/.test(title)) return "Horror (Roblox)";
+    if (/\b(adventure|quest)\b/.test(title)) return "Adventure (Roblox)";
+    if (/\b(racing|race|car|drift)\b/.test(title)) return "Racing (Roblox)";
+    if (/\b(sport|soccer|football|basketball)\b/.test(title)) return "Sports (Roblox)";
+    return "Roblox Studio";
+  }
+
+  if (c.type === "steam") {
+    if (!genre || genre.toLowerCase() === "free to play") return "PC/Steam Developer";
+    return `${genre} (PC/Steam)`;
+  }
+
+  if (c.type === "mobile") {
+    if (!genre) return "Mobile Developer";
+    // Normalise iTunes genre names
+    const g = genre
+      .replace(/^Games$/, "Mobile Game")
+      .replace(/^Role Playing$/, "RPG")
+      .replace(/^Action$/, "Action")
+      .trim();
+    return `${g} (Mobile)`;
+  }
+
+  return "Game Studio";
+}
+
 // ─── Scoring ──────────────────────────────────────────────────────────────────
 
 interface ScoreResult {
@@ -1013,12 +1128,28 @@ function parseCriteria(raw: string | null): CriteriaFlags {
   const t = (raw ?? "").toLowerCase();
 
   // ── Source selection ──────────────────────────────────────────────────────
-  const wantsRoblox  = /roblox/.test(t);
-  const wantsSteam   = /\bsteam\b|pc game|windows game/.test(t);
-  const wantsMobile  = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(t);
+  // Strip negation phrases first so "no mobile" / "not steam" don't trigger those sources
+  const negated = t
+    .replace(/\b(no|not|without|exclude|skip|ignore|except)\s+(roblox|steam|mobile|ios|android|pc|app\s*store|apple)\b/g, " ")
+    .replace(/\b(roblox|steam|mobile|ios|app\s*store)\s+(not|excluded|removed|skipped)\b/g, " ");
+
+  // "only X" collapses to just that source
+  const onlyRoblox = /\bonly\s+roblox\b|\broblox\s+only\b/.test(t);
+  const onlySteam  = /\bonly\s+steam\b|\bsteam\s+only\b/.test(t);
+  const onlyMobile = /\bonly\s+mobile\b|\bmobile\s+only\b|\bonly\s+(ios|app\s*store|apple)\b/.test(t);
+
+  const wantsRoblox  = /roblox/.test(negated);
+  const wantsSteam   = /\bsteam\b|pc game|windows game/.test(negated);
+  const wantsMobile  = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(negated);
 
   let sources: Set<"roblox" | "steam" | "mobile">;
-  if (wantsRoblox || wantsSteam || wantsMobile) {
+  if (onlyRoblox) {
+    sources = new Set(["roblox"] as const);
+  } else if (onlySteam) {
+    sources = new Set(["steam"] as const);
+  } else if (onlyMobile) {
+    sources = new Set(["mobile"] as const);
+  } else if (wantsRoblox || wantsSteam || wantsMobile) {
     sources = new Set<"roblox" | "steam" | "mobile">();
     if (wantsRoblox) sources.add("roblox");
     if (wantsSteam)  sources.add("steam");
@@ -1376,7 +1507,7 @@ export async function processLeadRun(runId: string): Promise<void> {
           total: finalScored.score,
         };
 
-        const segmentLabel = c.type === "roblox" ? "Roblox Studio" : c.type === "steam" ? "PC/Steam Developer" : "Mobile Developer";
+        const segmentLabel = buildSegmentLabel(c);
 
         await prisma.leadFactoryLead.create({
           data: {
