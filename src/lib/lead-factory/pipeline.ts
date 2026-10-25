@@ -997,6 +997,65 @@ function scoreCandidate(c: Candidate): ScoreResult {
   return { score, grade, breakdown, activityVerified, genrePasses };
 }
 
+// ─── Criteria parser ──────────────────────────────────────────────────────────
+// Reads the free-text criteria field and returns flags the pipeline respects.
+
+interface CriteriaFlags {
+  sources: Set<"roblox" | "steam" | "mobile">;  // which sources to run
+  requireFunding: boolean;      // only keep investor-backed studios
+  requireCountries: Set<string> | null; // null = any country
+  minRatings: number | null;    // override config min ratings
+  minPlayers: number | null;    // override config min playing (roblox)
+  extraContext: string;         // passed to logs so user sees what was parsed
+}
+
+function parseCriteria(raw: string | null): CriteriaFlags {
+  const t = (raw ?? "").toLowerCase();
+
+  // ── Source selection ──────────────────────────────────────────────────────
+  const wantsRoblox  = /roblox/.test(t);
+  const wantsSteam   = /\bsteam\b|pc game|windows game/.test(t);
+  const wantsMobile  = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(t);
+
+  let sources: Set<"roblox" | "steam" | "mobile">;
+  if (wantsRoblox || wantsSteam || wantsMobile) {
+    sources = new Set<"roblox" | "steam" | "mobile">();
+    if (wantsRoblox) sources.add("roblox");
+    if (wantsSteam)  sources.add("steam");
+    if (wantsMobile) sources.add("mobile");
+  } else {
+    // No platform specified → use all three
+    sources = new Set(["roblox", "steam", "mobile"] as const);
+  }
+
+  // ── Funding requirement ───────────────────────────────────────────────────
+  const requireFunding = /\b(vc|venture|funded|investor|backed|raised|series [abc]|seed round)\b/.test(t);
+
+  // ── Country filter ────────────────────────────────────────────────────────
+  const requireCountries: Set<string> | null = (() => {
+    if (/\b(us|usa|united states|american)\b/.test(t)) return new Set(["US"]);
+    if (/\b(uk|united kingdom|british)\b/.test(t))     return new Set(["GB"]);
+    if (/\b(canada|canadian)\b/.test(t))                return new Set(["CA"]);
+    if (/\b(australia|australian)\b/.test(t))           return new Set(["AU"]);
+    if (/\b(europe|european)\b/.test(t))                return new Set(["DE", "FR", "NL", "SE", "NO", "DK", "FI", "GB"]);
+    return null;
+  })();
+
+  // ── Size/activity overrides ───────────────────────────────────────────────
+  const minRatings = /\b(big|large|popular|viral)\b/.test(t) ? 10000 : null;
+  const minPlayers = /\b(big|large|popular|viral)\b/.test(t) ? 2000  : null;
+
+  // ── Summary for log ───────────────────────────────────────────────────────
+  const parts: string[] = [];
+  parts.push(`sources=[${[...sources].join(",")}]`);
+  if (requireFunding)   parts.push("requireFunding");
+  if (requireCountries) parts.push(`countries=[${[...requireCountries].join(",")}]`);
+  if (minRatings)       parts.push(`minRatings=${minRatings}`);
+  if (minPlayers)       parts.push(`minPlayers=${minPlayers}`);
+
+  return { sources, requireFunding, requireCountries, minRatings, minPlayers, extraContext: parts.join(" | ") };
+}
+
 // ─── Cross-run deduplication ──────────────────────────────────────────────────
 
 async function loadSeenDomains(): Promise<Set<string>> {
@@ -1033,6 +1092,10 @@ export async function processLeadRun(runId: string): Promise<void> {
     if (await isStopped(runId)) return;
 
     // ── PHASE 2: DISCOVER ─────────────────────────────────────────────────────
+    // Parse criteria to decide which sources to run and what extra filters apply
+    const flags = parseCriteria(run.criteria);
+    await log(runId, "planning", `Criteria parsed: ${flags.extraContext || "no overrides — using all sources"}`);
+
     await setStatus(runId, "discovering", "Fetching charts…");
 
     const seenThisRun = new Set<string>();
@@ -1041,7 +1104,6 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     function tryAdd(c: Candidate) {
       const domain = extractDomain(c.website);
-      // Skip platform URLs as unique key — use storeLink domain if website is platform
       const storeKey = extractDomain(c.storeLink);
       const key = !isDomainBlocked(c.website) ? domain : storeKey;
 
@@ -1054,28 +1116,41 @@ export async function processLeadRun(runId: string): Promise<void> {
       candidates.push(c);
     }
 
-    // Roblox
-    await setStage(runId, `Fetching Roblox top games (≥${cfg.sources.roblox_min_ccu} playing)…`);
-    const robloxResults = await robloxTopGames(cfg.sources.roblox_min_ccu, Math.max(run.count * 4, 200), rejections);
-    totalPulled += Math.max(run.count * 4, 200);
-    robloxResults.forEach(tryAdd);
-    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates`);
-    if (await isStopped(runId)) return;
+    // Roblox — only if criteria allows it
+    if (flags.sources.has("roblox")) {
+      const minPlaying = flags.minPlayers ?? cfg.sources.roblox_min_ccu;
+      await setStage(runId, `Fetching Roblox top games (≥${minPlaying} playing)…`);
+      const robloxResults = await robloxTopGames(minPlaying, Math.max(run.count * 4, 200), rejections);
+      totalPulled += Math.max(run.count * 4, 200);
+      robloxResults.forEach(tryAdd);
+      await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates`);
+      if (await isStopped(runId)) return;
+    } else {
+      await log(runId, "discovering", "Roblox: skipped (not in criteria)");
+    }
 
-    // Steam
-    await setStage(runId, "Fetching Steam top trending games…");
-    const steamResults = await steamTopGames(cfg.sources.steam_max_age_months, rejections);
-    totalPulled += 100;
-    steamResults.forEach(tryAdd);
-    await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates`);
-    if (await isStopped(runId)) return;
+    // Steam — only if criteria allows it
+    if (flags.sources.has("steam")) {
+      await setStage(runId, "Fetching Steam top trending games…");
+      const steamResults = await steamTopGames(cfg.sources.steam_max_age_months, rejections);
+      totalPulled += 200;
+      steamResults.forEach(tryAdd);
+      await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates`);
+      if (await isStopped(runId)) return;
+    } else {
+      await log(runId, "discovering", "Steam: skipped (not in criteria)");
+    }
 
-    // App Store (multi-chart)
-    await setStage(runId, "Fetching App Store charts (subcategories × countries)…");
-    const mobileResults = await appStoreTopGames(rejections);
-    totalPulled += (cfg.sources.app_store_countries.length * (cfg.sources.app_store_allowed_subcategory_ids.length + 1)) * 400; // grossing + free
-    mobileResults.forEach(tryAdd);
-    await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates`);
+    // App Store — only if criteria allows it
+    if (flags.sources.has("mobile")) {
+      await setStage(runId, "Fetching App Store charts (subcategories × countries)…");
+      const mobileResults = await appStoreTopGames(rejections);
+      totalPulled += (cfg.sources.app_store_countries.length * (cfg.sources.app_store_allowed_subcategory_ids.length + 1)) * 400;
+      mobileResults.forEach(tryAdd);
+      await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates`);
+    } else {
+      await log(runId, "discovering", "App Store: skipped (not in criteria)");
+    }
 
     const preFilterCount = candidates.length;
     await setStage(runId, `Discovered ${preFilterCount} unique candidates`);
@@ -1090,7 +1165,6 @@ export async function processLeadRun(runId: string): Promise<void> {
     if (await isStopped(runId)) return;
 
     // ── PHASE 2.5: HARD FILTER ────────────────────────────────────────────────
-    // Secondary pass to catch any candidates that slipped through source-level checks
     await setStage(runId, "Applying hard filters…");
     const hardFiltered: Candidate[] = [];
 
@@ -1108,6 +1182,16 @@ export async function processLeadRun(runId: string): Promise<void> {
       // Genre filter
       if (isRejectedGenre(c.genre, c.gameName, c.description)) {
         rejections.push({ name: c.name, reason: `Rejected genre: "${c.genre}" game: "${c.gameName}"`, source: c.type });
+        continue;
+      }
+      // Country filter from criteria (mobile leads have country; roblox/steam don't — let them through)
+      if (flags.requireCountries && c.country && !flags.requireCountries.has(c.country.toUpperCase())) {
+        rejections.push({ name: c.name, reason: `Country "${c.country}" not in criteria filter`, source: c.type });
+        continue;
+      }
+      // Ratings override from criteria
+      if (flags.minRatings && (c.ratingsCount ?? 0) > 0 && (c.ratingsCount ?? 0) < flags.minRatings) {
+        rejections.push({ name: c.name, reason: `Only ${c.ratingsCount} ratings (criteria requires ${flags.minRatings})`, source: c.type });
         continue;
       }
       hardFiltered.push(c);
@@ -1145,6 +1229,8 @@ export async function processLeadRun(runId: string): Promise<void> {
     } | null;
 
     async function enrichOne(c: Candidate): Promise<EnrichedResult> {
+      // Source-type gate (double-check after hard filter, in case of mixed batches)
+      if (!flags.sources.has(c.type as "roblox" | "steam" | "mobile")) return null;
       const scored = scoreCandidate(c);
       if (scored.grade === "F") return null;
 
@@ -1234,6 +1320,9 @@ export async function processLeadRun(runId: string): Promise<void> {
         c.fundingDetails = fundingResult.details;
         c.fundingProofUrl = fundingResult.proofUrl;
       }
+
+      // Drop if criteria requires funded studios but none found
+      if (flags.requireFunding && !c.investorBacked) return null;
 
       const finalScored = scoreCandidate(c);
       const moneySignals: string[] = [];
