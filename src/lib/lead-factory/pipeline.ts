@@ -1455,11 +1455,7 @@ export async function processLeadRun(runId: string): Promise<void> {
         }
       }
 
-      // For Roblox, creators rarely publish email — allow through if they have social handles.
-      // For Steam/Mobile, email is the primary outreach channel so still require it.
-      const hasSocial = !!(c.contacts.instagram || c.contacts.twitter || c.contacts.discord);
-      if (!c.contacts.email && c.type !== "roblox") return null;
-      if (!c.contacts.email && c.type === "roblox" && !hasSocial) return null;
+      if (!c.contacts.email) return null; // email required for every lead
 
       // ── Named contact + funding (parallel, 15s combined deadline) ────────────
       const domainForEnrich = ownSite ? extractDomain(ownSite) : null;
