@@ -1,25 +1,25 @@
 /**
- * Lead Factory Pipeline — chart/rank-based discovery, zero keyword searches
+ * Lead Factory Pipeline v2
  *
- * Sources:
- *   - Roblox Games API    → top games with 1,000+ live concurrent players
- *   - Steam Store API     → top sellers + new releases (last 24 months)
- *   - Apple App Store     → top-grossing Games chart, ranks 50–200
+ * Sources (chart-rank-based only — no keyword searches):
+ *   Roblox   → games.roblox.com top games by live players
+ *   Steam    → SteamSpy top100in2weeks + Steam appdetails
+ *   Mobile   → iTunes RSS top-grossing (US main chart + subcategory charts × 6 countries)
  *
- * Contact enrichment (not discovery):
- *   - SearXNG             → email / social lookup per passing lead
- *
- * No keyword app-store searches. No GitHub. No YouTube keyword search.
- * Planning + scoring: rule-based — no AI, no API key, no account needed.
+ * All thresholds, blocklists, and genre lists live in config.json.
  */
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import cfg from "./config.json";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── DB helpers ───────────────────────────────────────────────────────────────
 
 async function setStatus(runId: string, status: string, stage?: string) {
-  await prisma.leadRun.update({ where: { id: runId }, data: { status, ...(stage !== undefined ? { stage } : {}) } });
+  await prisma.leadRun.update({
+    where: { id: runId },
+    data: { status, ...(stage !== undefined ? { stage } : {}) },
+  });
 }
 
 async function setStage(runId: string, stage: string) {
@@ -30,670 +30,185 @@ async function log(runId: string, stage: string, message: string, level: "info" 
   await prisma.leadRunLog.create({ data: { runId, stage, message, level } }).catch(() => {});
 }
 
-async function trackCost(runId: string, provider: string, op: string, units: number, cost: number) {
-  await prisma.leadRunCost.create({ data: { runId, provider, operation: op, units, cost } }).catch(() => {});
-  await prisma.leadRun.update({
-    where: { id: runId },
-    data: { totalCost: { increment: cost } },
-  }).catch(() => {});
-}
-
 async function isStopped(runId: string): Promise<boolean> {
   const r = await prisma.leadRun.findUnique({ where: { id: runId }, select: { status: true } });
   return r?.status === "stopped";
 }
 
-// ─── Zero-dependency planning — no AI needed ─────────────────────────────────
-// Extracts keywords from the user prompt and mixes them with a pre-built query
-// bank to generate diverse search queries across all sources.
-
-const STOP_WORDS = new Set([
-  "the","and","for","that","with","have","this","from","they","will","been",
-  "are","but","not","you","all","can","was","one","our","out","get","has",
-  "how","its","may","now","she","too","use","who","your","more","also","into",
-  "than","then","when","some","such","only","over","just","like","after","about",
-  "very","well","back","even","much","most","make","long","time","look","come",
-  "take","know","give","want","keep","find","tell","feel","turn","hand","place",
-  "game","games","studio","developer","company","want","need","find","looking",
-  "short","form","video","clip","clips","every","must","include","return","each",
-]);
-
-function extractKeywords(prompt: string, max = 6): string[] {
-  return prompt.toLowerCase()
-    .split(/[\s,;.!?()\[\]{}"']+/)
-    .filter((w) => w.length > 3 && !STOP_WORDS.has(w))
-    .filter((w, i, a) => a.indexOf(w) === i) // deduplicate
-    .slice(0, max);
-}
-
-// Discovery is chart/rank-based — no keyword queries needed.
-// This function only derives segment labels used during scoring.
-function generatePlan(prompt: string, _count: number): Plan {
-  const kw = extractKeywords(prompt);
-  const segments = [
-    kw.some((k) => ["roblox", "rbx"].includes(k)) ? "Roblox Studio" : "Roblox Developer",
-    kw.some((k) => ["steam", "pc"].includes(k))    ? "PC Game Studio" : "Indie Game Studio",
-    kw.some((k) => ["mobile", "ios", "android"].includes(k)) ? "Mobile Game Publisher" : "Mobile Game Developer",
-    "Online PvP Studio",
-  ];
-  return {
-    segments,
-    sources: ["Roblox Top CCU", "Steam Featured", "App Store Top Grossing"],
-  };
-}
-
-// ─── Size filter — always-on, blocks mega-companies and AAA studios ───────────
-// These leads are unreachable for a small clipping agency. Filtered out before
-// scoring so they never waste quota.
-
-const MEGA_COMPANY_NAMES = [
-  // Major publishers / parent companies
-  "nintendo", "hasbro", "activision", "electronic arts", "ea sports", "ea games",
-  "ubisoft", "blizzard", "blizzard entertainment", "valve corporation", "riot games",
-  "epic games", "take-two interactive", "2k games", "2k sports", "bethesda",
-  "bethesda softworks", "rockstar games", "rockstar north", "sony interactive",
-  "sony computer entertainment", "microsoft game studios", "xbox game studios",
-  "square enix", "capcom", "bandai namco", "sega", "konami", "naughty dog",
-  "bungie", "insomniac games", "treyarch", "infinity ward", "respawn entertainment",
-  "dice", "bioware", "obsidian entertainment", "double fine", "cd projekt",
-  "cd projekt red", "techland", "paradox interactive", "505 games",
-  "deep silver", "thq nordic", "warhorse studios", "giants software",
-  // Mega mobile
-  "supercell", "king digital", "zynga", "netmarble", "nexon", "ncsoft",
-  "mihoyo", "hoyoverse", "cognosphere", "tencent games", "netease games",
-  "gameloft", "jam city", "scopely", "playtika",
-  // Mega Roblox games (the studios behind them are corporations)
-  "adopt me", "blox fruits", "brookhaven", "arsenal roblox",
-  // Famous titles that are mega-brands (not the indie dev we want)
-  "counter-strike", "counter strike", "call of duty", "world of warcraft",
-  "fortnite", "league of legends", "valorant", "apex legends",
-  "overwatch", "hearthstone", "diablo", "genshin impact", "honkai",
-  "pokemon", "zelda", "mario", "halo", "fifa", "madden", "nba 2k",
-  // Media conglomerates that make games as a side business
-  "disney interactive", "warner bros. games", "wb games",
-  "universal games", "lego games", "dreamworks",
-];
-
-// Upper size limits for non-Roblox sources.
-// Roblox studios are allowed at any size — large Roblox devs are still
-// reachable and actively look for content partnerships.
-const SIZE_CEILING = {
-  youtubeSubs: 5_000_000, // 5M+ = media company, not a creator looking for help
-};
-
-// ─── Activity filter — always-on, removes dead/abandoned projects ─────────────
-// Every lead must show signs of active development or live users.
-
-const ACTIVE_WINDOW_MS = 6 * 30 * 24 * 60 * 60 * 1000; // 6 months
-
-function isInactive(c: Candidate): boolean {
-  if (c.type === "mobile") {
-    // Chart-sourced apps are active by definition (on the grossing chart right now).
-    // Only apply the staleness check for any non-chart app that might slip through.
-    const raw = c.rawData as { currentVersionReleaseDate?: string; releaseDate?: string; chartRank?: number };
-    if (!raw.chartRank) {
-      const dateStr = raw.currentVersionReleaseDate ?? raw.releaseDate;
-      if (dateStr) {
-        const updated = new Date(dateStr);
-        if (!isNaN(updated.getTime()) && Date.now() - updated.getTime() > ACTIVE_WINDOW_MS) return true;
-      }
-    }
-  }
-
-  if (c.type === "roblox") {
-    // Both CCU and upvotes at essentially zero = abandoned game
-    const raw = c.rawData as { playerCount?: number; totalUpVotes?: number };
-    const ccu   = raw.playerCount  ?? 0;
-    const votes = raw.totalUpVotes ?? 0;
-    if (ccu === 0 && votes < 50) return true;
-  }
-
-  if (c.type === "steam") {
-    // coming_soon: true = unreleased, no active player base yet
-    const raw = c.rawData as { coming_soon?: boolean };
-    if (raw.coming_soon === true) return true;
-  }
-
-  if (c.type === "web") {
-    // GitHub org profiles expose pushed_at — skip orgs dormant for 2+ years
-    const raw = c.rawData as { pushed_at?: string; updated_at?: string };
-    const dateStr = raw.pushed_at ?? raw.updated_at;
-    if (dateStr) {
-      const pushed = new Date(dateStr);
-      if (!isNaN(pushed.getTime()) && Date.now() - pushed.getTime() > ACTIVE_WINDOW_MS) return true;
-    }
-  }
-
-  return false;
-}
-
-function isTooLarge(c: Candidate): boolean {
-  const name = c.name.toLowerCase();
-  const desc = c.description.toLowerCase().slice(0, 200);
-
-  // Blocklist match on name
-  if (MEGA_COMPANY_NAMES.some((n) => name === n || name.includes(n))) return true;
-
-  // Blocklist match in description (only first 200 chars — company self-description)
-  if (MEGA_COMPANY_NAMES.some((n) => n.length > 6 && desc.includes(n))) return true;
-
-  // YouTube ceiling only — Roblox has no size cap
-  if (c.type === "youtube") {
-    const raw = c.rawData as { subCount?: number };
-    if ((raw.subCount ?? 0) > SIZE_CEILING.youtubeSubs) return true;
-  }
-
-  return false;
-}
-
-// ─── Criteria parsing — translates free-text requirements into scoring signals ──
-// Handles phrases like "active downloads", "VC backed", "must have instagram", etc.
-
-interface CriteriaSignals {
-  // Per-type score boosts (additive)
-  boostMobile:  number;
-  boostYoutube: number;
-  boostRoblox:  number;
-  boostSteam:   number;
-  boostWeb:     number;
-  // Contact boosts
-  bonusEmail:     number;
-  bonusLinkedin:  number;
-  bonusSocial:    number;   // instagram or twitter
-  bonusDiscord:   number;
-  // Engagement amplifier — multiplies existing CCU/sub bonuses
-  engagementMult: number;
-  // Hard filters — candidates that fail are skipped
-  requireEmail:    boolean;
-  requireSocial:   boolean;
-  requireLinkedin: boolean;
-  requireRealSite: boolean; // must have own domain, not just a platform URL
-  // Tighter YouTube ceiling when user asks for small/indie
-  youtubeSubsCeiling: number;
-}
-
-const PLATFORM_DOMAINS = ["roblox.com", "youtube.com", "twitter.com", "instagram.com", "linkedin.com", "apple.com", "steampowered.com"];
-
-function parseCriteria(text: string): CriteriaSignals {
-  const t = text.toLowerCase();
-  const s: CriteriaSignals = {
-    boostMobile: 0, boostYoutube: 0, boostRoblox: 0, boostSteam: 0, boostWeb: 0,
-    bonusEmail: 0, bonusLinkedin: 0, bonusSocial: 0, bonusDiscord: 0,
-    engagementMult: 1,
-    requireEmail: false, requireSocial: false, requireLinkedin: false, requireRealSite: false,
-    youtubeSubsCeiling: SIZE_CEILING.youtubeSubs,
-  };
-
-  // ── Size constraints — tighten ceilings when user explicitly wants small/indie ──
-  if (/indie|small.{0,15}(company|studio|dev|team)|not.{0,15}(big|large|huge|massive)|no.{0,15}(big|large|huge|corporate)|avoid.{0,15}(big|large|corporate)|accessible|micro studio|solo dev/.test(t)) {
-    s.youtubeSubsCeiling = Math.min(s.youtubeSubsCeiling, 500_000); // under 500k subs
-  }
-
-  // ── Downloads / active installs ──
-  if (/download|install|app store|play store|active app/.test(t)) {
-    s.boostMobile  += 25;
-    s.boostSteam   += 10;
-    s.engagementMult = Math.max(s.engagementMult, 1.4);
-  }
-
-  // ── VC / funded / capital / investors ──
-  if (/\bvc\b|venture capital|vc[- ]backed|backed by|funded|investor|investment|capital|series [abcde]|seed round|raised/.test(t)) {
-    s.boostWeb      += 20;
-    s.bonusLinkedin += 20; // funded companies almost always have LinkedIn
-    s.requireRealSite = true; // funded companies have their own domain
-  }
-
-  // ── Active player base / high engagement ──
-  if (/active player|active user|concurrent|daily active|high engagement|popular|trending|viral|large audience/.test(t)) {
-    s.engagementMult = Math.max(s.engagementMult, 1.5);
-    s.boostRoblox  += 10;
-    s.boostYoutube += 10;
-  }
-
-  // ── Subscriber/view thresholds ──
-  if (/subscriber|view|audience|creator|youtuber/.test(t)) {
-    s.boostYoutube += 20;
-  }
-
-  // ── Platform-specific boosts ──
-  if (/\broblox\b/.test(t))                          s.boostRoblox  += 25;
-  if (/\byoutube\b|youtuber/.test(t))                s.boostYoutube += 20;
-  if (/\bsteam\b|pc game|indie game/.test(t))        s.boostSteam   += 20;
-  if (/\bmobile\b|ios|android|phone/.test(t))        s.boostMobile  += 20;
-  if (/startup|company|studio|agency|brand/.test(t)) s.boostWeb     += 10;
-
-  // ── Contact requirements ──
-  if (/must have email|require email|need.{0,8}email|has.{0,8}email|with email/.test(t)) {
-    s.requireEmail = true;
-    s.bonusEmail   = 20;
-  }
-  if (/instagram|social media|social presence|social following/.test(t)) {
-    s.bonusSocial += 15;
-    if (/must have instagram|require instagram|need.{0,8}instagram/.test(t)) s.requireSocial = true;
-  }
-  if (/linkedin|professional|b2b|decision maker|decision-maker/.test(t)) {
-    s.bonusLinkedin += 15;
-    if (/must have linkedin|require linkedin/.test(t)) s.requireLinkedin = true;
-  }
-  if (/discord|community/.test(t)) {
-    s.bonusDiscord += 10;
-  }
-
-  // ── Real website (not just a platform profile) ──
-  if (/real website|own website|company website|their own site|website/.test(t)) {
-    s.requireRealSite = true;
-  }
-
-  return s;
-}
-
-function meetsHardCriteria(c: Candidate, signals: CriteriaSignals): boolean {
-  if (signals.requireEmail    && !c.contacts.email)     return false;
-  if (signals.requireSocial   && !c.contacts.instagram && !c.contacts.twitter) return false;
-  if (signals.requireLinkedin && !c.contacts.linkedin)  return false;
-  if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) return false;
-
-  // Criteria-specific YouTube ceiling (tighter when user asks for small/indie)
-  if (c.type === "youtube") {
-    const raw = c.rawData as { subCount?: number };
-    if ((raw.subCount ?? 0) > signals.youtubeSubsCeiling) return false;
-  }
-
-  return true;
-}
-
-// ─── Zero-dependency scoring — no AI needed ───────────────────────────────────
-// Scores candidates using platform signals: CCU, review count, subscribers, etc.
-
-type Analysis = {
-  company: string; website: string; whatItIs: string; segment: string;
-  decisionMaker: string | null; dmRole: string | null; dmEmail: string | null;
-  instagramHandle: string | null; xHandle: string | null;
-  linkedinUrl: string | null; discordUrl: string | null;
-  grade: string; score: number; whyItFits: string; bestChannel: string;
-};
-
-function scoreCandidate(c: Candidate, segments: string[], signals?: CriteriaSignals): Analysis {
-  let score = 40;
-
-  // Contact signals
-  if (c.contacts.email)     score += 15;
-  if (c.contacts.instagram) score += 5;
-  if (c.contacts.twitter)   score += 3;
-  if (c.contacts.linkedin)  score += 7;
-
-  // Source-specific quality signals
-  if (c.type === "roblox") {
-    const raw = c.rawData as { playerCount?: number; totalUpVotes?: number };
-    const ccu   = (raw.playerCount  ?? 0) as number;
-    const votes = (raw.totalUpVotes ?? 0) as number;
-    const engMult = signals?.engagementMult ?? 1;
-    score += Math.round((ccu > 10000 ? 25 : ccu > 1000 ? 18 : ccu > 100 ? 10 : ccu > 10 ? 5 : 0) * engMult);
-    score += votes > 100000 ? 10 : votes > 10000 ? 6 : votes > 1000 ? 3 : 0;
-  } else if (c.type === "steam") {
-    score += 20; // Steam support email present = qualified lead
-  } else if (c.type === "mobile") {
-    score += 15;
-    if (c.description.length > 150) score += 5; // rich description = active app
-  } else if (c.type === "youtube") {
-    const raw  = c.rawData as { subCount?: number };
-    const subs = (raw.subCount ?? 0) as number;
-    const engMult = signals?.engagementMult ?? 1;
-    score += Math.round((subs > 1000000 ? 25 : subs > 100000 ? 20 : subs > 10000 ? 12 : subs > 1000 ? 6 : 0) * engMult);
-  } else if (c.type === "web") {
-    score += 10;
-    const raw = c.rawData as { followers?: number };
-    if (raw.followers) score += Math.min(10, Math.floor(raw.followers / 100));
-  }
-
-  // ── Criteria-driven boosts ────────────────────────────────────────────────
-  if (signals) {
-    if (c.type === "mobile")  score += signals.boostMobile;
-    if (c.type === "youtube") score += signals.boostYoutube;
-    if (c.type === "roblox")  score += signals.boostRoblox;
-    if (c.type === "steam")   score += signals.boostSteam;
-    if (c.type === "web")     score += signals.boostWeb;
-
-    if (c.contacts.email)    score += signals.bonusEmail;
-    if (c.contacts.linkedin) score += signals.bonusLinkedin;
-    if (c.contacts.instagram || c.contacts.twitter) score += signals.bonusSocial;
-    if (c.contacts.discord)  score += signals.bonusDiscord;
-
-    // Penalise platform-only profiles when a real website is required
-    if (signals.requireRealSite && PLATFORM_DOMAINS.some((d) => c.website.includes(d))) {
-      score -= 30;
-    }
-  }
-
-  score = Math.min(100, Math.max(0, score));
-  const grade = score >= 80 ? "A" : score >= 65 ? "B" : score >= 50 ? "C" : score >= 35 ? "D" : "F";
-
-  const segmentMap: Record<string, string> = {
-    roblox: segments.find((s) => s.toLowerCase().includes("roblox")) ?? "Roblox Developer",
-    steam:  segments.find((s) => s.toLowerCase().includes("pc") || s.toLowerCase().includes("indie")) ?? "Indie Game Studio",
-    mobile: segments.find((s) => s.toLowerCase().includes("mobile")) ?? "Mobile Game Developer",
-    youtube: segments.find((s) => s.toLowerCase().includes("creator") || s.toLowerCase().includes("content")) ?? "Gaming Creator",
-    web:    segments.find((s) => s.toLowerCase().includes("studio")) ?? "Game Studio",
-  };
-
-  const bestChannel = c.contacts.email ? "email"
-    : c.contacts.instagram ? "instagram"
-    : c.contacts.discord   ? "discord"
-    : c.contacts.twitter   ? "direct"
-    : "direct";
-
-  return {
-    company:         c.name.trim().slice(0, 100),
-    website:         c.website,
-    whatItIs:        c.description.replace(/\n/g, " ").slice(0, 140) || `${segmentMap[c.type]} creating games`,
-    segment:         segmentMap[c.type] ?? segments[0] ?? "Game Developer",
-    decisionMaker:   null,
-    dmRole:          null,
-    dmEmail:         c.contacts.email,
-    instagramHandle: c.contacts.instagram,
-    xHandle:         c.contacts.twitter,
-    linkedinUrl:     c.contacts.linkedin,
-    discordUrl:      c.contacts.discord,
-    grade,
-    score,
-    whyItFits:       `${segmentMap[c.type] ?? "Game developer"} that can grow their player base with short-form video clips`,
-    bestChannel,
-  };
-}
-
-// ─── Contact extraction ───────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Contacts {
-  email: string | null;
+  email:     string | null;
+  emailSource: "published" | "api" | "searxng" | null;
+  genericInbox: boolean;
   instagram: string | null;
-  twitter: string | null;
-  linkedin: string | null;
-  discord: string | null;
+  twitter:   string | null;
+  discord:   string | null;
+  linkedin:  string | null;
 }
 
-function extractContacts(text: string): Contacts {
-  if (!text) return { email: null, instagram: null, twitter: null, linkedin: null, discord: null };
-
-  const emailMatch   = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  const igMatch      = text.match(/(?:instagram\.com\/|instagram[:\s]+@?|ig[:\s]+@?)([a-zA-Z0-9_.]{2,30})/i);
-  const twMatch      = text.match(/(?:twitter\.com\/|x\.com\/|twitter[:\s]+@?|x[:\s]+@?)([a-zA-Z0-9_]{2,30})/i);
-  const liMatch      = text.match(/linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]+)/i);
-  const discordMatch = text.match(/(?:discord\.gg\/|discord[:\s]+)([a-zA-Z0-9_\-]+)/i);
-
-  return {
-    email:     emailMatch   ? emailMatch[0]                                   : null,
-    instagram: igMatch      ? `@${igMatch[1]}`                                : null,
-    twitter:   twMatch      ? `@${twMatch[1]}`                                : null,
-    linkedin:  liMatch      ? `https://linkedin.com/in/${liMatch[1]}`         : null,
-    discord:   discordMatch ? `https://discord.gg/${discordMatch[1]}`         : null,
-  };
+function emptyContacts(): Contacts {
+  return { email: null, emailSource: null, genericInbox: false, instagram: null, twitter: null, discord: null, linkedin: null };
 }
-
-// ─── Candidate type ───────────────────────────────────────────────────────────
 
 interface Candidate {
-  type: "youtube" | "web" | "roblox" | "steam" | "mobile";
-  name: string;
-  website: string;
+  type:       "roblox" | "steam" | "mobile";
+  name:       string;  // developer / studio name
+  website:    string;  // own website (not platform profile)
+  storeLink:  string;  // actual store page
+  gameName:   string;
   description: string;
-  contacts: Contacts;
-  rawData: Record<string, unknown>;
+  genre:      string;
+  chartRank:  number | null;
+  ratingsCount: number | null;
+  lastUpdateDate: string | null;
+  updateProofUrl: string | null;
+  country:    string | null;
+  earnsRealMoney: boolean;
+  contacts:   Contacts;
+  rawData:    Record<string, unknown>;
 }
 
-const emptyContacts = (): Contacts => ({ email: null, instagram: null, twitter: null, linkedin: null, discord: null });
+interface RejectionRecord {
+  name:   string;
+  reason: string;
+  source: string;
+}
 
-function mergeContacts(a: Contacts, b: Contacts): Contacts {
+// ─── Config-derived sets (built once at module load) ─────────────────────────
+
+const COMPANY_BLOCKLIST = new Set(
+  cfg.blocklist.companies.map((s) => s.toLowerCase())
+);
+
+const DOMAIN_BLOCKLIST = new Set(cfg.domain_blocklist.domains.map((d) => d.toLowerCase()));
+
+const GENRE_REJECT_PRIMARY = new Set(
+  cfg.genre_reject.primary_genres.map((s) => s.toLowerCase())
+);
+
+const GENRE_REJECT_KEYWORDS = cfg.genre_reject.title_keywords.map((k) => k.toLowerCase());
+
+const GENERIC_EMAIL_PREFIXES = new Set(cfg.email.generic_prefixes.map((s) => s.toLowerCase()));
+
+const BAD_HANDLES = new Set(cfg.handles.bad_handles.map((s) => s.toLowerCase()));
+
+// ─── Blocklist helpers ────────────────────────────────────────────────────────
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`)
+      .hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return url.toLowerCase().replace(/^www\./, "");
+  }
+}
+
+function isDomainBlocked(url: string): boolean {
+  const domain = extractDomain(url);
+  if (DOMAIN_BLOCKLIST.has(domain)) return true;
+  for (const blocked of DOMAIN_BLOCKLIST) {
+    if (domain.endsWith("." + blocked) || domain === blocked) return true;
+  }
+  return false;
+}
+
+function isCompanyBlocked(name: string): boolean {
+  const n = name.toLowerCase().trim();
+  for (const blocked of COMPANY_BLOCKLIST) {
+    if (n === blocked || n.includes(blocked)) return true;
+  }
+  return false;
+}
+
+// ─── Genre filter ─────────────────────────────────────────────────────────────
+
+function isRejectedGenre(genre: string, title: string, description: string): boolean {
+  const g = genre.toLowerCase();
+  const t = title.toLowerCase();
+  const d = description.toLowerCase().slice(0, 300);
+
+  if (GENRE_REJECT_PRIMARY.has(g)) return true;
+
+  for (const kw of GENRE_REJECT_KEYWORDS) {
+    if (t.includes(kw) || g.includes(kw)) return true;
+  }
+
+  // Also check description for strong casino/puzzle signals
+  const strongReject = ["slot machine", "texas hold", "blackjack", "roulette", "poker chips", "match-3", "match 3", "triple match", "merge ", "hidden object"];
+  for (const kw of strongReject) {
+    if (d.includes(kw)) return true;
+  }
+
+  return false;
+}
+
+// ─── Activity check ───────────────────────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isActivityStale(lastUpdateDate: string | null, maxDays: number): boolean {
+  if (!lastUpdateDate) return true; // missing = reject
+  const d = new Date(lastUpdateDate);
+  if (isNaN(d.getTime())) return true;
+  return Date.now() - d.getTime() > maxDays * DAY_MS;
+}
+
+// ─── Email extraction (no fabrication) ───────────────────────────────────────
+// Only extracts emails actually present in text. Never builds contact@domain.
+
+function extractEmail(text: string): { email: string | null; generic: boolean } {
+  if (!text) return { email: null, generic: false };
+
+  // Full RFC-lite email regex
+  const match = text.match(/\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
+  if (!match) return { email: null, generic: false };
+
+  const prefix = match[1].toLowerCase();
+  const domain = match[2].toLowerCase();
+
+  // Reject if email domain is on blocklist
+  if (DOMAIN_BLOCKLIST.has(domain) || [...DOMAIN_BLOCKLIST].some((d) => domain.endsWith("." + d))) {
+    return { email: null, generic: false };
+  }
+
+  const generic = GENERIC_EMAIL_PREFIXES.has(prefix) ||
+    [...GENERIC_EMAIL_PREFIXES].some((p) => prefix.startsWith(p + ".") || prefix.startsWith(p + "_"));
+
+  return { email: match[0], generic };
+}
+
+// ─── Social handle extraction (URL-only, no @word scraping) ──────────────────
+
+function extractSocialHandles(text: string): Pick<Contacts, "instagram" | "twitter" | "discord" | "linkedin"> {
+  if (!text) return { instagram: null, twitter: null, discord: null, linkedin: null };
+
+  // Only extract from actual profile URL patterns
+  const igMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9_.]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_.])/i);
+  const twMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/([a-zA-Z0-9_]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_])/i);
+  const dcMatch  = text.match(/(?:https?:\/\/)?discord\.gg\/([a-zA-Z0-9_-]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_-])/i);
+  const liMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]{2,80})\/?/i);
+
+  const validHandle = (h: string | undefined): string | null => {
+    if (!h) return null;
+    const clean = h.replace(/[/?#].*$/, "").toLowerCase();
+    if (BAD_HANDLES.has(clean)) return null;
+    if (clean.length < 2) return null;
+    return h;
+  };
+
+  const ig = validHandle(igMatch?.[1]);
+  const tw = validHandle(twMatch?.[1]);
+
   return {
-    email:     a.email     ?? b.email,
-    instagram: a.instagram ?? b.instagram,
-    twitter:   a.twitter   ?? b.twitter,
-    linkedin:  a.linkedin  ?? b.linkedin,
-    discord:   a.discord   ?? b.discord,
+    instagram: ig ? `@${ig}` : null,
+    twitter:   tw ? `@${tw}` : null,
+    discord:   dcMatch?.[1] ? `https://discord.gg/${dcMatch[1]}` : null,
+    linkedin:  liMatch?.[1] ? `https://linkedin.com/company/${liMatch[1]}` : null,
   };
 }
 
-function hasContacts(c: Contacts): boolean {
-  return !!(c.email || c.instagram || c.twitter || c.linkedin);
-}
-
-// ─── Roblox (FREE — no key required) ─────────────────────────────────────────
-
-interface RobloxGame {
-  creatorId: number;
-  creatorName: string;
-  creatorType: string;
-  name: string;
-  placeId: number;
-  playerCount: number;
-  totalUpVotes: number;
-}
-
-async function robloxFetchUserDescription(userId: number): Promise<string> {
-  const res = await fetch(`https://users.roblox.com/v1/users/${userId}`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(6000),
-  }).catch(() => null);
-  if (!res?.ok) return "";
-  const data = await res.json() as { description?: string };
-  return data.description ?? "";
-}
-
-async function robloxFetchGroupDescription(groupId: number): Promise<string> {
-  const res = await fetch(`https://groups.roblox.com/v1/groups/${groupId}`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(6000),
-  }).catch(() => null);
-  if (!res?.ok) return "";
-  const data = await res.json() as { description?: string };
-  return data.description ?? "";
-}
-
-// ─── Roblox top games by live players (no keyword) ────────────────────────────
-// Pages through Roblox's popular games list and keeps only games with
-// minCCU+ concurrent players. This is the "Rolimons / top CCU" equivalent.
-
-async function robloxTopGames(minCCU = 1000, take = 150): Promise<Candidate[]> {
-  const seenCreators = new Map<number, RobloxGame>();
-  let cursor = "";
-  let pages = 0;
-
-  while (seenCreators.size < take && pages < 6) {
-    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12000),
-    }).catch(() => null);
-    if (!res?.ok) break;
-
-    const data = await res.json() as { games?: RobloxGame[]; nextPageCursor?: string };
-    const games = data.games ?? [];
-
-    for (const g of games) {
-      if (g.playerCount >= minCCU && !seenCreators.has(g.creatorId)) {
-        seenCreators.set(g.creatorId, g);
-      }
-    }
-
-    cursor = data.nextPageCursor ?? "";
-    pages++;
-    // Games list is roughly sorted by popularity; once CCU drops below threshold stop early
-    if (games.length > 0 && games[games.length - 1].playerCount < minCCU * 0.5) break;
-    if (!cursor) break;
-  }
-
-  const entries = [...seenCreators.entries()].slice(0, take);
-  const profileResults = await Promise.allSettled(
-    entries.map(async ([creatorId, g]) => {
-      const desc = g.creatorType === "Group"
-        ? await robloxFetchGroupDescription(creatorId)
-        : await robloxFetchUserDescription(creatorId);
-      return { creatorId, g, desc };
-    })
-  );
-
-  const candidates: Candidate[] = [];
-  for (const r of profileResults) {
-    if (r.status !== "fulfilled") continue;
-    const { creatorId, g, desc } = r.value;
-    const profileUrl = g.creatorType === "Group"
-      ? `https://www.roblox.com/groups/${creatorId}`
-      : `https://www.roblox.com/users/${creatorId}/profile`;
-
-    // Extract own website from bio — if present, domain inference can find an email
-    const ownUrlMatch = desc.match(
-      /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook)\.)[^\s<>"']{4,}/i
-    );
-    const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
-
-    candidates.push({
-      type: "roblox",
-      name: g.creatorName,
-      website: ownWebsite ?? profileUrl,
-      description: `Roblox ${g.creatorType === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} concurrent players · ${g.totalUpVotes} upvotes.${desc ? ` Bio: ${desc.slice(0, 200)}` : ""}`,
-      contacts: extractContacts(desc),
-      rawData: { ...g, profileDesc: desc, robloxProfileUrl: profileUrl } as unknown as Record<string, unknown>,
-    });
-  }
-  return candidates;
-}
-
-// ─── Steam featured: top sellers + new releases (no keyword) ─────────────────
-// Pulls Steam's official top_sellers and new_releases lists, filters to
-// games released within maxAgeMonths. Skips coming_soon titles.
-
-async function steamFeaturedGames(maxAgeMonths = 24): Promise<Candidate[]> {
-  // SteamSpy top100in2weeks — free, no key, reliably returns ~100 trending games
-  const res = await fetch("https://steamspy.com/api.php?request=top100in2weeks", {
-    signal: AbortSignal.timeout(12000),
-  }).catch(() => null);
-  if (!res?.ok) return [];
-
-  const data = await res.json() as Record<string, {
-    appid: number;
-    name: string;
-    developer: string;
-    publisher: string;
-    owners: string;
-  }>;
-
-  const games = Object.values(data).slice(0, 100); // cap at 100 to stay within rate limits
-  const cutoff = new Date(Date.now() - maxAgeMonths * 30 * 24 * 60 * 60 * 1000);
-  const candidates: Candidate[] = [];
-  const seenDevs = new Set<string>();
-
-  await Promise.allSettled(games.map(async (game) => {
-    const appid = game.appid;
-    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic,developers,publishers,support_info,website,release_date`;
-    const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
-    if (!detRes?.ok) return;
-
-    const detData = await detRes.json() as Record<string, {
-      success: boolean;
-      data?: {
-        developers?: string[];
-        publishers?: string[];
-        short_description?: string;
-        website?: string;
-        support_info?: { url?: string; email?: string };
-        release_date?: { coming_soon: boolean; date: string };
-      };
-    }>;
-    const app = detData[String(appid)];
-    if (!app?.success || !app.data) return;
-
-    // Skip games older than the age window
-    if (app.data.release_date?.date) {
-      const rel = new Date(app.data.release_date.date);
-      if (!isNaN(rel.getTime()) && rel < cutoff) return;
-    }
-
-    const devName = app.data.developers?.[0] ?? app.data.publishers?.[0] ?? game.developer;
-    if (!devName) return;
-    const key = devName.toLowerCase().trim();
-    if (seenDevs.has(key)) return;
-    seenDevs.add(key);
-
-    candidates.push({
-      type: "steam",
-      name: devName,
-      website: app.data.website ?? `https://store.steampowered.com/app/${appid}`,
-      description: `Steam developer (Top Trending). Game: "${game.name}". ${app.data.short_description?.slice(0, 250) ?? ""}`.trim(),
-      contacts: { email: app.data.support_info?.email ?? null, instagram: null, twitter: null, linkedin: null, discord: null },
-      rawData: { appId: appid, gameName: game.name, coming_soon: app.data.release_date?.coming_soon ?? false, source: "SteamSpy Top 100", ...app.data },
-    });
-  }));
-
-  return candidates;
-}
-
-// ─── App Store top-grossing chart (ranks 50–200, no keyword) ─────────────────
-// Uses Apple's RSS feed for top-grossing Games, skips ranks 1–49 (too large),
-// then batch-looks up full metadata via the iTunes Lookup API.
-
-async function appStoreChartSearch(rankStart = 50, rankEnd = 200): Promise<Candidate[]> {
-  const limit = Math.min(rankEnd, 200);
-  // iTunes legacy RSS feed — confirmed working (rss.applemarketingtools.com returns 405)
-  const rssUrl = `https://itunes.apple.com/us/rss/topgrossingapplications/limit=${limit}/genre=6014/json`;
-  const rssRes = await fetch(rssUrl, { signal: AbortSignal.timeout(12000) }).catch(() => null);
-  if (!rssRes?.ok) return [];
-
-  const rssData = await rssRes.json() as {
-    feed?: {
-      entry?: Array<{
-        "im:name": { label: string };
-        "im:artist": { label: string };
-        id: { attributes: { "im:id": string }; label: string };
-      }>;
-    };
-  };
-
-  const entries = (rssData.feed?.entry ?? []).slice(rankStart - 1);
-  if (!entries.length) return [];
-
-  // Batch iTunes lookup for full metadata (description, sellerUrl, update date)
-  const ids = entries.map((e) => e.id.attributes["im:id"]).join(",");
-  const lookupRes = await fetch(`https://itunes.apple.com/lookup?id=${ids}&country=us`, {
-    signal: AbortSignal.timeout(20000),
-  }).catch(() => null);
-
-  const detailMap = new Map<string, Record<string, unknown>>();
-  if (lookupRes?.ok) {
-    const lookupData = await lookupRes.json() as { results?: Array<Record<string, unknown>> };
-    for (const d of lookupData.results ?? []) {
-      if (d.trackId) detailMap.set(String(d.trackId), d);
-    }
-  }
-
-  const candidates: Candidate[] = [];
-  const seenDevs = new Set<string>();
-
-  entries.forEach((e, idx) => {
-    const appId = e.id.attributes["im:id"];
-    const detail = detailMap.get(appId) ?? {};
-    const devName = String(detail.sellerName ?? detail.artistName ?? e["im:artist"].label);
-    const appName = e["im:name"].label;
-    const key = devName.toLowerCase().trim();
-    if (!key || seenDevs.has(key)) return;
-    seenDevs.add(key);
-
-    const rank = rankStart + idx;
-    const descText = String(detail.description ?? "");
-
-    candidates.push({
-      type: "mobile",
-      name: devName,
-      website: String(detail.sellerUrl ?? `https://apps.apple.com/us/app/id${appId}`),
-      description: `Mobile game studio (App Store Top Grossing #${rank}). Game: "${appName}".${descText ? ` ${descText.slice(0, 200)}` : ""}`,
-      contacts: extractContacts(descText),
-      rawData: { appId, appName, chartRank: rank, chartType: "top-grossing", ...detail },
-    });
-  });
-
-  return candidates;
-}
-
-// ─── SearXNG (free, open-source meta-search — no key, no account) ────────────
-// Aggregates Google + Bing + DuckDuckGo. Falls through public instances.
+// ─── SearXNG email fallback ───────────────────────────────────────────────────
 
 const SEARX_INSTANCES = [
   "https://searx.be",
@@ -703,85 +218,560 @@ const SEARX_INSTANCES = [
   "https://search.bus-hit.me",
 ];
 
-interface WebResult { title: string; link: string; snippet: string }
-
-async function braveSearch(query: string): Promise<WebResult[]> {
+async function searxSearch(query: string): Promise<Array<{ title: string; url: string; content: string }>> {
   for (const base of SEARX_INSTANCES) {
     try {
       const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`;
       const res = await fetch(url, {
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) continue;
       const data = await res.json() as { results?: Array<{ title: string; url: string; content?: string }> };
       const results = data.results ?? [];
       if (!results.length) continue;
-      return results.slice(0, 10).map((r) => ({ title: r.title, link: r.url, snippet: r.content ?? "" }));
-    } catch { /* try next instance */ }
+      return results.slice(0, 8).map((r) => ({ title: r.title, url: r.url, content: r.content ?? "" }));
+    } catch { /* try next */ }
   }
   return [];
 }
 
-// Pull contact info out of Brave results for a specific lead
-async function serperContactEnrich(name: string, website: string): Promise<{ contacts: Contacts; snippets: string }> {
-  const query = `"${name}" instagram OR linkedin OR email OR twitter contact`;
-  const results = await braveSearch(query);
-  const combined = results.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
-  const contacts = extractContacts(combined);
+async function findEmailViaSearx(studioName: string, ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
+  // Query 1: studio name + email
+  const r1 = await searxSearch(`"${studioName}" contact email`);
+  const text1 = r1.map((r) => `${r.content} ${r.url}`).join(" ");
+  const e1 = extractEmail(text1);
+  if (e1.email) return e1;
 
-  for (const r of results) {
-    if (!contacts.instagram && r.link.includes("instagram.com/")) {
-      const m = r.link.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
-      if (m) contacts.instagram = `@${m[1]}`;
-    }
-    if (!contacts.linkedin && r.link.includes("linkedin.com/")) {
-      const m = r.link.match(/linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]+)/);
-      if (m) contacts.linkedin = `https://linkedin.com/in/${m[1]}`;
-    }
+  // Query 2: site:domain email (if they have a real domain)
+  if (ownWebsite && !isDomainBlocked(ownWebsite)) {
+    const domain = extractDomain(ownWebsite);
+    const r2 = await searxSearch(`site:${domain} email contact`);
+    const text2 = r2.map((r) => `${r.content} ${r.url}`).join(" ");
+    const e2 = extractEmail(text2);
+    if (e2.email) return e2;
   }
 
-  void website;
-  return { contacts, snippets: combined.slice(0, 600) };
+  return { email: null, generic: false };
 }
 
-// Dedicated email search using Brave — two targeted queries
-async function serperEmailSearch(name: string, website: string): Promise<string | null> {
-  const r1 = await braveSearch(`"${name}" email contact`);
-  const text1 = r1.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
-  const m1 = text1.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  if (m1) return m1[0];
+// ─── Roblox source ────────────────────────────────────────────────────────────
 
-  try {
-    const domain = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
-    const r2 = await braveSearch(`site:${domain} email OR contact`);
-    const text2 = r2.map((r) => `${r.title} ${r.snippet} ${r.link}`).join(" ");
-    const m2 = text2.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    if (m2) return m2[0];
-  } catch { /* invalid URL */ }
-
-  return null;
+interface RobloxGameRaw {
+  creatorId: number;
+  creatorName: string;
+  creatorType: string;
+  name: string;
+  placeId: number;
+  playerCount: number;
+  totalUpVotes: number;
+  updated?: string;
 }
 
-// Last-resort: derive a likely contact email from the website domain
-function inferEmailFromDomain(website: string): string | null {
+async function robloxFetchCreatorProfile(id: number, type: "Group" | "User"): Promise<{ description: string; updated: string | null }> {
+  const url = type === "Group"
+    ? `https://groups.roblox.com/v1/groups/${id}`
+    : `https://users.roblox.com/v1/users/${id}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(6000) }).catch(() => null);
+  if (!res?.ok) return { description: "", updated: null };
+  const data = await res.json() as { description?: string; updated?: string };
+  return { description: data.description ?? "", updated: data.updated ?? null };
+}
+
+async function robloxTopGames(minPlaying: number, take: number, rejections: RejectionRecord[]): Promise<Candidate[]> {
+  const seenCreators = new Map<number, RobloxGameRaw>();
+  let cursor = "";
+  let pages = 0;
+  const maxPages = 8;
+
+  while (seenCreators.size < take * 2 && pages < maxPages) {
+    const url = `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.keyword=&model.sortToken=&model.maxRows=100${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(12000) }).catch(() => null);
+    if (!res?.ok) break;
+
+    const data = await res.json() as { games?: RobloxGameRaw[]; nextPageCursor?: string };
+    const games = data.games ?? [];
+
+    for (const g of games) {
+      if (g.playerCount >= minPlaying && !seenCreators.has(g.creatorId)) {
+        seenCreators.set(g.creatorId, g);
+      }
+    }
+
+    cursor = data.nextPageCursor ?? "";
+    pages++;
+    if (!cursor) break;
+    // Stop early if CCU is dropping far below threshold
+    if (games.length > 0 && games[games.length - 1].playerCount < minPlaying * 0.3) break;
+  }
+
+  const entries = [...seenCreators.entries()].slice(0, take * 2);
+  const maxAge = cfg.activity.roblox_max_age_days;
+
+  const results = await Promise.allSettled(
+    entries.map(async ([creatorId, g]) => {
+      const type = g.creatorType === "Group" ? "Group" : "User";
+      const { description, updated } = await robloxFetchCreatorProfile(creatorId, type);
+
+      const profileUrl = type === "Group"
+        ? `https://www.roblox.com/groups/${creatorId}`
+        : `https://www.roblox.com/users/${creatorId}/profile`;
+
+      // Extract own website from bio (not social platforms)
+      const ownUrlMatch = description.match(
+        /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
+      );
+      const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
+
+      // Activity check
+      const lastUpdate = updated ?? g.updated ?? null;
+      const updateProofUrl = `https://www.roblox.com/games/${g.placeId}`;
+
+      if (isActivityStale(lastUpdate, maxAge)) {
+        rejections.push({ name: g.creatorName, reason: `Last update > ${maxAge} days ago (${lastUpdate ?? "unknown"})`, source: "roblox" });
+        return null;
+      }
+      if (g.playerCount < cfg.activity.min_playing_roblox) {
+        rejections.push({ name: g.creatorName, reason: `Only ${g.playerCount} playing (min ${cfg.activity.min_playing_roblox})`, source: "roblox" });
+        return null;
+      }
+
+      // Blocklist
+      if (isCompanyBlocked(g.creatorName)) {
+        rejections.push({ name: g.creatorName, reason: "Company blocklisted", source: "roblox" });
+        return null;
+      }
+
+      const { email, generic } = extractEmail(description);
+      const handles = extractSocialHandles(description);
+
+      const candidate: Candidate = {
+        type: "roblox",
+        name: g.creatorName,
+        website: ownWebsite ?? profileUrl,
+        storeLink: `https://www.roblox.com/games/${g.placeId}`,
+        gameName: g.name,
+        description: `Roblox ${type === "Group" ? "studio" : "developer"}. Game: "${g.name}" · ${g.playerCount} playing · ${g.totalUpVotes} upvotes.${description ? ` Bio: ${description.slice(0, 200)}` : ""}`,
+        genre: "Roblox",
+        chartRank: null,
+        ratingsCount: g.totalUpVotes,
+        lastUpdateDate: lastUpdate,
+        updateProofUrl,
+        country: null,
+        earnsRealMoney: false,
+        contacts: {
+          email,
+          emailSource: email ? "published" : null,
+          genericInbox: generic,
+          ...handles,
+        },
+        rawData: { ...g, creatorId, profileDesc: description, robloxProfileUrl: profileUrl },
+      };
+      return candidate;
+    })
+  );
+
+  return results.filter((r): r is PromiseFulfilledResult<Candidate> =>
+    r.status === "fulfilled" && r.value !== null
+  ).map((r) => r.value);
+}
+
+// ─── Steam source ─────────────────────────────────────────────────────────────
+
+async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]): Promise<Candidate[]> {
+  // SteamSpy top100in2weeks — free, no key required
+  const spyRes = await fetch("https://steamspy.com/api.php?request=top100in2weeks", {
+    signal: AbortSignal.timeout(15000),
+  }).catch(() => null);
+  if (!spyRes?.ok) return [];
+
+  const spyData = await spyRes.json() as Record<string, {
+    appid: number; name: string; developer: string; publisher: string; owners: string;
+  }>;
+
+  const games = Object.values(spyData).slice(0, 100);
+  const cutoff = new Date(Date.now() - maxAgeMonths * 30 * DAY_MS);
+  const candidates: Candidate[] = [];
+  const seenDevs = new Set<string>();
+
+  await Promise.allSettled(games.map(async (game) => {
+    const appid = game.appid;
+    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic,genres,developers,publishers,support_info,website,release_date`;
+    const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (!detRes?.ok) return;
+
+    const detData = await detRes.json() as Record<string, {
+      success: boolean;
+      data?: {
+        name?: string;
+        developers?: string[];
+        publishers?: string[];
+        genres?: Array<{ id: string; description: string }>;
+        short_description?: string;
+        website?: string;
+        support_info?: { url?: string; email?: string };
+        release_date?: { coming_soon: boolean; date: string };
+        header_image?: string;
+      };
+    }>;
+    const app = detData[String(appid)];
+    if (!app?.success || !app.data) return;
+
+    const devName = app.data.developers?.[0] ?? app.data.publishers?.[0] ?? game.developer;
+    if (!devName) return;
+    const key = devName.toLowerCase().trim();
+    if (seenDevs.has(key)) return;
+
+    // Blocklist check
+    if (isCompanyBlocked(devName) || isCompanyBlocked(app.data.publishers?.[0] ?? "")) {
+      rejections.push({ name: devName, reason: "Company blocklisted", source: "steam" });
+      return;
+    }
+
+    // Release date / activity check
+    if (app.data.release_date?.coming_soon) {
+      rejections.push({ name: devName, reason: "Not yet released (coming_soon)", source: "steam" });
+      return;
+    }
+    if (app.data.release_date?.date) {
+      const rel = new Date(app.data.release_date.date);
+      if (!isNaN(rel.getTime()) && rel < cutoff) {
+        rejections.push({ name: devName, reason: `Release date ${app.data.release_date.date} older than ${maxAgeMonths} months`, source: "steam" });
+        return;
+      }
+    }
+
+    // Genre check
+    const primaryGenre = app.data.genres?.[0]?.description ?? "";
+    const gameName = app.data.name ?? game.name;
+    const desc = app.data.short_description ?? "";
+    if (isRejectedGenre(primaryGenre, gameName, desc)) {
+      rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}" / title: "${gameName}"`, source: "steam" });
+      return;
+    }
+
+    seenDevs.add(key);
+
+    const ownWebsite = app.data.website && !isDomainBlocked(app.data.website) ? app.data.website : null;
+    const storeLink = `https://store.steampowered.com/app/${appid}`;
+
+    // Support email — only if it's a real domain (not steam platform)
+    const rawSupportEmail = app.data.support_info?.email ?? null;
+    let contactEmail: string | null = null;
+    let contactGeneric = false;
+    if (rawSupportEmail) {
+      const { email, generic } = extractEmail(rawSupportEmail);
+      if (email) { contactEmail = email; contactGeneric = generic; }
+    }
+
+    const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
+
+    candidates.push({
+      type: "steam",
+      name: devName,
+      website: ownWebsite ?? storeLink,
+      storeLink,
+      gameName,
+      description: `Steam developer. Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
+      genre: primaryGenre,
+      chartRank: null,
+      ratingsCount: null, // SteamSpy `owners` is a range — not useful as a review count
+      lastUpdateDate: app.data.release_date?.date ?? null,
+      updateProofUrl: storeLink,
+      country: null,
+      earnsRealMoney: false,
+      contacts: {
+        email: contactEmail,
+        emailSource: contactEmail ? "published" : null,
+        genericInbox: contactGeneric,
+        ...handles,
+      },
+      rawData: {
+        appId: appid,
+        gameName,
+        source: "SteamSpy Top 100",
+        ownersRange: game.owners,
+        ...app.data,
+      },
+    });
+  }));
+
+  return candidates;
+}
+
+// ─── Apple App Store source ───────────────────────────────────────────────────
+// Pulls top-grossing charts across allowed subcategories × countries.
+// Skips ranks 1–49 on the US main chart; accepts anything from subcategory charts
+// (which don't have a global rank — depth beyond the top 200).
+
+interface ITunesRSSEntry {
+  "im:name": { label: string };
+  "im:artist": { label: string };
+  id: { attributes: { "im:id": string }; label: string };
+  "im:price"?: { attributes?: { amount?: string } };
+}
+
+interface ITunesLookupResult {
+  trackId?: number;
+  sellerName?: string;
+  artistName?: string;
+  sellerUrl?: string;
+  description?: string;
+  currentVersionReleaseDate?: string;
+  releaseDate?: string;
+  primaryGenreName?: string;
+  genres?: string[];
+  userRatingCountForCurrentVersion?: number;
+  userRatingCount?: number;
+  trackName?: string;
+  trackViewUrl?: string;
+  price?: number;
+  ipadScreenshotUrls?: string[];
+  [key: string]: unknown;
+}
+
+async function fetchItunesChart(country: string, genreId: string, limit = 200): Promise<ITunesRSSEntry[]> {
+  const url = `https://itunes.apple.com/${country}/rss/topgrossingapplications/limit=${limit}/genre=${genreId}/json`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(12000) }).catch(() => null);
+  if (!res?.ok) return [];
   try {
-    const domain = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
-    // Skip platform URLs — these aren't the company's own domain
-    const platformDomains = ["roblox.com", "steampowered.com", "store.steampowered.com", "apple.com", "youtube.com", "twitter.com", "instagram.com", "linkedin.com"];
-    if (platformDomains.some((p) => domain.endsWith(p))) return null;
-    if (!domain.includes(".") || domain.split(".").length < 2) return null;
-    return `contact@${domain}`;
+    const data = await res.json() as { feed?: { entry?: ITunesRSSEntry[] } };
+    return data.feed?.entry ?? [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-// ─── Plan type ────────────────────────────────────────────────────────────────
+async function fetchItunesLookup(ids: string[]): Promise<Map<string, ITunesLookupResult>> {
+  if (!ids.length) return new Map();
+  // iTunes lookup has a max of ~100 IDs per request
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
 
-interface Plan {
-  segments: string[];
-  sources: string[];
+  const map = new Map<string, ITunesLookupResult>();
+  for (const chunk of chunks) {
+    const res = await fetch(`https://itunes.apple.com/lookup?id=${chunk.join(",")}&country=us`, {
+      signal: AbortSignal.timeout(20000),
+    }).catch(() => null);
+    if (!res?.ok) continue;
+    try {
+      const data = await res.json() as { results?: ITunesLookupResult[] };
+      for (const d of data.results ?? []) {
+        if (d.trackId) map.set(String(d.trackId), d);
+      }
+    } catch { /* skip */ }
+  }
+  return map;
+}
+
+async function appStoreTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
+  const countries = cfg.sources.app_store_countries;
+  const allowedSubcats = cfg.sources.app_store_allowed_subcategory_ids;
+  const skipTopN = cfg.sources.app_store_rank_skip_top; // skip ranks 1–49 on US main chart
+
+  // Collect (appId, isMainUS, rank, country) tuples across all charts
+  const appIdToMeta = new Map<string, { rank: number | null; country: string; fromMainUS: boolean }>();
+
+  // 1. US main chart — skip ranks 1–skipTopN
+  const usMain = await fetchItunesChart("us", "6014", 200);
+  for (let i = 0; i < usMain.length; i++) {
+    const rank = i + 1;
+    const appId = usMain[i].id.attributes["im:id"];
+    if (rank <= skipTopN) continue; // skip mega-publishers at top
+    if (!appIdToMeta.has(appId)) {
+      appIdToMeta.set(appId, { rank, country: "US", fromMainUS: true });
+    }
+  }
+
+  // 2. Subcategory charts across all countries
+  await Promise.allSettled(
+    countries.flatMap((country) =>
+      allowedSubcats.map(async (subcatId) => {
+        const entries = await fetchItunesChart(country, subcatId, 200);
+        for (let i = 0; i < entries.length; i++) {
+          const appId = entries[i].id.attributes["im:id"];
+          if (!appIdToMeta.has(appId)) {
+            appIdToMeta.set(appId, { rank: null, country: country.toUpperCase(), fromMainUS: false });
+          }
+        }
+      })
+    )
+  );
+
+  if (!appIdToMeta.size) return [];
+
+  // 3. Batch iTunes lookup for full metadata
+  const allIds = [...appIdToMeta.keys()];
+  const detailMap = await fetchItunesLookup(allIds);
+
+  const candidates: Candidate[] = [];
+  const seenDevs = new Set<string>();
+
+  for (const [appId, meta] of appIdToMeta) {
+    const detail = detailMap.get(appId);
+    const devName = detail?.sellerName ?? detail?.artistName ?? "";
+    if (!devName) continue;
+    const key = devName.toLowerCase().trim();
+    if (seenDevs.has(key)) continue;
+
+    // Blocklist check
+    if (isCompanyBlocked(devName)) {
+      rejections.push({ name: devName, reason: "Company blocklisted", source: "mobile" });
+      seenDevs.add(key);
+      continue;
+    }
+
+    const gameName = detail?.trackName ?? "";
+    const primaryGenre = detail?.primaryGenreName ?? "";
+    const desc = detail?.description ?? "";
+
+    // Genre check
+    if (isRejectedGenre(primaryGenre, gameName, desc)) {
+      rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}" / title: "${gameName}"`, source: "mobile" });
+      seenDevs.add(key);
+      continue;
+    }
+
+    // Activity / ratings check
+    const ratingsCount = detail?.userRatingCount ?? detail?.userRatingCountForCurrentVersion ?? 0;
+    const minRatings = cfg.activity.min_ratings_mobile;
+    if (ratingsCount < minRatings) {
+      rejections.push({ name: devName, reason: `Only ${ratingsCount} ratings (min ${minRatings})`, source: "mobile" });
+      seenDevs.add(key);
+      continue;
+    }
+
+    // Last update date
+    const lastUpdate = detail?.currentVersionReleaseDate ?? detail?.releaseDate ?? null;
+    const maxAge = cfg.activity.max_age_days;
+    if (!lastUpdate || isActivityStale(lastUpdate, maxAge)) {
+      rejections.push({ name: devName, reason: `App not updated within ${maxAge} days (${lastUpdate ?? "unknown"})`, source: "mobile" });
+      seenDevs.add(key);
+      continue;
+    }
+
+    const storeLink = detail?.trackViewUrl ?? `https://apps.apple.com/us/app/id${appId}`;
+    const rawSellerUrl = detail?.sellerUrl ?? null;
+    const ownWebsite = rawSellerUrl && !isDomainBlocked(rawSellerUrl) ? rawSellerUrl : null;
+
+    // Extract contacts from description (email only — no @word scraping)
+    const { email: descEmail, generic: descGeneric } = extractEmail(desc);
+    const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
+
+    // Real-money signals: paid app or IAP-heavy genre
+    const earnsRealMoney = (detail?.price ?? 0) > 0 || ["Casino", "Sports", "Racing"].includes(primaryGenre);
+
+    seenDevs.add(key);
+    candidates.push({
+      type: "mobile",
+      name: devName,
+      website: ownWebsite ?? storeLink,
+      storeLink,
+      gameName,
+      description: `Mobile developer (App Store, ${meta.country}${meta.rank ? ` #${meta.rank}` : ""}). Game: "${gameName}". ${desc.slice(0, 250)}`.trim(),
+      genre: primaryGenre,
+      chartRank: meta.rank,
+      ratingsCount,
+      lastUpdateDate: lastUpdate,
+      updateProofUrl: storeLink,
+      country: meta.country,
+      earnsRealMoney,
+      contacts: {
+        email: descEmail,
+        emailSource: descEmail ? "published" : null,
+        genericInbox: descGeneric,
+        ...handles,
+      },
+      rawData: { appId, fromMainUS: meta.fromMainUS, ...detail },
+    });
+  }
+
+  return candidates;
+}
+
+// ─── Scoring ──────────────────────────────────────────────────────────────────
+
+interface ScoreResult {
+  score: number;
+  grade: string;
+  breakdown: string;
+  activityVerified: boolean;
+  genrePasses: boolean;
+}
+
+function scoreCandidate(c: Candidate): ScoreResult {
+  const sc = cfg.scoring;
+  let score = 0;
+  const parts: string[] = [];
+
+  // Required check: activity
+  const activityVerified = c.lastUpdateDate !== null && !isActivityStale(
+    c.lastUpdateDate,
+    c.type === "roblox" ? cfg.activity.roblox_max_age_days : cfg.activity.max_age_days
+  );
+  if (activityVerified) { score += sc.activity_verified; parts.push(`activity(${sc.activity_verified})`); }
+
+  // Required check: genre
+  const genrePasses = !isRejectedGenre(c.genre, c.gameName, c.description);
+
+  // Email found
+  if (c.contacts.email && !c.contacts.genericInbox) {
+    score += sc.real_email_found; parts.push(`email(${sc.real_email_found})`);
+  } else if (c.contacts.email && c.contacts.genericInbox) {
+    // Generic email still provides some value
+    score += Math.floor(sc.real_email_found / 2); parts.push(`generic_email(${Math.floor(sc.real_email_found / 2)})`);
+  }
+
+  // Audience size
+  const audience = c.ratingsCount ?? (c.type === "roblox" ? (c.rawData.playerCount as number ?? 0) : 0);
+  if (audience >= 50000) { score += sc.audience_large; parts.push(`audience_large(${sc.audience_large})`); }
+  else if (audience >= 5000) { score += sc.audience_medium; parts.push(`audience_medium(${sc.audience_medium})`); }
+
+  // Country bonus (US/UK/CA/AU/EU)
+  const goodCountries = new Set(["US", "GB", "CA", "AU", "DE", "FR", "NL", "SE", "NO", "DK", "FI"]);
+  if (c.country && goodCountries.has(c.country.toUpperCase())) {
+    score += sc.us_uk_ca_au_eu_country; parts.push(`country(${sc.us_uk_ca_au_eu_country})`);
+  }
+
+  // Real-money gameplay
+  if (c.earnsRealMoney) { score += sc.real_money_gameplay; parts.push(`real_money(${sc.real_money_gameplay})`); }
+
+  score = Math.min(100, Math.max(0, score));
+  const breakdown = parts.join(" + ") || "0";
+
+  // Grade: A requires activity + genre + money signal + named DM — we can't know DM here
+  // so A is awarded in the final save step when DM is populated.
+  // For now: B = activity + email found; C = activity; D/F = missing required.
+  let grade: string;
+  if (!activityVerified || !genrePasses) {
+    grade = "F";
+  } else if (score >= sc.grade_a_threshold) {
+    grade = "A";
+  } else if (score >= sc.grade_b_threshold) {
+    grade = "B";
+  } else if (score >= sc.grade_c_threshold) {
+    grade = "C";
+  } else if (score >= sc.grade_d_threshold) {
+    grade = "D";
+  } else {
+    grade = "F";
+  }
+
+  return { score, grade, breakdown, activityVerified, genrePasses };
+}
+
+// ─── Cross-run deduplication ──────────────────────────────────────────────────
+
+async function loadSeenDomains(): Promise<Set<string>> {
+  const rows = await prisma.leadFactoryLead.findMany({
+    select: { website: true },
+    where: { run: { status: { in: ["completed", "stopped"] } } },
+  });
+  const domains = new Set<string>();
+  for (const row of rows) {
+    if (row.website) domains.add(extractDomain(row.website));
+  }
+  return domains;
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -790,181 +780,233 @@ export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
+  // Rejection tracking for the final report
+  const rejections: RejectionRecord[] = [];
+
   try {
-    // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 1: PLANNING (rule-based — no AI, no key required)
-    // ──────────────────────────────────────────────────────────────────────────
-    await setStatus(runId, "planning", "Building search strategy…");
-    await log(runId, "planning", `Run started: "${run.prompt.slice(0, 80)}"  mode=${run.mode}  count=${run.count}`);
+    // ── PHASE 1: SETUP ────────────────────────────────────────────────────────
+    await setStatus(runId, "planning", "Initialising pipeline…");
+    await log(runId, "planning", `Run started: criteria="${(run.criteria ?? "none").slice(0, 80)}" count=${run.count}`);
 
-    const plan = generatePlan(run.prompt, run.count);
+    // Load existing domains to avoid cross-run duplicates
+    await setStage(runId, "Loading seen companies from previous runs…");
+    const seenDomains = await loadSeenDomains();
+    await log(runId, "planning", `Cross-run deduplication: ${seenDomains.size} known domains loaded`);
 
-    // Parse criteria into scoring signals (empty object if no criteria set)
-    const criteriaSignals: CriteriaSignals | undefined = run.criteria?.trim()
-      ? parseCriteria(run.criteria)
-      : undefined;
+    if (await isStopped(runId)) return;
 
-    if (criteriaSignals) {
-      await log(runId, "planning", `Criteria applied: "${run.criteria!.slice(0, 100)}"`);
+    // ── PHASE 2: DISCOVER ─────────────────────────────────────────────────────
+    await setStatus(runId, "discovering", "Fetching charts…");
+
+    const seenThisRun = new Set<string>();
+    const candidates: Candidate[] = [];
+    let totalPulled = 0;
+
+    function tryAdd(c: Candidate) {
+      const domain = extractDomain(c.website);
+      // Skip platform URLs as unique key — use storeLink domain if website is platform
+      const storeKey = extractDomain(c.storeLink);
+      const key = !isDomainBlocked(c.website) ? domain : storeKey;
+
+      if (seenThisRun.has(key)) return;
+      if (seenDomains.has(key)) {
+        rejections.push({ name: c.name, reason: "Already seen in a previous run", source: c.type });
+        return;
+      }
+      seenThisRun.add(key);
+      candidates.push(c);
     }
 
-    await prisma.leadRun.update({ where: { id: runId }, data: { plan: plan as unknown as Prisma.InputJsonValue } });
-    await log(runId, "planning", `Sources: ${plan.sources.join("  ·  ")}`);
-
+    // Roblox
+    await setStage(runId, `Fetching Roblox top games (≥${cfg.sources.roblox_min_ccu} playing)…`);
+    const robloxResults = await robloxTopGames(cfg.sources.roblox_min_ccu, Math.max(run.count * 4, 200), rejections);
+    totalPulled += Math.max(run.count * 4, 200);
+    robloxResults.forEach(tryAdd);
+    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates`);
     if (await isStopped(runId)) return;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 2: DISCOVERING
-    // ──────────────────────────────────────────────────────────────────────────
-    await setStatus(runId, "discovering", "Searching for leads…");
-
-    const seen = new Set<string>();
-    const candidates: Candidate[] = [];
-
-    const addCandidate = (c: Candidate) => {
-      const key = c.website.replace(/https?:\/\/(www\.)?/, "").toLowerCase().replace(/\/$/, "");
-      if (!seen.has(key) && key.length > 3) {
-        seen.add(key);
-        candidates.push(c);
-      }
-    };
-    const addMany = (list: Candidate[]) => list.forEach(addCandidate);
-
-    // ── Roblox: top games with 1,000+ live players ────────────────────────────
-    await setStage(runId, "Fetching Roblox top games (1,000+ live players)…");
-    addMany(await robloxTopGames(1000, Math.max(run.count * 6, 300)));
-    await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} studios`);
+    // Steam
+    await setStage(runId, "Fetching Steam top trending games…");
+    const steamResults = await steamTopGames(cfg.sources.steam_max_age_months, rejections);
+    totalPulled += 100;
+    steamResults.forEach(tryAdd);
+    await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates`);
     if (await isStopped(runId)) return;
 
-    // ── Steam: top sellers + new releases (last 24 months) ───────────────────
-    await setStage(runId, "Fetching Steam top sellers & new releases…");
-    addMany(await steamFeaturedGames(24));
-    await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} developers`);
-    if (await isStopped(runId)) return;
+    // App Store (multi-chart)
+    await setStage(runId, "Fetching App Store charts (subcategories × countries)…");
+    const mobileResults = await appStoreTopGames(rejections);
+    totalPulled += (cfg.sources.app_store_countries.length * (cfg.sources.app_store_allowed_subcategory_ids.length + 1)) * 200;
+    mobileResults.forEach(tryAdd);
+    await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates`);
 
-    // ── App Store: top-grossing chart ranks 1–200 (isTooLarge filters mega corps) ─
-    await setStage(runId, "Fetching App Store top-grossing chart (ranks 1–200)…");
-    addMany(await appStoreChartSearch(1, 200));
-    await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} studios`);
-
-    await setStage(runId, `Found ${candidates.length} total candidates across all sources`);
-    await log(runId, "discovering", `Total: ${candidates.length} candidates`);
+    const preFilterCount = candidates.length;
+    await setStage(runId, `Discovered ${preFilterCount} unique candidates`);
+    await log(runId, "discovering", `Total unique candidates: ${preFilterCount} (from ~${totalPulled} raw)`);
 
     if (candidates.length === 0) {
-      await setStatus(runId, "failed", "No candidates found. Check that external APIs are reachable.");
+      await writeRejectionReport(runId, rejections, 0, 0);
+      await setStatus(runId, "failed", "No candidates found after filtering. Check external APIs.");
       return;
     }
 
     if (await isStopped(runId)) return;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 2.5: SIZE FILTER + DOMAIN INFERENCE
-    // Remove mega-companies / AAA studios before scoring. These are unreachable
-    // for a small agency regardless of what the prompt says.
-    // ──────────────────────────────────────────────────────────────────────────
-    const beforeFilter = candidates.length;
-    const filtered = candidates.filter((c) => !isTooLarge(c) && !isInactive(c));
-    // Replace candidates array in-place
-    candidates.length = 0;
-    candidates.push(...filtered);
-    const removedCount = beforeFilter - candidates.length;
-    if (removedCount > 0) {
-      await log(runId, "discovering", `Filtered out ${removedCount} inactive / large companies`);
+    // ── PHASE 2.5: HARD FILTER ────────────────────────────────────────────────
+    // Secondary pass to catch any candidates that slipped through source-level checks
+    await setStage(runId, "Applying hard filters…");
+    const hardFiltered: Candidate[] = [];
+
+    for (const c of candidates) {
+      // Domain blocklist
+      if (isDomainBlocked(c.website) && isDomainBlocked(c.storeLink)) {
+        rejections.push({ name: c.name, reason: `Both website and store link are platform URLs (${c.website})`, source: c.type });
+        continue;
+      }
+      // Company blocklist
+      if (isCompanyBlocked(c.name)) {
+        rejections.push({ name: c.name, reason: "Company name in blocklist", source: c.type });
+        continue;
+      }
+      // Genre filter
+      if (isRejectedGenre(c.genre, c.gameName, c.description)) {
+        rejections.push({ name: c.name, reason: `Rejected genre: "${c.genre}" game: "${c.gameName}"`, source: c.type });
+        continue;
+      }
+      hardFiltered.push(c);
     }
 
-    // Domain inference for email
-    for (const c of candidates) {
-      if (!c.contacts.email) {
-        const inferred = inferEmailFromDomain(c.website);
-        if (inferred) c.contacts.email = inferred;
-      }
+    candidates.length = 0;
+    candidates.push(...hardFiltered);
+    await log(runId, "discovering", `After hard filter: ${candidates.length} candidates`);
+
+    if (candidates.length === 0) {
+      await writeRejectionReport(runId, rejections, preFilterCount, 0);
+      await setStatus(runId, "failed", "All candidates filtered out. Adjust criteria or blocklist.");
+      return;
     }
 
     if (await isStopped(runId)) return;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PHASE 3: SCORE (parallel Haiku) → ENRICH (Serper only on passing leads)
-    // Haiku runs 10 at a time. Serper enrichment only fires for leads that
-    // passed scoring — keeps cost proportional to saved leads, not candidates.
-    // ──────────────────────────────────────────────────────────────────────────
-    await setStatus(runId, "researching", `Analyzing leads…`);
+    // ── PHASE 3: SCORE + ENRICH ───────────────────────────────────────────────
+    await setStatus(runId, "researching", "Scoring and enriching leads…");
+
+    // Sort: mobile and steam first (better email findability), roblox last
+    const typeOrder = { steam: 0, mobile: 1, roblox: 2 };
+    candidates.sort((a, b) => (typeOrder[a.type] ?? 2) - (typeOrder[b.type] ?? 2));
 
     let savedCount = 0;
-    // Sort by email-findability: steam/mobile (own domain → inferred email) first,
-    // roblox last (platform URL only → depends on SearXNG which can be flaky).
-    // Within each tier, shuffle for variety.
-    const typeOrder = { steam: 0, mobile: 1, roblox: 2, web: 1, youtube: 1 };
-    const sorted = [...candidates].sort((a, b) => {
-      const ta = typeOrder[a.type] ?? 1;
-      const tb = typeOrder[b.type] ?? 1;
-      if (ta !== tb) return ta - tb;
-      return Math.random() - 0.5;
-    });
-    const processCap = run.count * 6; // wide headroom — many leads drop if no email found
-    const toProcess = sorted.slice(0, Math.min(sorted.length, processCap));
+    const processCap = run.count * 6;
+    const toProcess = candidates.slice(0, Math.min(candidates.length, processCap));
 
-    const BATCH = 20; // process in batches to update progress periodically
+    const BATCH = 15;
 
     for (let i = 0; i < toProcess.length && savedCount < run.count; i += BATCH) {
       if (await isStopped(runId)) return;
 
       const batch = toProcess.slice(i, Math.min(i + BATCH, toProcess.length));
 
-      // Score the whole batch — synchronous, instant, no AI needed
-      const batchResults = batch.map((c) => {
-        const a = scoreCandidate(c, plan.segments, criteriaSignals);
-        return { c, a };
-      });
-
-      // Process scored results — enrich only passing leads
-      for (const { c, a } of batchResults) {
+      for (const c of batch) {
         if (savedCount >= run.count) break;
-        if (run.mode === "bulk" && a.grade === "F") continue;
 
-        // Hard criteria filter — skip candidates that don't meet required conditions
-        if (criteriaSignals && !meetsHardCriteria(c, criteriaSignals)) continue;
+        const scored = scoreCandidate(c);
 
-        // Serper email enrichment — try hard to find an email before saving
-        let finalEmail = a.dmEmail || c.contacts.email || null;
-        if (!finalEmail) {
-          const found = await serperEmailSearch(c.name, c.website);
-          await trackCost(runId, "brave", "email_enrich", 2, 0);
-          if (found) {
-            finalEmail = found;
-            c.contacts.email = found;
+        // Skip F-grade leads (failed required checks)
+        if (scored.grade === "F") {
+          rejections.push({ name: c.name, reason: `Grade F (score ${scored.score}): ${scored.breakdown}`, source: c.type });
+          continue;
+        }
+
+        // Email enrichment — only if no real email found from source
+        if (!c.contacts.email) {
+          const { email, generic } = await findEmailViaSearx(c.name, isDomainBlocked(c.website) ? "" : c.website);
+          if (email) {
+            c.contacts.email = email;
+            c.contacts.emailSource = "searxng";
+            c.contacts.genericInbox = generic;
           }
         }
-        if (!finalEmail) {
-          const { contacts } = await serperContactEnrich(c.name, c.website);
-          await trackCost(runId, "brave", "contact_enrich", 1, 0);
-          finalEmail = contacts.email;
-          if (contacts.email) c.contacts = mergeContacts(c.contacts, contacts);
+
+        // Require email
+        if (!c.contacts.email) {
+          rejections.push({ name: c.name, reason: "No email found (source + SearXNG exhausted)", source: c.type });
+          continue;
         }
 
-        if (!finalEmail) continue; // no email found — skip this lead
+        // Re-score now that we may have email
+        const finalScored = scoreCandidate(c);
 
         savedCount++;
+
+        const signals = {
+          activityVerified: finalScored.activityVerified,
+          genrePasses: finalScored.genrePasses,
+          notBlocklisted: true,
+          hasFunding: false,
+          hasOtherMoneySignal: c.chartRank !== null,
+          namedDecisionMaker: false,
+          publishedEmail: c.contacts.emailSource === "published",
+          audienceSize: (c.ratingsCount ?? 0) >= 50000 ? "large" : (c.ratingsCount ?? 0) >= 5000 ? "medium" : "small",
+          country: c.country,
+          realMoneyGameplay: c.earnsRealMoney,
+          breakdown: finalScored.breakdown,
+          total: finalScored.score,
+        };
+
+        // Determine final grade: A requires money signal + no generic email
+        let finalGrade = finalScored.grade;
+        const hasMoneySignal = c.chartRank !== null;
+        const hasNamedDM = false; // no DM enrichment without paid API
+        if (finalGrade === "A" && (!hasMoneySignal || !hasNamedDM || c.contacts.genericInbox)) {
+          finalGrade = "B";
+        }
+
+        // Own website (not platform) for CSV
+        const ownWebsite = !isDomainBlocked(c.website) ? c.website : null;
 
         await prisma.leadFactoryLead.create({
           data: {
             runId,
             num: savedCount,
-            company:         a.company         || c.name,
-            website:         a.website         || c.website,
-            whatItIs:        a.whatItIs        || null,
-            segment:         a.segment         || plan.segments[0] || null,
-            decisionMaker:   a.decisionMaker   || null,
-            dmRole:          a.dmRole          || null,
-            dmEmail:         finalEmail,
-            instagramHandle: a.instagramHandle || c.contacts.instagram || null,
-            xHandle:         a.xHandle         || c.contacts.twitter   || null,
-            grade:  ["A", "B", "C", "D", "F"].includes(a.grade) ? a.grade : "C",
-            score:  typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 50,
-            whyItFits: a.whyItFits
-              ? { reason: a.whyItFits, channel: a.bestChannel, linkedin: a.linkedinUrl, discord: a.discordUrl }
-              : Prisma.JsonNull,
-            bestChannel: a.bestChannel || null,
-            rawData: { ...c.rawData, contacts: c.contacts } as unknown as Prisma.InputJsonValue,
+            company:        c.name.slice(0, 100),
+            website:        ownWebsite ?? c.storeLink,
+            whatItIs:       c.description.replace(/\n/g, " ").slice(0, 250),
+            segment:        c.type === "roblox" ? "Roblox Studio" : c.type === "steam" ? "PC/Steam Developer" : "Mobile Developer",
+            grade:          finalGrade,
+            score:          finalScored.score,
+            country:        c.country,
+            decisionMaker:  null,
+            dmRole:         null,
+            dmEmail:        c.contacts.email,
+            instagramHandle: c.contacts.instagram,
+            xHandle:        c.contacts.twitter,
+            linkedinUrl:    c.contacts.linkedin,
+            bestChannel:    c.contacts.email ? (c.contacts.genericInbox ? "generic-inbox" : "email") : "direct",
+            whyItFits:      Prisma.JsonNull,
+            signals:        signals as unknown as Prisma.InputJsonValue,
+            rawData: {
+              source:          c.type,
+              gameName:        c.gameName,
+              storeLink:       c.storeLink,
+              genre:           c.genre,
+              chartRank:       c.chartRank,
+              ratingsCount:    c.ratingsCount,
+              lastUpdateDate:  c.lastUpdateDate,
+              updateProofUrl:  c.updateProofUrl,
+              country:         c.country,
+              earnsRealMoney:  c.earnsRealMoney,
+              employees:       null,
+              employeesVerified: false,
+              investorBacked:  null,
+              latestFunding:   null,
+              fundingProof:    null,
+              moneySignals:    c.chartRank !== null ? [`Chart rank ${c.chartRank}`] : [],
+              moneySignalProof: c.updateProofUrl,
+              emailSource:     c.contacts.emailSource,
+              genericInbox:    c.contacts.genericInbox,
+              discord:         c.contacts.discord,
+              ownWebsite,
+            } as unknown as Prisma.InputJsonValue,
           },
         });
 
@@ -972,29 +1014,79 @@ export async function processLeadRun(runId: string): Promise<void> {
           where: { id: runId },
           data: {
             stage: `Saved ${savedCount} / ${run.count} leads`,
-            stats: { discovered: candidates.length, processed: Math.min(i + BATCH, toProcess.length), saved: savedCount },
+            stats: {
+              pulled: preFilterCount,
+              filtered: preFilterCount - candidates.length,
+              saved: savedCount,
+              rejectedTotal: rejections.length,
+            },
           },
         });
       }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // DONE
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── DONE ──────────────────────────────────────────────────────────────────
+    await writeRejectionReport(runId, rejections, preFilterCount, savedCount);
+
     await prisma.leadRun.update({
       where: { id: runId },
       data: {
         status: "completed",
         stage: null,
-        stats: { discovered: candidates.length, saved: savedCount },
+        stats: { pulled: preFilterCount, saved: savedCount, rejectedTotal: rejections.length },
       },
     });
 
-    await log(runId, "completed", `✓ ${savedCount} leads saved from ${candidates.length} candidates`);
+    await log(runId, "completed", `✓ ${savedCount} leads saved. ${rejections.length} total rejections from ${preFilterCount} candidates.`);
 
   } catch (err) {
-    const msg = String(err).slice(0, 300);
-    await log(runId, "failed", msg, "error");
+    const msg = String(err).slice(0, 400);
+    await log(runId, "failed", msg, "error").catch(() => {});
     await prisma.leadRun.update({ where: { id: runId }, data: { status: "failed", stage: msg } }).catch(() => {});
   }
+}
+
+// ─── Rejection report ─────────────────────────────────────────────────────────
+
+async function writeRejectionReport(runId: string, rejections: RejectionRecord[], pulled: number, saved: number) {
+  // Summarise by reason category
+  const counts: Record<string, number> = {};
+  for (const r of rejections) {
+    const cat = categoriseRejection(r.reason);
+    counts[cat] = (counts[cat] ?? 0) + 1;
+  }
+
+  const summary = [
+    `=== REJECTION REPORT ===`,
+    `Candidates pulled: ${pulled}`,
+    `Saved: ${saved}`,
+    `Rejected total: ${rejections.length}`,
+    ``,
+    `By category:`,
+    ...Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([cat, n]) => `  ${cat}: ${n}`),
+    ``,
+    `Examples (first 3 per category):`,
+    ...Object.keys(counts).flatMap((cat) => {
+      const examples = rejections.filter((r) => categoriseRejection(r.reason) === cat).slice(0, 3);
+      return [`  [${cat}]`, ...examples.map((r) => `    ${r.name} — ${r.reason}`)];
+    }),
+  ].join("\n");
+
+  await log(runId, "completed", summary, "info");
+}
+
+function categoriseRejection(reason: string): string {
+  if (reason.includes("blocklist") || reason.includes("blocklisted")) return "company-blocklisted";
+  if (reason.includes("genre") || reason.includes("Genre")) return "rejected-genre";
+  if (reason.includes("rating") || reason.includes("Rating")) return "low-ratings";
+  if (reason.includes("playing") || reason.includes("Playing")) return "low-player-count";
+  if (reason.includes("update") || reason.includes("Update") || reason.includes("stale")) return "inactive";
+  if (reason.includes("previous run") || reason.includes("seen")) return "duplicate";
+  if (reason.includes("email") || reason.includes("Email")) return "no-email";
+  if (reason.includes("platform") || reason.includes("URL")) return "platform-only-url";
+  if (reason.includes("Grade F")) return "low-score";
+  if (reason.includes("release") || reason.includes("Release")) return "too-old-or-unreleased";
+  return "other";
 }

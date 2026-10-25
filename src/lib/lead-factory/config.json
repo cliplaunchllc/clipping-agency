@@ -1,0 +1,163 @@
+{
+  "_comment": "Edit this file to change thresholds, blocklists, and sources without touching code.",
+
+  "activity": {
+    "max_age_days": 90,
+    "roblox_max_age_days": 30,
+    "min_ratings_mobile": 1000,
+    "min_reviews_steam": 500,
+    "min_playing_roblox": 500
+  },
+
+  "size": {
+    "employee_min": 10,
+    "employee_max": 200,
+    "max_total_funding_usd": 100000000
+  },
+
+  "sources": {
+    "app_store_rank_skip_top": 49,
+    "app_store_countries": ["us", "gb", "ca", "au", "de", "fr"],
+    "app_store_allowed_subcategory_ids": ["7001","7002","7003","7009","7011","7013","7014","7015","7016","7017"],
+    "app_store_subcategory_names": {
+      "7001": "Action",
+      "7002": "Adventure",
+      "7003": "Arcade",
+      "7009": "Family",
+      "7011": "Music",
+      "7013": "Racing",
+      "7014": "Role Playing",
+      "7015": "Simulation",
+      "7016": "Sports",
+      "7017": "Strategy"
+    },
+    "steam_max_age_months": 24,
+    "roblox_min_ccu": 500,
+    "roblox_min_playing": 500
+  },
+
+  "blocklist": {
+    "_comment": "Matched case-insensitively against developer name, publisher name, seller name. Substring match.",
+    "companies": [
+      "valve", "steam", "github", "microsoft", "apple inc", "apple games",
+      "google", "google llc", "roblox corporation", "epic games", "itch.io",
+      "meta platforms", "discord", "twitch", "amazon", "youtube", "tiktok",
+      "bytedance", "reddit", "gog.com", "humble bundle", "poki", "crazygames",
+      "playgama", "gamestop", "lutris",
+      "activision", "blizzard", "king", "king.com", "electronic arts", "ea sports",
+      "ea games", "ea mobile", "ubisoft", "tencent", "riot games", "supercell",
+      "funcom", "grinding gear", "netease", "netease games", "sony interactive",
+      "sony computer entertainment", "nintendo", "take-two interactive",
+      "rockstar games", "rockstar north", "2k games", "2k sports", "zynga",
+      "peak games", "rollic games", "krafton", "nexon", "ncsoft", "bandai namco",
+      "square enix", "sega", "rovio", "capcom", "konami", "embracer group",
+      "scopely", "savvy games", "playtika", "superplay", "moon active",
+      "voodoo", "homa games", "saygames", "miniclip", "stillfront",
+      "playrix", "dream games", "wildlife studios", "afterverse",
+      "tilting point", "aristocrat", "product madness", "light & wonder",
+      "hasbro", "wizards of the coast", "mattel", "disney interactive",
+      "warner bros. games", "wb games", "netflix", "unity technologies",
+      "applovin", "garena", "mihoyo", "hoyoverse", "cognosphere", "lilith games",
+      "gameloft", "kabam", "jam city", "big fish games", "pocket gems",
+      "niantic", "outfit7", "azur games", "mechanist", "my.games",
+      "century games", "top games", "37games", "camel games", "devsisters",
+      "microfun", "metacore", "doubledown", "spinx", "new york times",
+      "chess.com", "bethesda", "naughty dog", "bungie", "insomniac games",
+      "cd projekt", "paradox interactive", "deep silver", "thq nordic",
+      "505 games", "2k czech", "2k australia", "bioware", "obsidian",
+      "double fine", "techland", "giants software", "netmarble",
+      "jam city", "scopely"
+    ]
+  },
+
+  "domain_blocklist": {
+    "_comment": "Reject any lead whose ONLY website is one of these, and reject any email on these domains.",
+    "domains": [
+      "github.com", "github.io",
+      "steampowered.com", "steamcommunity.com", "store.steampowered.com",
+      "apple.com", "apps.apple.com", "itunes.apple.com",
+      "google.com", "play.google.com", "googleplay.com",
+      "roblox.com",
+      "epicgames.com", "itch.io",
+      "facebook.com", "fb.com",
+      "instagram.com",
+      "x.com", "twitter.com",
+      "linkedin.com",
+      "discord.com", "discord.gg",
+      "youtube.com", "youtu.be",
+      "tiktok.com",
+      "twitch.tv",
+      "reddit.com",
+      "linktr.ee", "linktree.com",
+      "cloudfront.net", "appcloudbox.net",
+      "zendesk.com", "zohodesk.com", "freshdesk.com",
+      "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
+      "icloud.com", "proton.me", "protonmail.com",
+      "amazonaws.com", "azurewebsites.net", "herokuapp.com",
+      "wixsite.com", "squarespace.com", "wordpress.com",
+      "unity.com", "unrealengine.com"
+    ]
+  },
+
+  "genre_reject": {
+    "_comment": "Reject if primaryGenreName matches or title/description contains these keywords.",
+    "primary_genres": [
+      "Casino", "Card", "Board", "Word", "Trivia", "Educational",
+      "Puzzle", "Dice", "Kids"
+    ],
+    "title_keywords": [
+      "casino", "slots", "slot machine", "poker", "bingo", "solitaire",
+      "blackjack", "roulette", "chess", "checkers", "draughts", "dominoes",
+      "backgammon", "mahjong", "yatzy", "yahtzee", "ludo", "dice", "scrabble",
+      "crossword", "sudoku", "word search", "trivia", "quiz", "kids",
+      "toddler", "preschool", "educational", "learning",
+      "block puzzle", "tile puzzle", "number puzzle", "screw puzzle",
+      "sort puzzle", "jam puzzle", "match-3", "match 3", "triple match",
+      "merge", "hidden object", "find the difference",
+      "bubble shooter", "jewels", "jelly",
+      "brain teaser", "brain training"
+    ]
+  },
+
+  "email": {
+    "_comment": "Prefixes that mark an email as a generic inbox (not a decision-maker address).",
+    "generic_prefixes": [
+      "contact", "info", "support", "press", "hello", "business",
+      "marketing", "service", "admin", "team", "jobs", "careers",
+      "feedback", "help", "sales", "noreply", "no-reply",
+      "notifications", "news", "hi", "hey"
+    ]
+  },
+
+  "handles": {
+    "_comment": "Reject social handles that match common English words (false positives from bio text).",
+    "bad_handles": [
+      "and", "the", "for", "you", "our", "get", "app", "play", "game",
+      "link", "https", "http", "www", "every", "months", "follow",
+      "check", "join", "click", "here", "this", "that", "with",
+      "your", "more", "also", "just", "like", "about", "help",
+      "page", "free", "new", "top", "best", "fun", "home", "now",
+      "download", "install", "update", "version", "launch", "release",
+      "season", "battle", "pass", "event", "store", "shop"
+    ]
+  },
+
+  "scoring": {
+    "_comment": "Points awarded for each verified signal. Grade thresholds at bottom.",
+    "activity_verified": 30,
+    "genre_passes": 0,
+    "real_email_found": 20,
+    "funding_last_12mo": 25,
+    "other_money_signal": 10,
+    "named_decision_maker": 15,
+    "audience_large": 15,
+    "audience_medium": 8,
+    "us_uk_ca_au_eu_country": 5,
+    "real_money_gameplay": 5,
+    "grade_a_threshold": 80,
+    "grade_b_threshold": 60,
+    "grade_c_threshold": 40,
+    "grade_d_threshold": 20,
+    "_grade_a_extra_requires": "all required checks + at least 1 money signal + named_decision_maker"
+  }
+}
