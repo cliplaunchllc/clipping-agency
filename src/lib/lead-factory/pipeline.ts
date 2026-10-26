@@ -1317,9 +1317,9 @@ export async function processLeadRun(runId: string): Promise<void> {
         return false;
       }
 
-      // ── Criteria: email required ──────────────────────────────────────────────
-      if (flags.requireEmail && !c.contacts.email) {
-        funnel.reject(c.name, "requireEmail set but no email found");
+      // ── Email required (always) ───────────────────────────────────────────────
+      if (!c.contacts.email) {
+        funnel.reject(c.name, "no email found");
         return false;
       }
 
