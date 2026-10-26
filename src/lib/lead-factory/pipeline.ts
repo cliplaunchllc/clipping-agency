@@ -580,6 +580,38 @@ async function placeToUniverseId(placeId: number, headers: Record<string, string
   return data.universeId ?? null;
 }
 
+/**
+ * Expand a set of universe IDs by fetching game recommendations for each seed.
+ * Roblox's recommendations endpoint returns ~40 similar games per universe ID —
+ * this turns a static seed list into a dynamically-discovered pool each run.
+ */
+async function expandViaRecommendations(
+  seedUniverseIds: number[],
+  headers: Record<string, string>,
+  dbLog: (msg: string) => void,
+): Promise<number[]> {
+  const allIds = new Set<number>(seedUniverseIds);
+  // Expand from the first 40 seeds (most popular ones seeded first)
+  const toExpand = seedUniverseIds.slice(0, 40);
+
+  await Promise.allSettled(toExpand.map(async (universeId) => {
+    const res = await fetch(
+      `https://games.roblox.com/v1/games/recommendations/game/${universeId}?maxRows=40&isPaginated=true`,
+      { headers, signal: AbortSignal.timeout(8000) }
+    ).catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json().catch(() => ({})) as {
+      games?: Array<{ universeId?: number }>;
+    };
+    for (const g of data.games ?? []) {
+      if (typeof g.universeId === "number") allIds.add(g.universeId);
+    }
+  }));
+
+  dbLog(`Roblox: recommendations expanded pool: ${seedUniverseIds.length} seeds → ${allIds.size} universe IDs`);
+  return [...allIds];
+}
+
 async function robloxTopGames(
   minPlaying: number,
   funnel: Funnel,
@@ -595,16 +627,19 @@ async function robloxTopGames(
   dbLog(`Roblox: converting ${placIds.length} place IDs to universe IDs (in parallel, 20 at a time)`);
 
   // Step 1: Convert place IDs → universe IDs in parallel batches of 20
-  const universeIds: number[] = [];
+  const seedUniverseIds: number[] = [];
   for (let i = 0; i < placIds.length; i += 20) {
     const batch = placIds.slice(i, i + 20);
     const results = await Promise.allSettled(batch.map((pid) => placeToUniverseId(pid, HEADERS)));
     for (const r of results) {
-      if (r.status === "fulfilled" && r.value !== null) universeIds.push(r.value);
+      if (r.status === "fulfilled" && r.value !== null) seedUniverseIds.push(r.value);
     }
   }
 
-  dbLog(`Roblox: resolved ${universeIds.length} universe IDs from ${placIds.length} place IDs`);
+  dbLog(`Roblox: resolved ${seedUniverseIds.length} universe IDs from ${placIds.length} place IDs`);
+
+  // Step 1b: Graph-expand via game recommendations to discover new/trending games
+  const universeIds = await expandViaRecommendations(seedUniverseIds, HEADERS, dbLog);
 
   // Step 2: Fetch game data in batches of 50 (API limit for universeIds param)
   const games = new Map<number, RobloxGame>();

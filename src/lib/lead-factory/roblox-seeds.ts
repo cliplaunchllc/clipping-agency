@@ -126,14 +126,4 @@ export const ROBLOX_SEED_PLACE_IDS: number[] = [
   143477452,    // Flood Escape 2
   1962086868,   // Tower of Hell (alt place ID)
   3251633635,   // MEGA EASY Obby
-
-  // ── Popular 2024–2025 ─────────────────────────────────────────────────────────
-  7449615622,   // Toilet Tower Defense
-  5350027956,   // Sol's RNG
-  6920490416,   // Evade
-  6150541592,   // BedWars
-  6061740635,   // Fisch
-  6882547273,   // Arcane Odyssey
-  6984567198,   // Anime Vanguards
-  7130577801,   // Anime Last Stand
 ];
