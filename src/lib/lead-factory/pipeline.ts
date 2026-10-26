@@ -599,7 +599,7 @@ async function robloxTopGames(
 
 // ─── Steam source ─────────────────────────────────────────────────────────────
 
-async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]): Promise<Candidate[]> {
+async function steamTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
   // Pull both trending and all-time top — SteamSpy, no key required
   const [trendRes, allTimeRes] = await Promise.all([
     fetch("https://steamspy.com/api.php?request=top100in2weeks", { signal: AbortSignal.timeout(15000) }).catch(() => null),
@@ -617,7 +617,6 @@ async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]
 
   const spyData = mergedById;
   const games = [...spyData.values()].slice(0, 200);
-  const cutoff = new Date(Date.now() - maxAgeMonths * 30 * DAY_MS);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
@@ -655,17 +654,10 @@ async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]
       return;
     }
 
-    // Release date / activity check
+    // Only reject unreleased games — SteamSpy top100in2weeks already proves current activity
     if (app.data.release_date?.coming_soon) {
       rejections.push({ name: devName, reason: "Not yet released (coming_soon)", source: "steam" });
       return;
-    }
-    if (app.data.release_date?.date) {
-      const rel = new Date(app.data.release_date.date);
-      if (!isNaN(rel.getTime()) && rel < cutoff) {
-        rejections.push({ name: devName, reason: `Release date ${app.data.release_date.date} older than ${maxAgeMonths} months`, source: "steam" });
-        return;
-      }
     }
 
     // Genre check
@@ -1306,7 +1298,7 @@ export async function processLeadRun(runId: string): Promise<void> {
     // Steam — only if criteria allows it
     if (flags.sources.has("steam")) {
       await setStage(runId, "Fetching Steam top trending games…");
-      const steamResults = await steamTopGames(cfg.sources.steam_max_age_months, rejections);
+      const steamResults = await steamTopGames(rejections);
       totalPulled += 200;
       steamResults.forEach(tryAdd);
       await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates`);

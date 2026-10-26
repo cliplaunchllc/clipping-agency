@@ -2,11 +2,11 @@
   "_comment": "Edit this file to change thresholds, blocklists, and sources without touching code.",
 
   "activity": {
-    "max_age_days": 90,
-    "roblox_max_age_days": 30,
-    "min_ratings_mobile": 1000,
+    "max_age_days": 365,
+    "roblox_max_age_days": 90,
+    "min_ratings_mobile": 200,
     "min_reviews_steam": 500,
-    "min_playing_roblox": 500
+    "min_playing_roblox": 200
   },
 
   "size": {
