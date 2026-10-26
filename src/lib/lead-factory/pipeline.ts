@@ -538,16 +538,35 @@ function parseCriteria(raw: string | null): CriteriaFlags {
 
 // ─── Cross-run dedup ───────────────────────────────────────────────────────────
 
+/**
+ * Dedup key for a candidate.
+ * For studios with their own website: use the domain (one key per company).
+ * For platform-only URLs (roblox.com, steampowered.com, etc.): use the full
+ * normalized storeLink URL so each game/studio gets its own unique key instead
+ * of all collapsing to "roblox.com" and wiping out the entire source.
+ */
+function dedupeKey(website: string, storeLink: string): string {
+  if (isOwnWebsiteBlocked(website)) {
+    return storeLink.toLowerCase().replace(/\/+$/, "");
+  }
+  return extractDomain(website);
+}
+
 async function loadSeenDomains(): Promise<Set<string>> {
   const rows = await prisma.leadFactoryLead.findMany({
     select: { website: true },
     where: { run: { status: { in: ["completed", "stopped"] } } },
   });
-  const domains = new Set<string>();
+  const seen = new Set<string>();
   for (const row of rows) {
-    if (row.website) domains.add(extractDomain(row.website));
+    if (!row.website) continue;
+    // Mirror dedupeKey: platform-only URLs use the full URL, own sites use the domain
+    const key = isOwnWebsiteBlocked(row.website)
+      ? row.website.toLowerCase().replace(/\/+$/, "")
+      : extractDomain(row.website);
+    seen.add(key);
   }
-  return domains;
+  return seen;
 }
 
 // ─── Roblox source ─────────────────────────────────────────────────────────────
@@ -1108,7 +1127,7 @@ export async function processLeadRun(runId: string): Promise<void> {
     const candidates: Candidate[] = [];
 
     function tryAdd(c: Candidate) {
-      const key = extractDomain(isOwnWebsiteBlocked(c.website) ? c.storeLink : c.website);
+      const key = dedupeKey(c.website, c.storeLink);
       if (seenThisRun.has(key)) { funnel.reject(c.name, "Duplicate within this run"); return; }
       if (seenDomains.has(key)) { funnel.reject(c.name, "Already seen in a previous run"); return; }
       seenThisRun.add(key);
