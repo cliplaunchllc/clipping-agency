@@ -4,21 +4,23 @@
  * Sources:
  *   Steam   → SteamSpy top100in2weeks + top100forever → Steam appdetails
  *   Mobile  → iTunes RSS top-grossing/free (subcategory × country) → iTunes Lookup
- *   Roblox  → Seeded universe IDs → games.roblox.com/v1/games (public, no auth needed)
+ *   Roblox  → Seeded place IDs → universe ID conversion → games.roblox.com/v1/games
+ *             Results grouped by developer (one lead per studio, not per game).
  *
  * Key design decisions (Phase 4 rebuild):
  *   - Email is SOFT (scored, never required to pass). Never fabricated.
  *   - Funding, employees, named DM are all SOFT — unknown ≠ fail.
  *   - HARD filters: blocklist, domain, genre, minimum audience size.
  *   - SearXNG removed as dependency (all public instances broken as of 2025).
- *   - Roblox chart API replaced with seeded universe ID list (chart endpoints 404'd).
+ *   - Roblox chart API replaced with seeded place ID list (chart endpoints 404'd).
+ *     Place IDs → universe IDs via apis.roblox.com/universes/v1/places/{id}/universe
  *   - Funnel report emitted to DB log after every run.
  */
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import cfg from "./config.json";
-import { ROBLOX_SEED_UNIVERSE_IDS } from "./roblox-seeds";
+import { ROBLOX_SEED_PLACE_IDS } from "./roblox-seeds";
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -564,9 +566,22 @@ interface RobloxGame {
   creator: { id: number; name: string; type: string };
 }
 
+/**
+ * Convert a place ID (from roblox.com/games/{placeId}) to a universe ID.
+ * Uses the public Roblox API — no auth required.
+ */
+async function placeToUniverseId(placeId: number, headers: Record<string, string>): Promise<number | null> {
+  const res = await fetch(
+    `https://apis.roblox.com/universes/v1/places/${placeId}/universe`,
+    { headers, signal: AbortSignal.timeout(6000) }
+  ).catch(() => null);
+  if (!res?.ok) return null;
+  const data = await res.json().catch(() => ({})) as { universeId?: number };
+  return data.universeId ?? null;
+}
+
 async function robloxTopGames(
   minPlaying: number,
-  take: number,
   funnel: Funnel,
   dbLog: (msg: string) => void,
 ): Promise<Candidate[]> {
@@ -576,107 +591,152 @@ async function robloxTopGames(
     "Referer": "https://www.roblox.com/",
   };
 
-  const seeds = ROBLOX_SEED_UNIVERSE_IDS;
-  dbLog(`Roblox: fetching ${seeds.length} seed universe IDs in batches of 50`);
+  const placIds = ROBLOX_SEED_PLACE_IDS;
+  dbLog(`Roblox: converting ${placIds.length} place IDs to universe IDs (in parallel, 20 at a time)`);
 
-  // Batch into groups of 50 (API limit)
-  const batches: number[][] = [];
-  for (let i = 0; i < seeds.length; i += 50) batches.push(seeds.slice(i, i + 50));
+  // Step 1: Convert place IDs → universe IDs in parallel batches of 20
+  const universeIds: number[] = [];
+  for (let i = 0; i < placIds.length; i += 20) {
+    const batch = placIds.slice(i, i + 20);
+    const results = await Promise.allSettled(batch.map((pid) => placeToUniverseId(pid, HEADERS)));
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value !== null) universeIds.push(r.value);
+    }
+  }
 
+  dbLog(`Roblox: resolved ${universeIds.length} universe IDs from ${placIds.length} place IDs`);
+
+  // Step 2: Fetch game data in batches of 50 (API limit for universeIds param)
   const games = new Map<number, RobloxGame>();
-
-  for (const batch of batches) {
+  for (let i = 0; i < universeIds.length; i += 50) {
+    const batch = universeIds.slice(i, i + 50);
     const url = `https://games.roblox.com/v1/games?universeIds=${batch.join(",")}`;
     const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(12000) }).catch(() => null);
-    if (!res?.ok) {
-      dbLog(`Roblox batch fetch failed: HTTP ${res?.status ?? "network-error"}`);
-      continue;
-    }
+    if (!res?.ok) { dbLog(`Roblox game fetch failed: HTTP ${res?.status ?? "err"}`); continue; }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = await res.json().catch(() => ({})) as { data?: any[] };
     for (const g of body.data ?? []) {
       if (g.id && !games.has(g.id)) {
         games.set(g.id, {
-          id:          g.id,
-          rootPlaceId: g.rootPlaceId,
-          name:        g.name ?? "",
-          playing:     g.playing ?? 0,
-          visits:      g.visits ?? 0,
+          id:           g.id,
+          rootPlaceId:  g.rootPlaceId,
+          name:         g.name ?? "",
+          playing:      g.playing ?? 0,
+          visits:       g.visits ?? 0,
           totalUpVotes: g.totalUpVotes ?? 0,
-          updated:     g.updated ?? "",
-          creator:     g.creator ?? { id: 0, name: "", type: "Group" },
+          updated:      g.updated ?? "",
+          creator:      g.creator ?? { id: 0, name: "", type: "Group" },
         });
       }
     }
   }
 
-  dbLog(`Roblox: fetched ${games.size} games, filtering by playing≥${minPlaying}`);
+  dbLog(`Roblox: fetched ${games.size} games total`);
 
-  const active = [...games.values()].filter((g) => g.playing >= minPlaying)
-    .sort((a, b) => b.playing - a.playing)
-    .slice(0, take * 2);
+  // Step 3: Group by developer — one lead per studio, using their highest-CCU game
+  // Key: creatorId (string) → list of games sorted by playing desc
+  const byCreator = new Map<string, RobloxGame[]>();
+  for (const g of games.values()) {
+    if (!g.creator.id || !g.creator.name) continue;
+    const key = `${g.creator.type}:${g.creator.id}`;
+    if (!byCreator.has(key)) byCreator.set(key, []);
+    byCreator.get(key)!.push(g);
+  }
 
-  dbLog(`Roblox: ${active.length} games with playing≥${minPlaying}`);
+  // Sort each developer's games by playing count and filter by minPlaying
+  const activeDevelopers = [...byCreator.entries()]
+    .map(([key, devGames]) => {
+      devGames.sort((a, b) => b.playing - a.playing);
+      return { key, topGame: devGames[0], allGames: devGames };
+    })
+    .filter(({ topGame }) => topGame.playing >= minPlaying)
+    .sort((a, b) => b.topGame.playing - a.topGame.playing);
 
-  funnel.begin("roblox-filter", active.length);
+  dbLog(`Roblox: ${activeDevelopers.length} developers with top game ≥${minPlaying} CCU`);
+  funnel.begin("roblox-filter", activeDevelopers.length);
+
+  // Step 4: Build candidates (one per developer), fetch bio in parallel batches of 10
   const candidates: Candidate[] = [];
+  const seenCreators = new Set<string>();
 
-  for (const g of active) {
-    const creatorName = g.creator.name;
-    const creatorId   = g.creator.id;
-    const creatorType = g.creator.type === "Group" ? "Group" : "User";
+  for (let i = 0; i < activeDevelopers.length; i += 10) {
+    const batch = activeDevelopers.slice(i, i + 10);
+    await Promise.allSettled(batch.map(async ({ key, topGame, allGames }) => {
+      const creatorId   = topGame.creator.id;
+      const creatorName = topGame.creator.name;
+      const creatorType = topGame.creator.type === "Group" ? "Group" : "User";
 
-    if (isCompanyBlocked(creatorName)) {
-      funnel.reject(creatorName, `Company blocklisted`);
-      continue;
-    }
+      if (seenCreators.has(key)) return;
+      seenCreators.add(key);
 
-    // Fetch creator profile for bio/website
-    const profileUrl = creatorType === "Group"
-      ? `https://www.roblox.com/groups/${creatorId}`
-      : `https://www.roblox.com/users/${creatorId}/profile`;
+      if (isCompanyBlocked(creatorName)) {
+        funnel.reject(creatorName, "Company blocklisted");
+        return;
+      }
 
-    let bio = "";
-    try {
+      // Fetch developer profile (group or user)
       const profileApiUrl = creatorType === "Group"
         ? `https://groups.roblox.com/v1/groups/${creatorId}`
         : `https://users.roblox.com/v1/users/${creatorId}`;
-      const pr = await fetch(profileApiUrl, { headers: HEADERS, signal: AbortSignal.timeout(6000) }).catch(() => null);
-      if (pr?.ok) {
-        const pd = await pr.json() as { description?: string };
-        bio = pd.description ?? "";
-      }
-    } catch { /* best-effort */ }
+      const profileUrl = creatorType === "Group"
+        ? `https://www.roblox.com/groups/${creatorId}`
+        : `https://www.roblox.com/users/${creatorId}/profile`;
 
-    // Extract own website from bio
-    const ownUrlMatch = bio.match(
-      /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
-    );
-    const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
+      let bio = "";
+      let memberCount: number | null = null;
+      try {
+        const pr = await fetch(profileApiUrl, { headers: HEADERS, signal: AbortSignal.timeout(6000) }).catch(() => null);
+        if (pr?.ok) {
+          const pd = await pr.json() as { description?: string; memberCount?: number };
+          bio = pd.description ?? "";
+          memberCount = pd.memberCount ?? null;
+        }
+      } catch { /* best-effort */ }
 
-    const { email, generic } = extractEmail(bio);
-    const handles = extractSocialHandles(bio);
+      // Extract own website from bio (not social platforms)
+      const ownUrlMatch = bio.match(
+        /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
+      );
+      const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
 
-    candidates.push({
-      type:         "roblox",
-      name:         creatorName,
-      website:      ownWebsite ?? profileUrl,
-      storeLink:    `https://www.roblox.com/games/${g.rootPlaceId}`,
-      gameName:     g.name,
-      description:  `"${g.name}" · ${g.playing.toLocaleString()} playing · ${g.totalUpVotes.toLocaleString()} upvotes`,
-      genre:        "Roblox",
-      chartRank:    null,
-      ratingsCount: g.totalUpVotes,
-      playingCount: g.playing,
-      lastUpdateDate: g.updated || new Date().toISOString(),
-      updateProofUrl: `https://www.roblox.com/games/${g.rootPlaceId}`,
-      country:      null,
-      earnsRealMoney: false,
-      contacts: { email, emailSource: email ? "published" : null, genericInbox: generic, ...handles },
-      decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null,
-      investorBacked: false, fundingDetails: null, fundingProofUrl: null,
-      rawData: { universeId: g.id, rootPlaceId: g.rootPlaceId, playing: g.playing, totalUpVotes: g.totalUpVotes, updated: g.updated, creatorId, creatorType, bio: bio.slice(0, 200) },
-    });
+      const { email, generic } = extractEmail(bio);
+      const handles = extractSocialHandles(bio);
+
+      // Build a description showing all their games
+      const totalPlaying = allGames.reduce((s, g) => s + g.playing, 0);
+      const gameList = allGames.slice(0, 3).map((g) => `"${g.name}" (${g.playing.toLocaleString()})`).join(", ");
+      const description = `${creatorType === "Group" ? "Studio" : "Developer"}: ${creatorName}${memberCount ? ` · ${memberCount.toLocaleString()} group members` : ""} · Games: ${gameList}${allGames.length > 3 ? ` + ${allGames.length - 3} more` : ""} · ${totalPlaying.toLocaleString()} total live players`;
+
+      candidates.push({
+        type:          "roblox",
+        name:          creatorName,
+        website:       ownWebsite ?? profileUrl,
+        storeLink:     `https://www.roblox.com/games/${topGame.rootPlaceId}`,
+        gameName:      topGame.name,
+        description,
+        genre:         "Roblox",
+        chartRank:     null,
+        ratingsCount:  topGame.totalUpVotes,
+        playingCount:  topGame.playing,
+        lastUpdateDate: topGame.updated || new Date().toISOString(),
+        updateProofUrl: `https://www.roblox.com/games/${topGame.rootPlaceId}`,
+        country:       null,
+        earnsRealMoney: false,
+        contacts: { email, emailSource: email ? "published" : null, genericInbox: generic, ...handles },
+        decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null,
+        investorBacked: false, fundingDetails: null, fundingProofUrl: null,
+        rawData: {
+          creatorId,
+          creatorType,
+          creatorProfileUrl: profileUrl,
+          memberCount,
+          bio: bio.slice(0, 300),
+          topGame: { universeId: topGame.id, placeId: topGame.rootPlaceId, name: topGame.name, playing: topGame.playing },
+          allGames: allGames.map((g) => ({ universeId: g.id, placeId: g.rootPlaceId, name: g.name, playing: g.playing })),
+          totalPlaying,
+        },
+      });
+    }));
   }
 
   funnel.pass(candidates.length);
@@ -1023,7 +1083,7 @@ export async function processLeadRun(runId: string): Promise<void> {
     if (flags.sources.has("roblox")) {
       const minPlaying = flags.minPlayers ?? cfg.activity.min_playing_roblox;
       await setStage(runId, `Fetching Roblox games (seed list, ≥${minPlaying} playing)…`);
-      const robloxResults = await robloxTopGames(minPlaying, Math.max(run.count * 4, 100), funnel, dbLog);
+      const robloxResults = await robloxTopGames(minPlaying, funnel, dbLog);
       robloxResults.forEach(tryAdd);
       await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates after dedup`);
       if (await isStopped(runId)) return;
