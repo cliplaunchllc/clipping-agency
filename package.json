@@ -8,6 +8,7 @@
     "start": "prisma db push && next start",
     "worker": "ts-node --compiler-options {\"module\":\"CommonJS\",\"moduleResolution\":\"node\"} --project tsconfig.worker.json src/worker/index.ts",
     "health": "ts-node --project tsconfig.worker.json scripts/health-check.ts",
+    "test:filters": "ts-node --project tsconfig.worker.json src/lib/lead-factory/__tests__/pipeline.test.ts",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

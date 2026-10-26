@@ -1,0 +1,17 @@
+{
+  "_name": "roblox_games",
+  "_description": "Roblox game studios (uses seeded universe IDs since public chart API is deprecated)",
+  "sources": ["roblox"],
+  "activity": {
+    "min_playing": 200,
+    "note": "Active player count IS the activity signal for Roblox"
+  },
+  "hard_filters": {
+    "reject_companies_in_blocklist": true,
+    "reject_roblox_corporation": true
+  },
+  "contact_rules": {
+    "email_required": false,
+    "note": "Most Roblox studios lack websites. Email is scored but never required."
+  }
+}

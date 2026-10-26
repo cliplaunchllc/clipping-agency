@@ -1,0 +1,20 @@
+{
+  "_name": "mobile_ios_games",
+  "_description": "iOS mobile game studios from App Store charts",
+  "sources": ["mobile"],
+  "activity": {
+    "max_age_days": 365,
+    "min_ratings": 100
+  },
+  "hard_filters": {
+    "reject_companies_in_blocklist": true,
+    "reject_blocked_domains": true,
+    "skip_main_chart_top_n": 49
+  },
+  "genre_include": ["Action", "Adventure", "Arcade", "Family", "Role Playing", "Racing", "Simulation", "Sports", "Strategy"],
+  "genre_exclude": ["Casino", "Card", "Board", "Word", "Trivia", "Educational", "Puzzle", "Dice", "Kids"],
+  "contact_rules": {
+    "email_required": false,
+    "note": "Scrape sellerUrl for email. Generic emails are kept but scored lower."
+  }
+}

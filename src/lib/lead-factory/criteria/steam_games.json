@@ -1,0 +1,30 @@
+{
+  "_name": "steam_games",
+  "_description": "PC/Steam indie and mid-size game studios",
+  "sources": ["steam"],
+  "activity": {
+    "max_age_days": 730,
+    "require_release": false,
+    "note": "SteamSpy top100in2weeks already proves activity — we only reject coming_soon"
+  },
+  "hard_filters": {
+    "reject_companies_in_blocklist": true,
+    "reject_blocked_domains": true,
+    "reject_coming_soon": true
+  },
+  "genre_include": [],
+  "genre_exclude": ["Casino", "Card", "Board", "Word", "Trivia", "Educational", "Puzzle", "Dice", "Kids"],
+  "contact_rules": {
+    "email_required": false,
+    "note": "Email is scored but never required to pass. Use support_info.email from Steam directly."
+  },
+  "scoring": {
+    "has_email": 20,
+    "has_named_dm": 15,
+    "is_funded": 25,
+    "large_audience": 15,
+    "medium_audience": 8,
+    "good_country": 5,
+    "note": "activity_verified is always true for Steam (SteamSpy chart proves it)"
+  }
+}

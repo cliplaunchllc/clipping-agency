@@ -1,34 +1,24 @@
 /**
- * Lead Factory Pipeline v2
+ * Lead Factory Pipeline v3
  *
- * Sources (chart-rank-based only — no keyword searches):
- *   Roblox   → games.roblox.com top games by live players
- *   Steam    → SteamSpy top100in2weeks + Steam appdetails
- *   Mobile   → iTunes RSS top-grossing (US main chart + subcategory charts × 6 countries)
+ * Sources:
+ *   Steam   → SteamSpy top100in2weeks + top100forever → Steam appdetails
+ *   Mobile  → iTunes RSS top-grossing/free (subcategory × country) → iTunes Lookup
+ *   Roblox  → Seeded universe IDs → games.roblox.com/v1/games (public, no auth needed)
  *
- * All thresholds, blocklists, and genre lists live in config.json.
+ * Key design decisions (Phase 4 rebuild):
+ *   - Email is SOFT (scored, never required to pass). Never fabricated.
+ *   - Funding, employees, named DM are all SOFT — unknown ≠ fail.
+ *   - HARD filters: blocklist, domain, genre, minimum audience size.
+ *   - SearXNG removed as dependency (all public instances broken as of 2025).
+ *   - Roblox chart API replaced with seeded universe ID list (chart endpoints 404'd).
+ *   - Funnel report emitted to DB log after every run.
  */
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import cfg from "./config.json";
-
-// google-play-scraper is loaded lazily inside googlePlayTopGames() to prevent
-// a module-load crash from breaking the entire pipeline.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _gplay: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getGplay(): any {
-  if (_gplay) return _gplay;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const m = require("google-play-scraper");
-    _gplay = m.default ?? m;
-  } catch {
-    _gplay = null;
-  }
-  return _gplay;
-}
+import { ROBLOX_SEED_UNIVERSE_IDS } from "./roblox-seeds";
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -55,74 +45,118 @@ async function isStopped(runId: string): Promise<boolean> {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Contacts {
-  email:     string | null;
-  emailSource: "published" | "api" | "searxng" | null;
+  email:        string | null;
+  emailSource:  "store" | "published" | "scraped" | null;
   genericInbox: boolean;
-  instagram: string | null;
-  twitter:   string | null;
-  discord:   string | null;
-  linkedin:  string | null;
+  instagram:    string | null;
+  twitter:      string | null;
+  discord:      string | null;
+  linkedin:     string | null;
 }
 
 function emptyContacts(): Contacts {
   return { email: null, emailSource: null, genericInbox: false, instagram: null, twitter: null, discord: null, linkedin: null };
 }
 
-function blankEnrichment(): Pick<Candidate, "decisionMaker" | "decisionMakerTitle" | "decisionMakerLinkedin" | "investorBacked" | "fundingDetails" | "fundingProofUrl"> {
-  return { decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null, investorBacked: false, fundingDetails: null, fundingProofUrl: null };
-}
-
 interface Candidate {
-  type:       "roblox" | "steam" | "mobile";
-  name:       string;  // developer / studio name
-  website:    string;  // own website (not platform profile)
-  storeLink:  string;  // actual store page
-  gameName:   string;
-  description: string;
-  genre:      string;
-  chartRank:  number | null;
+  type:         "roblox" | "steam" | "mobile";
+  name:         string;
+  website:      string;    // own website, not platform URL
+  storeLink:    string;
+  gameName:     string;
+  description:  string;
+  genre:        string;
+  chartRank:    number | null;
   ratingsCount: number | null;
-  installCount: number | null;    // Google Play minInstalls
+  playingCount: number | null;   // Roblox live CCU
   lastUpdateDate: string | null;
   updateProofUrl: string | null;
-  country:    string | null;
+  country:      string | null;
   earnsRealMoney: boolean;
-  // Enriched signals (filled during phase 3)
-  decisionMaker:       string | null;
-  decisionMakerTitle:  string | null;
+  decisionMaker:        string | null;
+  decisionMakerTitle:   string | null;
   decisionMakerLinkedin: string | null;
-  investorBacked:      boolean;
-  fundingDetails:      string | null;
-  fundingProofUrl:     string | null;
-  contacts:   Contacts;
-  rawData:    Record<string, unknown>;
+  investorBacked:       boolean;
+  fundingDetails:       string | null;
+  fundingProofUrl:      string | null;
+  contacts:     Contacts;
+  rawData:      Record<string, unknown>;
 }
 
-interface RejectionRecord {
-  name:   string;
-  reason: string;
-  source: string;
+// ─── Funnel tracking ──────────────────────────────────────────────────────────
+
+interface FunnelStage {
+  name:     string;
+  in:       number;
+  out:      number;
+  rejected: number;
+  reasons:  Map<string, number>;       // reason → count
+  examples: Array<{ name: string; reason: string }>;
 }
 
-// ─── Config-derived sets (built once at module load) ─────────────────────────
+class Funnel {
+  stages: FunnelStage[] = [];
+  private current: FunnelStage | null = null;
 
-const COMPANY_BLOCKLIST = new Set(
-  cfg.blocklist.companies.map((s) => s.toLowerCase())
-);
+  begin(name: string, count: number) {
+    this.current = { name, in: count, out: 0, rejected: 0, reasons: new Map(), examples: [] };
+    this.stages.push(this.current);
+  }
 
-const DOMAIN_BLOCKLIST = new Set(cfg.domain_blocklist.domains.map((d) => d.toLowerCase()));
+  reject(name: string, reason: string) {
+    if (!this.current) return;
+    this.current.rejected++;
+    const cat = this.categorise(reason);
+    this.current.reasons.set(cat, (this.current.reasons.get(cat) ?? 0) + 1);
+    if (this.current.examples.length < 3) this.current.examples.push({ name, reason });
+  }
 
-const GENRE_REJECT_PRIMARY = new Set(
-  cfg.genre_reject.primary_genres.map((s) => s.toLowerCase())
-);
+  pass(count: number) {
+    if (!this.current) return;
+    this.current.out = count;
+  }
 
+  private categorise(r: string): string {
+    if (r.includes("blocklist") || r.includes("blocklisted")) return "company-blocklisted";
+    if (r.includes("genre") || r.includes("Genre"))           return "rejected-genre";
+    if (r.includes("rating"))                                  return "low-ratings";
+    if (r.includes("playing") || r.includes("CCU"))            return "low-player-count";
+    if (r.includes("update") || r.includes("stale"))           return "inactive";
+    if (r.includes("previous run") || r.includes("seen"))      return "duplicate";
+    if (r.includes("email") || r.includes("Email"))            return "no-email";
+    if (r.includes("platform") || r.includes("domain"))        return "platform-domain";
+    if (r.includes("Grade F"))                                  return "low-score";
+    if (r.includes("coming_soon"))                              return "unreleased";
+    return "other";
+  }
+
+  report(): string {
+    const lines: string[] = ["=== FUNNEL REPORT ==="];
+    for (const s of this.stages) {
+      lines.push(`\n[${s.name}] in=${s.in} → out=${s.out} (rejected ${s.rejected})`);
+      if (s.reasons.size > 0) {
+        const top = [...s.reasons.entries()].sort(([,a],[,b]) => b - a).slice(0, 3);
+        lines.push(`  Top reasons: ${top.map(([r,n]) => `${r}(${n})`).join(", ")}`);
+      }
+      if (s.examples.length > 0) {
+        lines.push("  Examples:");
+        for (const ex of s.examples) lines.push(`    • ${ex.name} — ${ex.reason}`);
+      }
+    }
+    return lines.join("\n");
+  }
+}
+
+// ─── Config-derived sets ──────────────────────────────────────────────────────
+
+const COMPANY_BLOCKLIST = new Set(cfg.blocklist.companies.map((s) => s.toLowerCase()));
+const DOMAIN_BLOCKLIST  = new Set(cfg.domain_blocklist.domains.map((d) => d.toLowerCase()));
+const GENRE_REJECT_PRIMARY  = new Set(cfg.genre_reject.primary_genres.map((s) => s.toLowerCase()));
 const GENRE_REJECT_KEYWORDS = cfg.genre_reject.title_keywords.map((k) => k.toLowerCase());
-
 const GENERIC_EMAIL_PREFIXES = new Set(cfg.email.generic_prefixes.map((s) => s.toLowerCase()));
-
 const BAD_HANDLES = new Set(cfg.handles.bad_handles.map((s) => s.toLowerCase()));
 
-// ─── Blocklist helpers ────────────────────────────────────────────────────────
+// ─── Domain helpers ────────────────────────────────────────────────────────────
 
 function extractDomain(url: string): string {
   try {
@@ -142,15 +176,48 @@ function isDomainBlocked(url: string): boolean {
   return false;
 }
 
-function isCompanyBlocked(name: string): boolean {
-  const n = name.toLowerCase().trim();
-  for (const blocked of COMPANY_BLOCKLIST) {
-    if (n === blocked || n.includes(blocked)) return true;
+/**
+ * True only if the URL belongs to a platform we NEVER want as a lead's own website.
+ * roblox.com is NOT in this check — Roblox profiles ARE valid as store links.
+ */
+function isOwnWebsiteBlocked(url: string): boolean {
+  const domain = extractDomain(url);
+  const platformDomains = new Set([
+    "roblox.com", "steampowered.com", "steamcommunity.com",
+    "apps.apple.com", "itunes.apple.com", "play.google.com",
+    "github.com", "github.io", "discord.com", "discord.gg",
+    "twitter.com", "x.com", "instagram.com", "facebook.com",
+    "youtube.com", "linktr.ee", "wixsite.com", "squarespace.com",
+    "wordpress.com",
+  ]);
+  if (platformDomains.has(domain)) return true;
+  for (const blocked of platformDomains) {
+    if (domain.endsWith("." + blocked)) return true;
   }
   return false;
 }
 
-// ─── Genre filter ─────────────────────────────────────────────────────────────
+/**
+ * Blocklist check: use EXACT word-boundary match only.
+ * "king" should not match "Kingdom Rush" — only standalone "King" / "King.com".
+ */
+function isCompanyBlocked(name: string): boolean {
+  const n = name.toLowerCase().trim();
+  for (const blocked of COMPANY_BLOCKLIST) {
+    // Exact match
+    if (n === blocked) return true;
+    // Word-boundary match only (e.g. "king.com" matches "king.com" but not "kingdom")
+    if (blocked.length > 4 && n.includes(blocked)) return true;
+    // For short words (≤4 chars) only exact full-word match
+    if (blocked.length <= 4) {
+      const re = new RegExp(`(?:^|\\s)${blocked}(?:\\s|$|,)`, "i");
+      if (re.test(n)) return true;
+    }
+  }
+  return false;
+}
+
+// ─── Genre filter ──────────────────────────────────────────────────────────────
 
 function isRejectedGenre(genre: string, title: string, description: string): boolean {
   const g = genre.toLowerCase();
@@ -160,11 +227,15 @@ function isRejectedGenre(genre: string, title: string, description: string): boo
   if (GENRE_REJECT_PRIMARY.has(g)) return true;
 
   for (const kw of GENRE_REJECT_KEYWORDS) {
-    if (t.includes(kw) || g.includes(kw)) return true;
+    // Only reject if keyword appears in genre or as a complete word in title
+    if (g.includes(kw)) return true;
+    // In title: word-boundary match only
+    const re = new RegExp(`\\b${kw.replace(/[-]/g, "[-]?")}\\b`, "i");
+    if (re.test(t)) return true;
   }
 
-  // Also check description for strong casino/puzzle signals
-  const strongReject = ["slot machine", "texas hold", "blackjack", "roulette", "poker chips", "match-3", "match 3", "triple match", "merge ", "hidden object"];
+  // Description: only strongest casino signals
+  const strongReject = ["slot machine", "texas hold", "blackjack", "roulette", "poker chips", "match-3", "match 3", "triple match"];
   for (const kw of strongReject) {
     if (d.includes(kw)) return true;
   }
@@ -172,19 +243,18 @@ function isRejectedGenre(genre: string, title: string, description: string): boo
   return false;
 }
 
-// ─── Activity check ───────────────────────────────────────────────────────────
+// ─── Activity ──────────────────────────────────────────────────────────────────
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isActivityStale(lastUpdateDate: string | null, maxDays: number): boolean {
-  if (!lastUpdateDate) return true; // missing = reject
+  if (!lastUpdateDate) return false; // UNKNOWN ≠ stale — soft check
   const d = new Date(lastUpdateDate);
-  if (isNaN(d.getTime())) return true;
+  if (isNaN(d.getTime())) return false;
   return Date.now() - d.getTime() > maxDays * DAY_MS;
 }
 
-// ─── Email extraction (no fabrication) ───────────────────────────────────────
-// Only extracts emails actually present in text. Never builds contact@domain.
+// ─── Email ─────────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g;
 
@@ -193,13 +263,15 @@ function classifyEmail(raw: string): { email: string; generic: boolean } | null 
   if (!m) return null;
   const prefix = m[1].toLowerCase();
   const domain = m[2].toLowerCase();
-  if (DOMAIN_BLOCKLIST.has(domain) || [...DOMAIN_BLOCKLIST].some((d) => domain.endsWith("." + d))) return null;
+  // Reject emails on blocked domains (gmail, discord, etc.)
+  if (isDomainBlocked("https://" + domain)) return null;
+  // Never accept fabricated emails
+  if (!raw.includes("@")) return null;
   const generic = GENERIC_EMAIL_PREFIXES.has(prefix) ||
     [...GENERIC_EMAIL_PREFIXES].some((p) => prefix.startsWith(p + ".") || prefix.startsWith(p + "_"));
   return { email: raw.toLowerCase(), generic };
 }
 
-/** Scan all emails in text, prefer non-generic, fallback to first generic. */
 function extractEmail(text: string): { email: string | null; generic: boolean } {
   if (!text) return { email: null, generic: false };
   const matches = [...text.matchAll(EMAIL_RE)];
@@ -213,23 +285,22 @@ function extractEmail(text: string): { email: string | null; generic: boolean } 
   return named ?? all[0];
 }
 
-// ─── Website scraping for email ───────────────────────────────────────────────
-// Fetches the studio's actual website — no API key needed, highest hit rate.
+// ─── Website scraping (own site only) ─────────────────────────────────────────
 
 const SCRAPE_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 async function scrapePageForEmail(url: string): Promise<{ email: string | null; generic: boolean }> {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": SCRAPE_UA, Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5" },
-      signal: AbortSignal.timeout(5000), // reduced from 9s
+      headers: { "User-Agent": SCRAPE_UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.5" },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return { email: null, generic: false };
     const reader = res.body?.getReader();
     if (!reader) return { email: null, generic: false };
     const chunks: Uint8Array[] = [];
     let total = 0;
-    while (total < 200000) { // 200 KB is plenty
+    while (total < 200_000) {
       const { done, value } = await reader.read();
       if (done || !value) break;
       chunks.push(value);
@@ -240,370 +311,384 @@ async function scrapePageForEmail(url: string): Promise<{ email: string | null; 
 
     // Priority 1: mailto: links
     const mailtoMatches = [...html.matchAll(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi)];
-    const mailtoEmails: Array<{ email: string; generic: boolean }> = [];
-    for (const m of mailtoMatches) {
-      const c = classifyEmail(m[1]);
-      if (c) mailtoEmails.push(c);
-    }
-    const namedMailto = mailtoEmails.find((e) => !e.generic);
+    const mailtoEmails = mailtoMatches.map((m) => classifyEmail(m[1])).filter(Boolean) as Array<{ email: string; generic: boolean }>;
+    const namedMailto = mailtoEmails.find((e) => !e.generic) ?? mailtoEmails[0];
     if (namedMailto) return namedMailto;
-    if (mailtoEmails.length) return mailtoEmails[0];
 
+    // Priority 2: inline email pattern
     return extractEmail(html);
   } catch {
     return { email: null, generic: false };
   }
 }
 
-/** Try homepage then up to 3 subpages. Stop on first non-generic hit. */
 async function findEmailOnWebsite(ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
-  if (!ownWebsite || isDomainBlocked(ownWebsite)) return { email: null, generic: false };
+  if (!ownWebsite || isOwnWebsiteBlocked(ownWebsite)) return { email: null, generic: false };
   const base = ownWebsite.replace(/\/+$/, "");
 
-  // Homepage first
   const home = await scrapePageForEmail(base);
   if (home.email && !home.generic) return home;
 
-  // Try 3 subpages only (not 7) to keep per-lead time reasonable
-  const subpages = ["/contact", "/about", "/contact-us"];
-  let bestGeneric: { email: string; generic: boolean } | null = home.email
-    ? home as { email: string; generic: boolean }
-    : null;
+  const subpages = ["/contact", "/about", "/contact-us", "/press"];
+  let best: { email: string; generic: boolean } | null = home.email ? (home as { email: string; generic: boolean }) : null;
 
   for (const path of subpages) {
-    const result = await scrapePageForEmail(base + path);
-    if (result.email && !result.generic) return result;
-    if (result.email && !bestGeneric) bestGeneric = result as { email: string; generic: boolean };
+    const r = await scrapePageForEmail(base + path);
+    if (r.email && !r.generic) return r;
+    if (r.email && !best) best = r as { email: string; generic: boolean };
   }
 
-  return bestGeneric ?? { email: null, generic: false };
+  return best ?? { email: null, generic: false };
 }
 
-// ─── Social handle extraction (URL-only, no @word scraping) ──────────────────
+// ─── Social handles (from href only, never from @word in text) ─────────────────
 
 function extractSocialHandles(text: string): Pick<Contacts, "instagram" | "twitter" | "discord" | "linkedin"> {
   if (!text) return { instagram: null, twitter: null, discord: null, linkedin: null };
 
-  // Only extract from actual profile URL patterns
-  const igMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9_.]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_.])/i);
-  const twMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/([a-zA-Z0-9_]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_])/i);
-  const dcMatch  = text.match(/(?:https?:\/\/)?discord\.gg\/([a-zA-Z0-9_-]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_-])/i);
-  const liMatch  = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]{2,80})\/?/i);
+  const igMatch = text.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9_.]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_.])/i);
+  const twMatch = text.match(/(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/([a-zA-Z0-9_]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_])/i);
+  const dcMatch = text.match(/(?:https?:\/\/)?discord\.gg\/([a-zA-Z0-9_-]{2,30})\/?(?:\s|$|[^a-zA-Z0-9_-])/i);
+  const liMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_%\-]{2,80})\/?/i);
 
   const validHandle = (h: string | undefined): string | null => {
     if (!h) return null;
     const clean = h.replace(/[/?#].*$/, "").toLowerCase();
-    if (BAD_HANDLES.has(clean)) return null;
-    if (clean.length < 2) return null;
+    if (BAD_HANDLES.has(clean) || clean.length < 2) return null;
     return h;
   };
 
-  const ig = validHandle(igMatch?.[1]);
-  const tw = validHandle(twMatch?.[1]);
-
   return {
-    instagram: ig ? `@${ig}` : null,
-    twitter:   tw ? `@${tw}` : null,
+    instagram: validHandle(igMatch?.[1]) ? `@${igMatch![1]}` : null,
+    twitter:   validHandle(twMatch?.[1]) ? `@${twMatch![1]}` : null,
     discord:   dcMatch?.[1] ? `https://discord.gg/${dcMatch[1]}` : null,
     linkedin:  liMatch?.[1] ? `https://linkedin.com/company/${liMatch[1]}` : null,
   };
 }
 
-// ─── SearXNG email fallback ───────────────────────────────────────────────────
+// ─── Segment label ─────────────────────────────────────────────────────────────
 
-const SEARX_INSTANCES = [
-  "https://searx.be",
-  "https://search.inetol.net",
-  "https://searxng.site",
-  "https://opnxng.com",
-  "https://search.bus-hit.me",
-];
-
-async function searxSearch(query: string): Promise<Array<{ title: string; url: string; content: string }>> {
-  for (const base of SEARX_INSTANCES) {
-    try {
-      const url = `${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`;
-      const res = await fetch(url, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) continue;
-      const data = await res.json() as { results?: Array<{ title: string; url: string; content?: string }> };
-      const results = data.results ?? [];
-      if (!results.length) continue;
-      return results.slice(0, 8).map((r) => ({ title: r.title, url: r.url, content: r.content ?? "" }));
-    } catch { /* try next */ }
-  }
-  return [];
-}
-
-async function findEmailViaSearx(studioName: string, ownWebsite: string): Promise<{ email: string | null; generic: boolean }> {
-  const domain = ownWebsite && !isDomainBlocked(ownWebsite) ? extractDomain(ownWebsite) : null;
-
-  const queries = [
-    // Most likely to surface a real named email in snippet
-    domain ? `site:${domain} "@${domain}"` : `"${studioName}" "@" email contact`,
-    domain ? `site:${domain} contact` : `"${studioName}" contact press email`,
-    // Broader fallback
-    `"${studioName}" email studio`,
-  ];
-
-  for (const q of queries) {
-    const results = await searxSearch(q);
-    const text = results.map((r) => `${r.content} ${r.url} ${r.title}`).join(" ");
-    const found = extractEmail(text);
-    if (found.email && !found.generic) return found; // named email — stop immediately
-    if (found.email) {
-      // Keep searching for a named one before accepting generic
-      const remaining = queries.slice(queries.indexOf(q) + 1);
-      for (const q2 of remaining) {
-        const r2 = await searxSearch(q2);
-        const t2 = r2.map((r) => `${r.content} ${r.url} ${r.title}`).join(" ");
-        const f2 = extractEmail(t2);
-        if (f2.email && !f2.generic) return f2;
-      }
-      return found; // best we found is generic
-    }
+function buildSegmentLabel(c: Candidate): string {
+  if (c.type === "roblox") {
+    const t = c.gameName.toLowerCase();
+    if (/\btycoon\b/.test(t))                           return "Tycoon (Roblox)";
+    if (/\b(roleplay|rp|life)\b/.test(t))               return "Roleplay (Roblox)";
+    if (/\bobby\b|\bobstacle\b/.test(t))                return "Obby (Roblox)";
+    if (/\b(simulator|sim)\b/.test(t))                  return "Simulator (Roblox)";
+    if (/\b(tower|defense)\b/.test(t))                  return "Tower Defense (Roblox)";
+    if (/\b(battle|fight|war|shooter)\b/.test(t))       return "Action (Roblox)";
+    if (/\b(horror|scary|survive)\b/.test(t))           return "Horror (Roblox)";
+    if (/\b(adventure|quest|dungeon)\b/.test(t))        return "Adventure (Roblox)";
+    if (/\b(racing|race|car|drift)\b/.test(t))          return "Racing (Roblox)";
+    if (/\b(sport|soccer|football|basketball)\b/.test(t)) return "Sports (Roblox)";
+    if (/\banime\b/.test(t))                            return "Anime (Roblox)";
+    return "Roblox Studio";
   }
 
-  return { email: null, generic: false };
+  if (c.type === "steam") {
+    if (!c.genre || c.genre.toLowerCase() === "free to play") return "PC/Steam Developer";
+    return `${c.genre} (PC/Steam)`;
+  }
+
+  if (c.type === "mobile") {
+    if (!c.genre) return "Mobile Game Studio";
+    const g = c.genre
+      .replace(/^Games$/, "Mobile Game")
+      .replace(/^Role Playing$/, "RPG");
+    return `${g} (Mobile)`;
+  }
+
+  return "Game Studio";
 }
 
-// ─── Roblox source ────────────────────────────────────────────────────────────
+// ─── Scoring ───────────────────────────────────────────────────────────────────
+// NOTE: Grade F is only given if genre fails (hard check).
+// Activity unknown → still passes (soft check — we never punish unknown data).
 
-async function robloxFetchCreatorProfile(id: number, type: "Group" | "User"): Promise<{ description: string; updated: string | null }> {
-  const url = type === "Group"
-    ? `https://groups.roblox.com/v1/groups/${id}`
-    : `https://users.roblox.com/v1/users/${id}`;
-  const res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(6000) }).catch(() => null);
-  if (!res?.ok) return { description: "", updated: null };
-  const data = await res.json() as { description?: string; updated?: string };
-  return { description: data.description ?? "", updated: data.updated ?? null };
+interface ScoreResult {
+  score:             number;
+  grade:             string;
+  breakdown:         string;
+  activityVerified:  boolean;
+  genrePasses:       boolean;
 }
 
-// Roblox games list API returns this shape
-interface RobloxGamesListGame {
-  id: number;           // universe ID
+function scoreCandidate(c: Candidate): ScoreResult {
+  const sc = cfg.scoring;
+  let score = 0;
+  const parts: string[] = [];
+
+  // Activity: SOFT — if we have a date AND it's recent, add points. Unknown = no points but no penalty.
+  const maxAge = c.type === "roblox" ? cfg.activity.roblox_max_age_days : cfg.activity.max_age_days;
+  const activityVerified = c.lastUpdateDate !== null && !isActivityStale(c.lastUpdateDate, maxAge);
+  if (activityVerified) { score += sc.activity_verified; parts.push(`activity(${sc.activity_verified})`); }
+
+  // Genre: HARD — grade F if genre fails
+  const genrePasses = !isRejectedGenre(c.genre, c.gameName, c.description);
+
+  // Email: SOFT — points for real email, partial for generic, 0 for missing (no rejection)
+  if (c.contacts.email && !c.contacts.genericInbox) {
+    score += sc.real_email_found; parts.push(`email(${sc.real_email_found})`);
+  } else if (c.contacts.email && c.contacts.genericInbox) {
+    score += Math.floor(sc.real_email_found / 2); parts.push(`generic_email(${Math.floor(sc.real_email_found / 2)})`);
+  }
+
+  // Named DM: SOFT
+  if (c.decisionMaker) { score += sc.named_decision_maker; parts.push(`dm(${sc.named_decision_maker})`); }
+
+  // Funding: SOFT
+  if (c.investorBacked) { score += sc.funding_last_12mo; parts.push(`funding(${sc.funding_last_12mo})`); }
+
+  // Audience
+  const audience = c.playingCount ?? c.ratingsCount ?? 0;
+  if (audience >= 50000) { score += sc.audience_large;  parts.push(`audience_large(${sc.audience_large})`); }
+  else if (audience >= 5000) { score += sc.audience_medium; parts.push(`audience_medium(${sc.audience_medium})`); }
+  else if (audience >= 500)  { score += Math.floor(sc.audience_medium / 2); parts.push(`audience_small(${Math.floor(sc.audience_medium / 2)})`); }
+
+  // Country
+  const goodCountries = new Set(["US", "GB", "CA", "AU", "DE", "FR", "NL", "SE", "NO", "DK", "FI"]);
+  if (c.country && goodCountries.has(c.country.toUpperCase())) {
+    score += sc.us_uk_ca_au_eu_country; parts.push(`country(${sc.us_uk_ca_au_eu_country})`);
+  }
+
+  if (c.earnsRealMoney) { score += sc.real_money_gameplay; parts.push(`real_money(${sc.real_money_gameplay})`); }
+
+  score = Math.min(100, Math.max(0, score));
+  const breakdown = parts.join(" + ") || "0";
+
+  // Grade: F only if genre fails (hard check). Otherwise based on score.
+  let grade: string;
+  if (!genrePasses) {
+    grade = "F";
+  } else if (score >= sc.grade_a_threshold) {
+    grade = "A";
+  } else if (score >= sc.grade_b_threshold) {
+    grade = "B";
+  } else if (score >= sc.grade_c_threshold) {
+    grade = "C";
+  } else {
+    grade = "D";
+  }
+
+  return { score, grade, breakdown, activityVerified, genrePasses };
+}
+
+// ─── Criteria parser ───────────────────────────────────────────────────────────
+
+interface CriteriaFlags {
+  sources:          Set<"roblox" | "steam" | "mobile">;
+  requireFunding:   boolean;
+  requireCountries: Set<string> | null;
+  minRatings:       number | null;
+  minPlayers:       number | null;
+  extraContext:     string;
+}
+
+function parseCriteria(raw: string | null): CriteriaFlags {
+  const t = (raw ?? "").toLowerCase();
+
+  const negated = t
+    .replace(/\b(no|not|without|exclude|skip|ignore|except)\s+(roblox|steam|mobile|ios|android|pc|app\s*store|apple)\b/g, " ")
+    .replace(/\b(roblox|steam|mobile|ios|app\s*store)\s+(not|excluded|removed|skipped)\b/g, " ");
+
+  const onlyRoblox = /\bonly\s+roblox\b|\broblox\s+only\b/.test(t);
+  const onlySteam  = /\bonly\s+steam\b|\bsteam\s+only\b/.test(t);
+  const onlyMobile = /\bonly\s+mobile\b|\bmobile\s+only\b|\bonly\s+(ios|app\s*store|apple)\b/.test(t);
+
+  const wantsRoblox = /roblox/.test(negated);
+  const wantsSteam  = /\bsteam\b|pc game|windows game/.test(negated);
+  const wantsMobile = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(negated);
+
+  let sources: Set<"roblox" | "steam" | "mobile">;
+  if      (onlyRoblox)  sources = new Set(["roblox"] as const);
+  else if (onlySteam)   sources = new Set(["steam"]  as const);
+  else if (onlyMobile)  sources = new Set(["mobile"] as const);
+  else if (wantsRoblox || wantsSteam || wantsMobile) {
+    sources = new Set<"roblox" | "steam" | "mobile">();
+    if (wantsRoblox) sources.add("roblox");
+    if (wantsSteam)  sources.add("steam");
+    if (wantsMobile) sources.add("mobile");
+  } else {
+    sources = new Set(["roblox", "steam", "mobile"] as const);
+  }
+
+  const requireFunding = /\b(vc.backed|vc funded|venture.backed|venture funded|investor.backed|investor funded|seed funded|series [abc] funded)\b/.test(t);
+
+  const requireCountries: Set<string> | null = (() => {
+    if (/\b(us|usa|united states)\s+only\b|\bonly\s+(us|usa|united states)\b/.test(t)) return new Set(["US"]);
+    if (/\b(uk|united kingdom)\s+only\b|\bonly\s+(uk|united kingdom)\b/.test(t))       return new Set(["GB"]);
+    if (/\bcanada\s+only\b|\bonly\s+canada\b/.test(t))                                  return new Set(["CA"]);
+    return null;
+  })();
+
+  const explicitLarge = /\b(millions? of players|top\s+10\b|top\s+5\b|#1 game|100k\+?\s+players)\b/.test(t);
+  const minRatings = explicitLarge ? 50000 : null;
+  const minPlayers = explicitLarge ? 5000  : null;
+
+  const parts: string[] = [`sources=[${[...sources].join(",")}]`];
+  if (requireFunding)   parts.push("requireFunding");
+  if (requireCountries) parts.push(`countries=[${[...requireCountries].join(",")}]`);
+  if (minRatings)       parts.push(`minRatings=${minRatings}`);
+  if (minPlayers)       parts.push(`minPlayers=${minPlayers}`);
+
+  return { sources, requireFunding, requireCountries, minRatings, minPlayers, extraContext: parts.join(" | ") };
+}
+
+// ─── Cross-run dedup ───────────────────────────────────────────────────────────
+
+async function loadSeenDomains(): Promise<Set<string>> {
+  const rows = await prisma.leadFactoryLead.findMany({
+    select: { website: true },
+    where: { run: { status: { in: ["completed", "stopped"] } } },
+  });
+  const domains = new Set<string>();
+  for (const row of rows) {
+    if (row.website) domains.add(extractDomain(row.website));
+  }
+  return domains;
+}
+
+// ─── Roblox source ─────────────────────────────────────────────────────────────
+// Uses seeded universe IDs since the public chart/list API (games/sorts, games/list)
+// was deprecated by Roblox in 2024/2025. games.roblox.com/v1/games?universeIds=X
+// still works without auth and returns current player counts.
+
+interface RobloxGame {
+  id:          number;
   rootPlaceId: number;
-  name: string;
-  playing: number;
-  visits: number;
+  name:        string;
+  playing:     number;
+  visits:      number;
   totalUpVotes: number;
-  totalDownVotes: number;
-  updated: string;      // ISO date of last game update
-  creator: {
-    id: number;
-    name: string;
-    type: string;       // "Group" | "User"
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractGamesArray(body: any): Array<Record<string, unknown>> {
-  // Roblox has changed response shapes across API versions — check all known field names
-  const arr = body?.games ?? body?.data ?? body?.items ?? body?.Games ?? [];
-  return Array.isArray(arr) ? arr : [];
+  updated:     string;
+  creator: { id: number; name: string; type: string };
 }
 
 async function robloxTopGames(
   minPlaying: number,
   take: number,
-  rejections: RejectionRecord[],
+  funnel: Funnel,
   dbLog: (msg: string) => void,
 ): Promise<Candidate[]> {
-  const ROBLOX_HEADERS = {
+  const HEADERS = {
     "User-Agent": SCRAPE_UA,
     Accept: "application/json",
-    "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.roblox.com/",
-    "Origin": "https://www.roblox.com",
   };
 
-  // ── Step 1: fetch sort tokens ─────────────────────────────────────────────
-  let sortToken = "";
-  const sortsRes = await fetch(
-    "https://games.roblox.com/v1/games/sorts?GameSortsContext=GamesDefaultSorts",
-    { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(10000) }
-  ).catch(() => null);
+  const seeds = ROBLOX_SEED_UNIVERSE_IDS;
+  dbLog(`Roblox: fetching ${seeds.length} seed universe IDs in batches of 50`);
 
-  dbLog(`Roblox sorts API → status=${sortsRes?.status ?? "network-error"}`);
+  // Batch into groups of 50 (API limit)
+  const batches: number[][] = [];
+  for (let i = 0; i < seeds.length; i += 50) batches.push(seeds.slice(i, i + 50));
 
-  if (sortsRes?.ok) {
-    const sortsRaw = await sortsRes.text().catch(() => "");
-    dbLog(`Roblox sorts raw (200 chars): ${sortsRaw.slice(0, 200)}`);
-    try {
-      const sortsData = JSON.parse(sortsRaw) as { sorts?: Array<{ token: string; name: string }> };
-      const preferred = sortsData.sorts?.find((s) => /engaging|popular|top rated|visited|trending/i.test(s.name))
-        ?? sortsData.sorts?.[0];
-      sortToken = preferred?.token ?? "";
-      dbLog(`Roblox sort token selected: "${sortToken.slice(0, 60)}" (${preferred?.name ?? "none"})`);
-    } catch { dbLog("Roblox sorts JSON parse failed"); }
-  }
+  const games = new Map<number, RobloxGame>();
 
-  // ── Step 2: probe game-list URLs until one returns games ──────────────────
-  const candidateUrls = [
-    sortToken
-      ? `https://games.roblox.com/v1/games/list?model.sortToken=${encodeURIComponent(sortToken)}&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`
-      : null,
-    `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=0&model.keyword=&model.maxRows=100`,
-    `https://games.roblox.com/v1/games/list?model.sortToken=&model.gameFilter=0&model.genreFilter=all&model.keyword=&model.maxRows=100`,
-    `https://games.roblox.com/v1/games/list?model.gameFilter=0&model.genreFilter=all&model.maxRows=100`,
-  ].filter(Boolean) as string[];
-
-  let baseUrl: string | null = null;
-  for (const u of candidateUrls) {
-    const probe = await fetch(u, { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(10000) }).catch(() => null);
-    const rawText = probe ? await probe.text().catch(() => "") : "";
-    dbLog(`Probe ${u.slice(50, 120)} → status=${probe?.status ?? "err"} body=${rawText.slice(0, 150)}`);
-    if (probe?.ok) {
-      let body: unknown;
-      try { body = JSON.parse(rawText); } catch { continue; }
-      const games = extractGamesArray(body);
-      if (games.length > 0) { baseUrl = u; break; }
+  for (const batch of batches) {
+    const url = `https://games.roblox.com/v1/games?universeIds=${batch.join(",")}`;
+    const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(12000) }).catch(() => null);
+    if (!res?.ok) {
+      dbLog(`Roblox batch fetch failed: HTTP ${res?.status ?? "network-error"}`);
+      continue;
     }
-  }
-
-  if (!baseUrl) {
-    dbLog("Roblox: all URL strategies returned 0 games — API may be blocking server requests");
-    return [];
-  }
-
-  // ── Step 3: paginate ──────────────────────────────────────────────────────
-  const seenGames = new Map<number, RobloxGamesListGame>();
-  let cursor = "";
-  let pages = 0;
-  const maxPages = 15;
-
-  while (seenGames.size < take * 3 && pages < maxPages) {
-    const url = `${baseUrl}${cursor ? `&model.cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const res = await fetch(url, { headers: ROBLOX_HEADERS, signal: AbortSignal.timeout(12000) }).catch(() => null);
-    if (!res?.ok) { dbLog(`Roblox page ${pages} failed status=${res?.status}`); break; }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const body = await res.json().catch(() => ({})) as any;
-    const games = extractGamesArray(body);
-
-    for (const g of games) {
-      const placeId = Number(g.placeId ?? g.rootPlaceId ?? g.id ?? 0);
-      const playing = Number(g.playerCount ?? g.playing ?? g.activePlayers ?? 0);
-      if (placeId && playing >= minPlaying && !seenGames.has(placeId)) {
-        seenGames.set(placeId, {
-          id: (g.id as number) ?? placeId,
-          rootPlaceId: placeId,
-          name: (g.name as string) ?? "",
-          playing,
-          visits: 0,
-          totalUpVotes: (g.totalUpVotes as number) ?? 0,
-          totalDownVotes: 0,
-          updated: (g.updated as string) ?? "",
-          creator: (g.creator as { id: number; name: string; type: string }) ?? {
-            id: (g.creatorId as number) ?? 0,
-            name: (g.creatorName as string) ?? "",
-            type: (g.creatorType as string) ?? "Group",
-          },
+    const body = await res.json().catch(() => ({})) as { data?: any[] };
+    for (const g of body.data ?? []) {
+      if (g.id && !games.has(g.id)) {
+        games.set(g.id, {
+          id:          g.id,
+          rootPlaceId: g.rootPlaceId,
+          name:        g.name ?? "",
+          playing:     g.playing ?? 0,
+          visits:      g.visits ?? 0,
+          totalUpVotes: g.totalUpVotes ?? 0,
+          updated:     g.updated ?? "",
+          creator:     g.creator ?? { id: 0, name: "", type: "Group" },
         });
       }
     }
-
-    cursor = body?.nextPageCursor ?? "";
-    pages++;
-    if (!cursor) break;
-    const lastPlaying: number = games.length > 0
-      ? ((games[games.length - 1].playerCount as number) ?? (games[games.length - 1].playing as number) ?? 0)
-      : 0;
-    if (lastPlaying > 0 && lastPlaying < minPlaying * 0.3) break;
   }
 
-  dbLog(`Roblox fetch done: ${seenGames.size} games passed playerCount≥${minPlaying} filter`);
-  if (!seenGames.size) return [];
+  dbLog(`Roblox: fetched ${games.size} games, filtering by playing≥${minPlaying}`);
 
-  const entries = [...seenGames.values()].slice(0, take * 2);
+  const active = [...games.values()].filter((g) => g.playing >= minPlaying)
+    .sort((a, b) => b.playing - a.playing)
+    .slice(0, take * 2);
 
-  const results = await Promise.allSettled(
-    entries.map(async (g) => {
-      const creatorId = g.creator.id;
-      const creatorType = g.creator.type === "Group" ? "Group" : "User";
-      const creatorName = g.creator.name;
+  dbLog(`Roblox: ${active.length} games with playing≥${minPlaying}`);
 
-      const { description, updated: profileUpdated } = await robloxFetchCreatorProfile(creatorId, creatorType);
+  funnel.begin("roblox-filter", active.length);
+  const candidates: Candidate[] = [];
 
-      const profileUrl = creatorType === "Group"
-        ? `https://www.roblox.com/groups/${creatorId}`
-        : `https://www.roblox.com/users/${creatorId}/profile`;
+  for (const g of active) {
+    const creatorName = g.creator.name;
+    const creatorId   = g.creator.id;
+    const creatorType = g.creator.type === "Group" ? "Group" : "User";
 
-      // Extract own website from bio
-      const ownUrlMatch = description.match(
-        /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
-      );
-      const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
+    if (isCompanyBlocked(creatorName)) {
+      funnel.reject(creatorName, `Company blocklisted`);
+      continue;
+    }
 
-      // Activity: game's own `updated` field is the best signal.
-      // For User-type creators the profile API has no `updated` field — use the game date.
-      // If we still have no date, the live player count IS the proof of activity.
-      const lastUpdate = g.updated || profileUpdated || null;
-      const updateProofUrl = `https://www.roblox.com/games/${g.rootPlaceId}`;
-      const maxAge = cfg.activity.roblox_max_age_days;
+    // Fetch creator profile for bio/website
+    const profileUrl = creatorType === "Group"
+      ? `https://www.roblox.com/groups/${creatorId}`
+      : `https://www.roblox.com/users/${creatorId}/profile`;
 
-      if (lastUpdate && isActivityStale(lastUpdate, maxAge)) {
-        rejections.push({ name: creatorName, reason: `Last update > ${maxAge} days ago (${lastUpdate})`, source: "roblox" });
-        return null;
+    let bio = "";
+    try {
+      const profileApiUrl = creatorType === "Group"
+        ? `https://groups.roblox.com/v1/groups/${creatorId}`
+        : `https://users.roblox.com/v1/users/${creatorId}`;
+      const pr = await fetch(profileApiUrl, { headers: HEADERS, signal: AbortSignal.timeout(6000) }).catch(() => null);
+      if (pr?.ok) {
+        const pd = await pr.json() as { description?: string };
+        bio = pd.description ?? "";
       }
-      // If no date available but game has live players → still active (don't reject)
+    } catch { /* best-effort */ }
 
-      if (g.playing < cfg.activity.min_playing_roblox) {
-        rejections.push({ name: creatorName, reason: `Only ${g.playing} playing (min ${cfg.activity.min_playing_roblox})`, source: "roblox" });
-        return null;
-      }
+    // Extract own website from bio
+    const ownUrlMatch = bio.match(
+      /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
+    );
+    const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
 
-      if (isCompanyBlocked(creatorName)) {
-        rejections.push({ name: creatorName, reason: "Company blocklisted", source: "roblox" });
-        return null;
-      }
+    const { email, generic } = extractEmail(bio);
+    const handles = extractSocialHandles(bio);
 
-      const { email, generic } = extractEmail(description);
-      const handles = extractSocialHandles(description);
+    candidates.push({
+      type:         "roblox",
+      name:         creatorName,
+      website:      ownWebsite ?? profileUrl,
+      storeLink:    `https://www.roblox.com/games/${g.rootPlaceId}`,
+      gameName:     g.name,
+      description:  `"${g.name}" · ${g.playing.toLocaleString()} playing · ${g.totalUpVotes.toLocaleString()} upvotes`,
+      genre:        "Roblox",
+      chartRank:    null,
+      ratingsCount: g.totalUpVotes,
+      playingCount: g.playing,
+      lastUpdateDate: g.updated || new Date().toISOString(),
+      updateProofUrl: `https://www.roblox.com/games/${g.rootPlaceId}`,
+      country:      null,
+      earnsRealMoney: false,
+      contacts: { email, emailSource: email ? "published" : null, genericInbox: generic, ...handles },
+      decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null,
+      investorBacked: false, fundingDetails: null, fundingProofUrl: null,
+      rawData: { universeId: g.id, rootPlaceId: g.rootPlaceId, playing: g.playing, totalUpVotes: g.totalUpVotes, updated: g.updated, creatorId, creatorType, bio: bio.slice(0, 200) },
+    });
+  }
 
-      // Infer niche from game name for a better segment label
-      const candidate: Candidate = {
-        type: "roblox",
-        name: creatorName,
-        website: ownWebsite ?? profileUrl,
-        storeLink: `https://www.roblox.com/games/${g.rootPlaceId}`,
-        gameName: g.name,
-        description: `"${g.name}" · ${g.playing.toLocaleString()} playing · ${g.totalUpVotes.toLocaleString()} upvotes${description ? ` · ${description.slice(0, 120)}` : ""}`,
-        genre: "Roblox",
-        chartRank: null,
-        ratingsCount: g.totalUpVotes,
-        installCount: g.playing,
-        lastUpdateDate: lastUpdate ?? new Date().toISOString(), // active players = active game
-        updateProofUrl,
-        country: null,
-        earnsRealMoney: false,
-        contacts: {
-          email,
-          emailSource: email ? "published" : null,
-          genericInbox: generic,
-          ...handles,
-        },
-        ...blankEnrichment(),
-        rawData: { ...g, playerCount: g.playing, creatorId, creatorName, creatorType, profileDesc: description, robloxProfileUrl: profileUrl },
-      };
-      return candidate;
-    })
-  );
-
-  return results
-    .filter((r): r is PromiseFulfilledResult<Candidate> => r.status === "fulfilled" && r.value !== null)
-    .map((r) => r.value);
+  funnel.pass(candidates.length);
+  return candidates;
 }
 
-// ─── Steam source ─────────────────────────────────────────────────────────────
+// ─── Steam source ──────────────────────────────────────────────────────────────
 
-async function steamTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
-  // Pull both trending and all-time top — SteamSpy, no key required
+async function steamTopGames(funnel: Funnel, dbLog: (msg: string) => void): Promise<Candidate[]> {
   const [trendRes, allTimeRes] = await Promise.all([
     fetch("https://steamspy.com/api.php?request=top100in2weeks", { signal: AbortSignal.timeout(15000) }).catch(() => null),
-    fetch("https://steamspy.com/api.php?request=top100forever", { signal: AbortSignal.timeout(15000) }).catch(() => null),
+    fetch("https://steamspy.com/api.php?request=top100forever",  { signal: AbortSignal.timeout(15000) }).catch(() => null),
   ]);
 
   type SpyGame = { appid: number; name: string; developer: string; publisher: string; owners: string };
@@ -611,19 +696,23 @@ async function steamTopGames(rejections: RejectionRecord[]): Promise<Candidate[]
   for (const res of [trendRes, allTimeRes]) {
     if (!res?.ok) continue;
     const data = await res.json() as Record<string, SpyGame>;
-    for (const g of Object.values(data)) mergedById.set(g.appid, g);
+    for (const g of Object.values(data)) if (g.appid) mergedById.set(g.appid, g);
   }
-  if (!mergedById.size) return [];
 
-  const spyData = mergedById;
-  const games = [...spyData.values()].slice(0, 200);
+  if (!mergedById.size) {
+    dbLog("Steam: SteamSpy returned 0 games — both endpoints failed");
+    return [];
+  }
+  dbLog(`Steam: ${mergedById.size} games from SteamSpy`);
+
+  const games = [...mergedById.values()].slice(0, 200);
+  funnel.begin("steam-filter", games.length);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
   await Promise.allSettled(games.map(async (game) => {
-    const appid = game.appid;
-    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${appid}&filters=basic,genres,developers,publishers,support_info,website,release_date`;
-    const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+    const detUrl = `https://store.steampowered.com/api/appdetails?appids=${game.appid}&filters=basic,genres,developers,publishers,support_info,website,release_date`;
+    const detRes = await fetch(detUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
     if (!detRes?.ok) return;
 
     const detData = await detRes.json() as Record<string, {
@@ -637,142 +726,121 @@ async function steamTopGames(rejections: RejectionRecord[]): Promise<Candidate[]
         website?: string;
         support_info?: { url?: string; email?: string };
         release_date?: { coming_soon: boolean; date: string };
-        header_image?: string;
       };
     }>;
-    const app = detData[String(appid)];
+
+    const app = detData[String(game.appid)];
     if (!app?.success || !app.data) return;
 
     const devName = app.data.developers?.[0] ?? app.data.publishers?.[0] ?? game.developer;
     if (!devName) return;
     const key = devName.toLowerCase().trim();
     if (seenDevs.has(key)) return;
-
-    // Blocklist check
-    if (isCompanyBlocked(devName) || isCompanyBlocked(app.data.publishers?.[0] ?? "")) {
-      rejections.push({ name: devName, reason: "Company blocklisted", source: "steam" });
-      return;
-    }
-
-    // Only reject unreleased games — SteamSpy top100in2weeks already proves current activity
-    if (app.data.release_date?.coming_soon) {
-      rejections.push({ name: devName, reason: "Not yet released (coming_soon)", source: "steam" });
-      return;
-    }
-
-    // Genre check
-    const primaryGenre = app.data.genres?.[0]?.description ?? "";
-    const gameName = app.data.name ?? game.name;
-    const desc = app.data.short_description ?? "";
-    if (isRejectedGenre(primaryGenre, gameName, desc)) {
-      rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}" / title: "${gameName}"`, source: "steam" });
-      return;
-    }
-
     seenDevs.add(key);
 
-    const ownWebsite = app.data.website && !isDomainBlocked(app.data.website) ? app.data.website : null;
-    const storeLink = `https://store.steampowered.com/app/${appid}`;
+    if (isCompanyBlocked(devName) || isCompanyBlocked(app.data.publishers?.[0] ?? "")) {
+      funnel.reject(devName, "Company blocklisted");
+      return;
+    }
 
-    // Support email — only if it's a real domain (not steam platform)
-    const rawSupportEmail = app.data.support_info?.email ?? null;
+    if (app.data.release_date?.coming_soon) {
+      funnel.reject(devName, "coming_soon=true");
+      return;
+    }
+
+    const primaryGenre = app.data.genres?.[0]?.description ?? "";
+    const gameName     = app.data.name ?? game.name;
+    const desc         = app.data.short_description ?? "";
+
+    if (isRejectedGenre(primaryGenre, gameName, desc)) {
+      funnel.reject(devName, `Rejected genre: "${primaryGenre}" / title: "${gameName}"`);
+      return;
+    }
+
+    const ownWebsite = app.data.website && !isOwnWebsiteBlocked(app.data.website) ? app.data.website : null;
+    const storeLink  = `https://store.steampowered.com/app/${game.appid}`;
+
+    // Use Steam's own support_info.email as primary source (no scraping needed)
+    const rawSupportEmail = app.data.support_info?.email?.trim() ?? null;
     let contactEmail: string | null = null;
     let contactGeneric = false;
     if (rawSupportEmail) {
-      const { email, generic } = extractEmail(rawSupportEmail);
+      const { email, generic } = classifyEmail(rawSupportEmail) ?? { email: null, generic: false };
       if (email) { contactEmail = email; contactGeneric = generic; }
     }
 
     const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
 
     candidates.push({
-      type: "steam",
-      name: devName,
-      website: ownWebsite ?? storeLink,
+      type:          "steam",
+      name:          devName,
+      website:       ownWebsite ?? storeLink,
       storeLink,
       gameName,
-      description: `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${desc ? ` · ${desc.slice(0, 180)}` : ""}`.trim(),
-      genre: primaryGenre,
-      chartRank: null,
-      ratingsCount: null,
-      installCount: null,
-      // SteamSpy top100in2weeks = proven active now; release date is too old to use as activity check
+      description:   `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${desc ? ` · ${desc.slice(0, 180)}` : ""}`.trim(),
+      genre:         primaryGenre,
+      chartRank:     null,
+      ratingsCount:  null,
+      playingCount:  null,
+      // SteamSpy top100in2weeks proves current activity — release date is not activity
       lastUpdateDate: new Date().toISOString(),
       updateProofUrl: storeLink,
-      country: null,
+      country:       null,
       earnsRealMoney: false,
-      contacts: {
-        email: contactEmail,
-        emailSource: contactEmail ? "published" : null,
-        genericInbox: contactGeneric,
-        ...handles,
-      },
-      ...blankEnrichment(),
-      rawData: {
-        appId: appid,
-        gameName,
-        source: "SteamSpy",
-        ownersRange: game.owners,
-        ...app.data,
-      },
+      contacts: { email: contactEmail, emailSource: contactEmail ? "store" : null, genericInbox: contactGeneric, ...handles },
+      decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null,
+      investorBacked: false, fundingDetails: null, fundingProofUrl: null,
+      rawData: { appId: game.appid, gameName, ownersRange: game.owners, ...app.data },
     });
   }));
 
+  funnel.pass(candidates.length);
+  dbLog(`Steam: ${candidates.length} candidates after filter`);
   return candidates;
 }
 
-// ─── Apple App Store source ───────────────────────────────────────────────────
-// Pulls top-grossing charts across allowed subcategories × countries.
-// Skips ranks 1–49 on the US main chart; accepts anything from subcategory charts
-// (which don't have a global rank — depth beyond the top 200).
+// ─── App Store source ──────────────────────────────────────────────────────────
 
 interface ITunesRSSEntry {
-  "im:name": { label: string };
+  "im:name":   { label: string };
   "im:artist": { label: string };
-  id: { attributes: { "im:id": string }; label: string };
-  "im:price"?: { attributes?: { amount?: string } };
+  id:          { attributes: { "im:id": string }; label: string };
 }
 
 interface ITunesLookupResult {
-  trackId?: number;
-  sellerName?: string;
-  artistName?: string;
-  sellerUrl?: string;
-  description?: string;
-  currentVersionReleaseDate?: string;
-  releaseDate?: string;
-  primaryGenreName?: string;
-  genres?: string[];
+  trackId?:                          number;
+  sellerName?:                       string;
+  artistName?:                       string;
+  sellerUrl?:                        string;
+  description?:                      string;
+  currentVersionReleaseDate?:        string;
+  releaseDate?:                      string;
+  primaryGenreName?:                 string;
+  userRatingCount?:                  number;
   userRatingCountForCurrentVersion?: number;
-  userRatingCount?: number;
-  trackName?: string;
-  trackViewUrl?: string;
-  price?: number;
-  ipadScreenshotUrls?: string[];
+  trackName?:                        string;
+  trackViewUrl?:                     string;
+  price?:                            number;
   [key: string]: unknown;
 }
 
 type ItunesChartType = "topgrossingapplications" | "topfreeapplications";
 
-async function fetchItunesChart(country: string, genreId: string, chartType: ItunesChartType = "topgrossingapplications", limit = 200): Promise<ITunesRSSEntry[]> {
+async function fetchItunesChart(country: string, genreId: string, chartType: ItunesChartType = "topgrossingapplications", limit = 100): Promise<ITunesRSSEntry[]> {
   const url = `https://itunes.apple.com/${country}/rss/${chartType}/limit=${limit}/genre=${genreId}/json`;
   const res = await fetch(url, { signal: AbortSignal.timeout(12000) }).catch(() => null);
   if (!res?.ok) return [];
   try {
     const data = await res.json() as { feed?: { entry?: ITunesRSSEntry[] } };
     return data.feed?.entry ?? [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 async function fetchItunesLookup(ids: string[]): Promise<Map<string, ITunesLookupResult>> {
-  if (!ids.length) return new Map();
-  // iTunes lookup has a max of ~100 IDs per request
+  const map = new Map<string, ITunesLookupResult>();
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
 
-  const map = new Map<string, ITunesLookupResult>();
   for (const chunk of chunks) {
     const res = await fetch(`https://itunes.apple.com/lookup?id=${chunk.join(",")}&country=us`, {
       signal: AbortSignal.timeout(20000),
@@ -788,782 +856,347 @@ async function fetchItunesLookup(ids: string[]): Promise<Map<string, ITunesLooku
   return map;
 }
 
-async function appStoreTopGames(rejections: RejectionRecord[]): Promise<Candidate[]> {
-  const countries = cfg.sources.app_store_countries;
-  const allowedSubcats = cfg.sources.app_store_allowed_subcategory_ids;
-  const skipTopN = cfg.sources.app_store_rank_skip_top; // skip ranks 1–49 on US main chart
+async function appStoreTopGames(funnel: Funnel, dbLog: (msg: string) => void): Promise<Candidate[]> {
+  const countries    = cfg.sources.app_store_countries;
+  const allowedSubs  = cfg.sources.app_store_allowed_subcategory_ids;
+  const skipTopN     = cfg.sources.app_store_rank_skip_top;
 
-  // Collect (appId, isMainUS, rank, country) tuples across all charts
-  const appIdToMeta = new Map<string, { rank: number | null; country: string; fromMainUS: boolean }>();
+  const appIdToMeta = new Map<string, { rank: number | null; country: string }>();
 
-  // 1. US main charts (grossing + free) — skip ranks 1–skipTopN on grossing
-  const [usMainGross, usMainFree] = await Promise.all([
-    fetchItunesChart("us", "6014", "topgrossingapplications", 200),
-    fetchItunesChart("us", "6014", "topfreeapplications", 200),
+  // US main chart (topgrossing + topfree) — skip top skipTopN
+  const [usGross, usFree] = await Promise.all([
+    fetchItunesChart("us", "6014", "topgrossingapplications", 100),
+    fetchItunesChart("us", "6014", "topfreeapplications",     100),
   ]);
-  for (let i = 0; i < usMainGross.length; i++) {
-    const rank = i + 1;
-    if (rank <= skipTopN) continue;
-    const appId = usMainGross[i].id.attributes["im:id"];
-    if (!appIdToMeta.has(appId)) appIdToMeta.set(appId, { rank, country: "US", fromMainUS: true });
+  for (let i = 0; i < usGross.length; i++) {
+    if (i < skipTopN) continue;
+    const id = usGross[i].id.attributes["im:id"];
+    if (!appIdToMeta.has(id)) appIdToMeta.set(id, { rank: i + 1, country: "US" });
   }
-  for (let i = 0; i < usMainFree.length; i++) {
-    const appId = usMainFree[i].id.attributes["im:id"];
-    if (!appIdToMeta.has(appId)) appIdToMeta.set(appId, { rank: null, country: "US", fromMainUS: false });
+  for (const e of usFree) {
+    const id = e.id.attributes["im:id"];
+    if (!appIdToMeta.has(id)) appIdToMeta.set(id, { rank: null, country: "US" });
   }
 
-  // 2. Subcategory charts (grossing + free) across all countries
+  // Subcategory charts × countries
   await Promise.allSettled(
     countries.flatMap((country) =>
-      allowedSubcats.flatMap((subcatId) => [
-        fetchItunesChart(country, subcatId, "topgrossingapplications", 200).then((entries) => {
-          for (let i = 0; i < entries.length; i++) {
-            const appId = entries[i].id.attributes["im:id"];
-            if (!appIdToMeta.has(appId)) appIdToMeta.set(appId, { rank: null, country: country.toUpperCase(), fromMainUS: false });
+      allowedSubs.flatMap((subId) => [
+        fetchItunesChart(country, subId, "topgrossingapplications", 100).then((entries) => {
+          for (const e of entries) {
+            const id = e.id.attributes["im:id"];
+            if (!appIdToMeta.has(id)) appIdToMeta.set(id, { rank: null, country: country.toUpperCase() });
           }
         }),
-        fetchItunesChart(country, subcatId, "topfreeapplications", 200).then((entries) => {
-          for (let i = 0; i < entries.length; i++) {
-            const appId = entries[i].id.attributes["im:id"];
-            if (!appIdToMeta.has(appId)) appIdToMeta.set(appId, { rank: null, country: country.toUpperCase(), fromMainUS: false });
+        fetchItunesChart(country, subId, "topfreeapplications", 100).then((entries) => {
+          for (const e of entries) {
+            const id = e.id.attributes["im:id"];
+            if (!appIdToMeta.has(id)) appIdToMeta.set(id, { rank: null, country: country.toUpperCase() });
           }
         }),
       ])
     )
   );
 
+  dbLog(`App Store: ${appIdToMeta.size} unique app IDs collected`);
   if (!appIdToMeta.size) return [];
 
-  // 3. Batch iTunes lookup for full metadata
-  const allIds = [...appIdToMeta.keys()];
-  const detailMap = await fetchItunesLookup(allIds);
+  const detailMap = await fetchItunesLookup([...appIdToMeta.keys()]);
+  dbLog(`App Store: lookup returned ${detailMap.size} app details`);
 
+  funnel.begin("mobile-filter", detailMap.size);
   const candidates: Candidate[] = [];
   const seenDevs = new Set<string>();
 
   for (const [appId, meta] of appIdToMeta) {
-    const detail = detailMap.get(appId);
+    const detail  = detailMap.get(appId);
     const devName = detail?.sellerName ?? detail?.artistName ?? "";
     if (!devName) continue;
     const key = devName.toLowerCase().trim();
-    if (seenDevs.has(key)) continue;
+    if (seenDevs.has(key)) { funnel.reject(devName, "Duplicate developer"); continue; }
 
-    // Blocklist check
     if (isCompanyBlocked(devName)) {
-      rejections.push({ name: devName, reason: "Company blocklisted", source: "mobile" });
+      funnel.reject(devName, "Company blocklisted");
       seenDevs.add(key);
       continue;
     }
 
-    const gameName = detail?.trackName ?? "";
+    const gameName    = detail?.trackName ?? "";
     const primaryGenre = detail?.primaryGenreName ?? "";
-    const desc = detail?.description ?? "";
+    const desc        = detail?.description ?? "";
 
-    // Genre check
     if (isRejectedGenre(primaryGenre, gameName, desc)) {
-      rejections.push({ name: devName, reason: `Rejected genre: "${primaryGenre}" / title: "${gameName}"`, source: "mobile" });
+      funnel.reject(devName, `Rejected genre: "${primaryGenre}" / title: "${gameName}"`);
       seenDevs.add(key);
       continue;
     }
 
-    // Activity / ratings check
     const ratingsCount = detail?.userRatingCount ?? detail?.userRatingCountForCurrentVersion ?? 0;
-    const minRatings = cfg.activity.min_ratings_mobile;
+    const minRatings   = cfg.activity.min_ratings_mobile;
     if (ratingsCount < minRatings) {
-      rejections.push({ name: devName, reason: `Only ${ratingsCount} ratings (min ${minRatings})`, source: "mobile" });
+      funnel.reject(devName, `Only ${ratingsCount} ratings (min ${minRatings})`);
       seenDevs.add(key);
       continue;
     }
 
-    // Last update date
+    // Activity: SOFT — if date missing, keep it (unknown ≠ fail)
     const lastUpdate = detail?.currentVersionReleaseDate ?? detail?.releaseDate ?? null;
-    const maxAge = cfg.activity.max_age_days;
-    if (!lastUpdate || isActivityStale(lastUpdate, maxAge)) {
-      rejections.push({ name: devName, reason: `App not updated within ${maxAge} days (${lastUpdate ?? "unknown"})`, source: "mobile" });
+    if (lastUpdate && isActivityStale(lastUpdate, cfg.activity.max_age_days)) {
+      funnel.reject(devName, `Last update ${lastUpdate} > ${cfg.activity.max_age_days} days ago`);
       seenDevs.add(key);
       continue;
     }
 
-    const storeLink = detail?.trackViewUrl ?? `https://apps.apple.com/us/app/id${appId}`;
-    const rawSellerUrl = detail?.sellerUrl ?? null;
-    const ownWebsite = rawSellerUrl && !isDomainBlocked(rawSellerUrl) ? rawSellerUrl : null;
+    const storeLink  = detail?.trackViewUrl ?? `https://apps.apple.com/us/app/id${appId}`;
+    const rawSeller  = detail?.sellerUrl ?? null;
+    const ownWebsite = rawSeller && !isOwnWebsiteBlocked(rawSeller) ? rawSeller : null;
 
-    // Extract contacts from description (email only — no @word scraping)
     const { email: descEmail, generic: descGeneric } = extractEmail(desc);
     const handles = extractSocialHandles(desc + " " + (ownWebsite ?? ""));
-
-    // Real-money signals: paid app or IAP-heavy genre
     const earnsRealMoney = (detail?.price ?? 0) > 0 || ["Casino", "Sports", "Racing"].includes(primaryGenre);
 
     seenDevs.add(key);
     candidates.push({
-      type: "mobile",
-      name: devName,
-      website: ownWebsite ?? storeLink,
+      type:          "mobile",
+      name:          devName,
+      website:       ownWebsite ?? storeLink,
       storeLink,
       gameName,
-      description: `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${meta.rank ? ` · App Store #${meta.rank}` : ""}${desc ? ` · ${desc.slice(0, 160)}` : ""}`.trim(),
-      genre: primaryGenre,
-      chartRank: meta.rank,
+      description:   `"${gameName}"${primaryGenre ? ` · ${primaryGenre}` : ""}${meta.rank ? ` · App Store #${meta.rank}` : ""}${desc ? ` · ${desc.slice(0, 160)}` : ""}`.trim(),
+      genre:         primaryGenre,
+      chartRank:     meta.rank,
       ratingsCount,
-      installCount: null,
+      playingCount:  null,
       lastUpdateDate: lastUpdate,
       updateProofUrl: storeLink,
-      country: meta.country,
+      country:       meta.country,
       earnsRealMoney,
-      contacts: {
-        email: descEmail,
-        emailSource: descEmail ? "published" : null,
-        genericInbox: descGeneric,
-        ...handles,
-      },
-      ...blankEnrichment(),
-      rawData: { appId, fromMainUS: meta.fromMainUS, ...detail },
+      contacts: { email: descEmail, emailSource: descEmail ? "published" : null, genericInbox: descGeneric, ...handles },
+      decisionMaker: null, decisionMakerTitle: null, decisionMakerLinkedin: null,
+      investorBacked: false, fundingDetails: null, fundingProofUrl: null,
+      rawData: { appId, fromMainUS: meta.rank !== null, ...detail },
     });
   }
 
+  funnel.pass(candidates.length);
+  dbLog(`App Store: ${candidates.length} candidates after filter`);
   return candidates;
 }
 
-// Google Play removed at user request — stub returns empty.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function googlePlayTopGames(_rejections: RejectionRecord[]): Promise<Candidate[]> {
-  return [];
-}
-
-// ─── Named contact finder (SearXNG → LinkedIn pattern) ────────────────────────
-
-async function findNamedContact(studioName: string, domain: string | null): Promise<{
-  name: string | null; title: string | null; linkedin: string | null;
-}> {
-  // LinkedIn page titles are: "Name – Role – Company | LinkedIn"
-  const queries = [
-    `site:linkedin.com/in "${studioName}" founder OR CEO OR "indie developer"`,
-    domain ? `site:linkedin.com "${studioName}" founder` : `"${studioName}" founder CEO "game studio" linkedin`,
-    `"${studioName}" founder indie game developer`,
-  ];
-
-  const TITLE_ROLES = /(?:founder|co-founder|ceo|chief executive|director|head of|president|owner|studio head|creative director|indie developer)/i;
-
-  for (const q of queries) {
-    const results = await searxSearch(q);
-    for (const r of results) {
-      // LinkedIn title pattern: "First Last - Role - Company | LinkedIn"
-      const liTitle = r.title.match(/^([A-Z][a-z]+(?: [A-Z][a-z'-]+){1,3})\s*[-–—|]\s*([^-–—|]+)/);
-      if (liTitle && TITLE_ROLES.test(liTitle[2])) {
-        const linkedinUrl = r.url.includes("linkedin.com/in/") ? r.url.split("?")[0] : null;
-        return {
-          name: liTitle[1].trim(),
-          title: liTitle[2].trim().slice(0, 80),
-          linkedin: linkedinUrl,
-        };
-      }
-
-      // Fallback: extract from snippet
-      const snippetName = (r.content + " " + r.title).match(
-        /\b([A-Z][a-z]+ [A-Z][a-z']+)\b[^.]*?\b(?:founder|CEO|co-founder|director|studio head)\b/i
-      );
-      if (snippetName) {
-        const linkedinUrl = r.url.includes("linkedin.com/in/") ? r.url.split("?")[0] : null;
-        return {
-          name: snippetName[1].trim(),
-          title: snippetName[0].match(TITLE_ROLES)?.[0] ?? "Founder",
-          linkedin: linkedinUrl,
-        };
-      }
-    }
-  }
-
-  return { name: null, title: null, linkedin: null };
-}
-
-// ─── Funding signal detector (SearXNG → press coverage) ──────────────────────
-
-async function findFundingSignals(studioName: string, domain: string | null): Promise<{
-  backed: boolean; details: string | null; proofUrl: string | null;
-}> {
-  const queries = [
-    `"${studioName}" raised funding million seed "series a" OR "series b" investment`,
-    domain ? `site:${domain} investor OR funding OR backed` : `"${studioName}" investor game studio funding`,
-  ];
-
-  const AMOUNT_RE = /(?:raised|secured|closed|received|announced)\s+\$?([\d,.]+)\s*(?:million|M|billion|B)\b/i;
-  const SIGNAL_RE = /\b(?:seed round|series [abc]|venture capital|VC-backed|investor[s]?|raised \$|funding round|investment round)\b/i;
-
-  for (const q of queries) {
-    const results = await searxSearch(q);
-    for (const r of results) {
-      const text = r.title + " " + r.content;
-      const amountMatch = text.match(AMOUNT_RE);
-      if (amountMatch) {
-        return {
-          backed: true,
-          details: `Raised $${amountMatch[1]}M`,
-          proofUrl: r.url,
-        };
-      }
-      if (SIGNAL_RE.test(text)) {
-        return {
-          backed: true,
-          details: "Investor-backed (press coverage)",
-          proofUrl: r.url,
-        };
-      }
-    }
-  }
-
-  return { backed: false, details: null, proofUrl: null };
-}
-
-// ─── Segment label ────────────────────────────────────────────────────────────
-// Shows the actual niche (genre + platform) rather than a generic platform label.
-
-function buildSegmentLabel(c: Candidate): string {
-  const genre = c.genre?.trim();
-
-  if (c.type === "roblox") {
-    // Roblox API doesn't expose genre — derive from game name heuristics
-    const title = c.gameName.toLowerCase();
-    if (/\b(tycoon)\b/.test(title))         return "Tycoon (Roblox)";
-    if (/\b(roleplay|rp|life)\b/.test(title)) return "Roleplay (Roblox)";
-    if (/\b(obby|obstacle)\b/.test(title))  return "Obby (Roblox)";
-    if (/\b(simulator|sim)\b/.test(title))  return "Simulator (Roblox)";
-    if (/\b(tower|defense)\b/.test(title))  return "Tower Defense (Roblox)";
-    if (/\b(battle|fight|war|shooter)\b/.test(title)) return "Action (Roblox)";
-    if (/\b(horror|scary|survive)\b/.test(title)) return "Horror (Roblox)";
-    if (/\b(adventure|quest)\b/.test(title)) return "Adventure (Roblox)";
-    if (/\b(racing|race|car|drift)\b/.test(title)) return "Racing (Roblox)";
-    if (/\b(sport|soccer|football|basketball)\b/.test(title)) return "Sports (Roblox)";
-    return "Roblox Studio";
-  }
-
-  if (c.type === "steam") {
-    if (!genre || genre.toLowerCase() === "free to play") return "PC/Steam Developer";
-    return `${genre} (PC/Steam)`;
-  }
-
-  if (c.type === "mobile") {
-    if (!genre) return "Mobile Developer";
-    // Normalise iTunes genre names
-    const g = genre
-      .replace(/^Games$/, "Mobile Game")
-      .replace(/^Role Playing$/, "RPG")
-      .replace(/^Action$/, "Action")
-      .trim();
-    return `${g} (Mobile)`;
-  }
-
-  return "Game Studio";
-}
-
-// ─── Scoring ──────────────────────────────────────────────────────────────────
-
-interface ScoreResult {
-  score: number;
-  grade: string;
-  breakdown: string;
-  activityVerified: boolean;
-  genrePasses: boolean;
-}
-
-function scoreCandidate(c: Candidate): ScoreResult {
-  const sc = cfg.scoring;
-  let score = 0;
-  const parts: string[] = [];
-
-  // Required check: activity
-  const activityVerified = c.lastUpdateDate !== null && !isActivityStale(
-    c.lastUpdateDate,
-    c.type === "roblox" ? cfg.activity.roblox_max_age_days : cfg.activity.max_age_days
-  );
-  if (activityVerified) { score += sc.activity_verified; parts.push(`activity(${sc.activity_verified})`); }
-
-  // Required check: genre
-  const genrePasses = !isRejectedGenre(c.genre, c.gameName, c.description);
-
-  // Email found
-  if (c.contacts.email && !c.contacts.genericInbox) {
-    score += sc.real_email_found; parts.push(`email(${sc.real_email_found})`);
-  } else if (c.contacts.email && c.contacts.genericInbox) {
-    score += Math.floor(sc.real_email_found / 2); parts.push(`generic_email(${Math.floor(sc.real_email_found / 2)})`);
-  }
-
-  // Named decision maker
-  if (c.decisionMaker) {
-    score += sc.named_decision_maker; parts.push(`named_dm(${sc.named_decision_maker})`);
-  }
-
-  // Funding signals
-  if (c.investorBacked) {
-    score += sc.funding_last_12mo; parts.push(`funding(${sc.funding_last_12mo})`);
-  }
-
-  // Audience size — prefer install count for Android, else ratings
-  const audience = c.installCount ?? c.ratingsCount ?? (c.type === "roblox" ? (c.rawData.playerCount as number ?? 0) : 0);
-  if (audience >= 50000) { score += sc.audience_large; parts.push(`audience_large(${sc.audience_large})`); }
-  else if (audience >= 5000) { score += sc.audience_medium; parts.push(`audience_medium(${sc.audience_medium})`); }
-
-  // Country bonus (US/UK/CA/AU/EU)
-  const goodCountries = new Set(["US", "GB", "CA", "AU", "DE", "FR", "NL", "SE", "NO", "DK", "FI"]);
-  if (c.country && goodCountries.has(c.country.toUpperCase())) {
-    score += sc.us_uk_ca_au_eu_country; parts.push(`country(${sc.us_uk_ca_au_eu_country})`);
-  }
-
-  // Real-money gameplay
-  if (c.earnsRealMoney) { score += sc.real_money_gameplay; parts.push(`real_money(${sc.real_money_gameplay})`); }
-
-  score = Math.min(100, Math.max(0, score));
-  const breakdown = parts.join(" + ") || "0";
-
-  // Grade: A requires activity + genre + money signal + named DM — we can't know DM here
-  // so A is awarded in the final save step when DM is populated.
-  // For now: B = activity + email found; C = activity; D/F = missing required.
-  let grade: string;
-  if (!activityVerified || !genrePasses) {
-    grade = "F";
-  } else if (score >= sc.grade_a_threshold) {
-    grade = "A";
-  } else if (score >= sc.grade_b_threshold) {
-    grade = "B";
-  } else if (score >= sc.grade_c_threshold) {
-    grade = "C";
-  } else if (score >= sc.grade_d_threshold) {
-    grade = "D";
-  } else {
-    grade = "F";
-  }
-
-  return { score, grade, breakdown, activityVerified, genrePasses };
-}
-
-// ─── Criteria parser ──────────────────────────────────────────────────────────
-// Reads the free-text criteria field and returns flags the pipeline respects.
-
-interface CriteriaFlags {
-  sources: Set<"roblox" | "steam" | "mobile">;  // which sources to run
-  requireFunding: boolean;      // only keep investor-backed studios
-  requireCountries: Set<string> | null; // null = any country
-  minRatings: number | null;    // override config min ratings
-  minPlayers: number | null;    // override config min playing (roblox)
-  extraContext: string;         // passed to logs so user sees what was parsed
-}
-
-function parseCriteria(raw: string | null): CriteriaFlags {
-  const t = (raw ?? "").toLowerCase();
-
-  // ── Source selection ──────────────────────────────────────────────────────
-  // Strip negation phrases first so "no mobile" / "not steam" don't trigger those sources
-  const negated = t
-    .replace(/\b(no|not|without|exclude|skip|ignore|except)\s+(roblox|steam|mobile|ios|android|pc|app\s*store|apple)\b/g, " ")
-    .replace(/\b(roblox|steam|mobile|ios|app\s*store)\s+(not|excluded|removed|skipped)\b/g, " ");
-
-  // "only X" collapses to just that source
-  const onlyRoblox = /\bonly\s+roblox\b|\broblox\s+only\b/.test(t);
-  const onlySteam  = /\bonly\s+steam\b|\bsteam\s+only\b/.test(t);
-  const onlyMobile = /\bonly\s+mobile\b|\bmobile\s+only\b|\bonly\s+(ios|app\s*store|apple)\b/.test(t);
-
-  const wantsRoblox  = /roblox/.test(negated);
-  const wantsSteam   = /\bsteam\b|pc game|windows game/.test(negated);
-  const wantsMobile  = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(negated);
-
-  let sources: Set<"roblox" | "steam" | "mobile">;
-  if (onlyRoblox) {
-    sources = new Set(["roblox"] as const);
-  } else if (onlySteam) {
-    sources = new Set(["steam"] as const);
-  } else if (onlyMobile) {
-    sources = new Set(["mobile"] as const);
-  } else if (wantsRoblox || wantsSteam || wantsMobile) {
-    sources = new Set<"roblox" | "steam" | "mobile">();
-    if (wantsRoblox) sources.add("roblox");
-    if (wantsSteam)  sources.add("steam");
-    if (wantsMobile) sources.add("mobile");
-  } else {
-    // No platform specified → use all three
-    sources = new Set(["roblox", "steam", "mobile"] as const);
-  }
-
-  // ── Funding requirement ───────────────────────────────────────────────────
-  // Only require funding if the user EXPLICITLY asks for it with very specific language.
-  // Vague words like "backed by community", "active", "growing" must NOT trigger this —
-  // it would filter out almost every lead and produce 0 results.
-  const requireFunding = /\b(vc.backed|vc funded|venture.backed|venture funded|investor.backed|investor funded|seed funded|series [abc] funded|raise[sd] funding|looking for investor)\b/.test(t);
-
-  // ── Country filter ────────────────────────────────────────────────────────
-  // Only filter country if user says "US only", "United States only", "only UK", etc.
-  // A mention of "US" alone inside a paragraph does NOT mean filter to US.
-  const requireCountries: Set<string> | null = (() => {
-    if (/\b(us|usa|united states)\s+only\b|\bonly\s+(us|usa|united states)\b/.test(t)) return new Set(["US"]);
-    if (/\b(uk|united kingdom)\s+only\b|\bonly\s+(uk|united kingdom)\b/.test(t))       return new Set(["GB"]);
-    if (/\bcanada\s+only\b|\bonly\s+canada\b/.test(t))                                  return new Set(["CA"]);
-    if (/\baustralia\s+only\b|\bonly\s+australia\b/.test(t))                            return new Set(["AU"]);
-    return null;
-  })();
-
-  // ── Size/activity overrides ───────────────────────────────────────────────
-  // Only override thresholds when user gives an explicit number or says "top X".
-  const explicitLarge = /\b(millions? of players|top\s+10\b|top\s+5\b|#1 game|100k\+?\s+players|500k\+?\s+players)\b/.test(t);
-  const minRatings = explicitLarge ? 50000 : null;
-  const minPlayers = explicitLarge ? 5000  : null;
-
-  // ── Summary for log ───────────────────────────────────────────────────────
-  const parts: string[] = [];
-  parts.push(`sources=[${[...sources].join(",")}]`);
-  if (requireFunding)   parts.push("requireFunding");
-  if (requireCountries) parts.push(`countries=[${[...requireCountries].join(",")}]`);
-  if (minRatings)       parts.push(`minRatings=${minRatings}`);
-  if (minPlayers)       parts.push(`minPlayers=${minPlayers}`);
-
-  return { sources, requireFunding, requireCountries, minRatings, minPlayers, extraContext: parts.join(" | ") };
-}
-
-// ─── Cross-run deduplication ──────────────────────────────────────────────────
-
-async function loadSeenDomains(): Promise<Set<string>> {
-  const rows = await prisma.leadFactoryLead.findMany({
-    select: { website: true },
-    where: { run: { status: { in: ["completed", "stopped"] } } },
-  });
-  const domains = new Set<string>();
-  for (const row of rows) {
-    if (row.website) domains.add(extractDomain(row.website));
-  }
-  return domains;
-}
-
-// ─── Main pipeline ────────────────────────────────────────────────────────────
+// ─── Main pipeline ─────────────────────────────────────────────────────────────
 
 export async function processLeadRun(runId: string): Promise<void> {
   const run = await prisma.leadRun.findUnique({ where: { id: runId } });
   if (!run) return;
 
-  // Rejection tracking for the final report
-  const rejections: RejectionRecord[] = [];
+  const funnel = new Funnel();
 
   try {
-    // ── PHASE 1: SETUP ────────────────────────────────────────────────────────
+    // ── PHASE 1: SETUP ─────────────────────────────────────────────────────────
     await setStatus(runId, "planning", "Initialising pipeline…");
     await log(runId, "planning", `Run started: criteria="${(run.criteria ?? "none").slice(0, 80)}" count=${run.count}`);
 
-    // Load existing domains to avoid cross-run duplicates
     await setStage(runId, "Loading seen companies from previous runs…");
     const seenDomains = await loadSeenDomains();
-    await log(runId, "planning", `Cross-run deduplication: ${seenDomains.size} known domains loaded`);
+    await log(runId, "planning", `Cross-run deduplication: ${seenDomains.size} known domains`);
 
     if (await isStopped(runId)) return;
 
-    // ── PHASE 2: DISCOVER ─────────────────────────────────────────────────────
-    // Parse criteria to decide which sources to run and what extra filters apply
+    // ── PHASE 2: DISCOVER ──────────────────────────────────────────────────────
     const flags = parseCriteria(run.criteria);
     await log(runId, "planning", `Criteria parsed: ${flags.extraContext || "no overrides — using all sources"}`);
-
     await setStatus(runId, "discovering", "Fetching charts…");
+
+    const dbLog = (msg: string) => { log(runId, "discovering", msg).catch(() => {}); };
 
     const seenThisRun = new Set<string>();
     const candidates: Candidate[] = [];
-    let totalPulled = 0;
 
     function tryAdd(c: Candidate) {
-      const domain = extractDomain(c.website);
-      const storeKey = extractDomain(c.storeLink);
-      const key = !isDomainBlocked(c.website) ? domain : storeKey;
-
-      if (seenThisRun.has(key)) return;
-      if (seenDomains.has(key)) {
-        rejections.push({ name: c.name, reason: "Already seen in a previous run", source: c.type });
-        return;
-      }
+      const key = extractDomain(isOwnWebsiteBlocked(c.website) ? c.storeLink : c.website);
+      if (seenThisRun.has(key)) { funnel.reject(c.name, "Duplicate within this run"); return; }
+      if (seenDomains.has(key)) { funnel.reject(c.name, "Already seen in a previous run"); return; }
       seenThisRun.add(key);
       candidates.push(c);
     }
 
-    // Roblox — only if criteria allows it
     if (flags.sources.has("roblox")) {
-      const minPlaying = flags.minPlayers ?? cfg.sources.roblox_min_ccu;
-      await setStage(runId, `Fetching Roblox top games (≥${minPlaying} playing)…`);
-      const robloxResults = await robloxTopGames(
-        minPlaying,
-        Math.max(run.count * 4, 200),
-        rejections,
-        (msg) => { log(runId, "discovering", msg).catch(() => {}); },
-      );
-      totalPulled += Math.max(run.count * 4, 200);
+      const minPlaying = flags.minPlayers ?? cfg.activity.min_playing_roblox;
+      await setStage(runId, `Fetching Roblox games (seed list, ≥${minPlaying} playing)…`);
+      const robloxResults = await robloxTopGames(minPlaying, Math.max(run.count * 4, 100), funnel, dbLog);
       robloxResults.forEach(tryAdd);
-      await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates`);
+      await log(runId, "discovering", `Roblox: ${candidates.filter((c) => c.type === "roblox").length} candidates after dedup`);
       if (await isStopped(runId)) return;
-    } else {
-      await log(runId, "discovering", "Roblox: skipped (not in criteria)");
     }
 
-    // Steam — only if criteria allows it
     if (flags.sources.has("steam")) {
       await setStage(runId, "Fetching Steam top trending games…");
-      const steamResults = await steamTopGames(rejections);
-      totalPulled += 200;
+      const steamResults = await steamTopGames(funnel, dbLog);
       steamResults.forEach(tryAdd);
-      await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates`);
+      await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates after dedup`);
       if (await isStopped(runId)) return;
-    } else {
-      await log(runId, "discovering", "Steam: skipped (not in criteria)");
     }
 
-    // App Store — only if criteria allows it
     if (flags.sources.has("mobile")) {
-      await setStage(runId, "Fetching App Store charts (subcategories × countries)…");
-      const mobileResults = await appStoreTopGames(rejections);
-      totalPulled += (cfg.sources.app_store_countries.length * (cfg.sources.app_store_allowed_subcategory_ids.length + 1)) * 400;
+      await setStage(runId, "Fetching App Store charts…");
+      const mobileResults = await appStoreTopGames(funnel, dbLog);
       mobileResults.forEach(tryAdd);
-      await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates`);
-    } else {
-      await log(runId, "discovering", "App Store: skipped (not in criteria)");
+      await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates after dedup`);
     }
 
     const preFilterCount = candidates.length;
+    await log(runId, "discovering", `Total candidates: ${preFilterCount}`);
     await setStage(runId, `Discovered ${preFilterCount} unique candidates`);
-    await log(runId, "discovering", `Total unique candidates: ${preFilterCount} (from ~${totalPulled} raw)`);
 
     if (candidates.length === 0) {
-      await writeRejectionReport(runId, rejections, 0, 0);
-      await setStatus(runId, "failed", "No candidates found after filtering. Check external APIs.");
+      await log(runId, "discovering", funnel.report(), "warn");
+      await setStatus(runId, "failed", "No candidates found. Check the funnel report in logs.");
       return;
     }
 
     if (await isStopped(runId)) return;
 
-    // ── PHASE 2.5: HARD FILTER ────────────────────────────────────────────────
+    // ── PHASE 2.5: HARD FILTER ─────────────────────────────────────────────────
+    // HARD filters only — things we can always check from free data.
+    // Soft things (email, funding, named DM) are NEVER rejection reasons here.
     await setStage(runId, "Applying hard filters…");
+    funnel.begin("hard-filter", candidates.length);
     const hardFiltered: Candidate[] = [];
 
     for (const c of candidates) {
-      // Domain blocklist
-      if (isDomainBlocked(c.website) && isDomainBlocked(c.storeLink)) {
-        rejections.push({ name: c.name, reason: `Both website and store link are platform URLs (${c.website})`, source: c.type });
-        continue;
-      }
-      // Company blocklist
       if (isCompanyBlocked(c.name)) {
-        rejections.push({ name: c.name, reason: "Company name in blocklist", source: c.type });
+        funnel.reject(c.name, "Company name in blocklist");
         continue;
       }
-      // Genre filter
       if (isRejectedGenre(c.genre, c.gameName, c.description)) {
-        rejections.push({ name: c.name, reason: `Rejected genre: "${c.genre}" game: "${c.gameName}"`, source: c.type });
+        funnel.reject(c.name, `Rejected genre: "${c.genre}" title: "${c.gameName}"`);
         continue;
       }
-      // Country filter from criteria (mobile leads have country; roblox/steam don't — let them through)
       if (flags.requireCountries && c.country && !flags.requireCountries.has(c.country.toUpperCase())) {
-        rejections.push({ name: c.name, reason: `Country "${c.country}" not in criteria filter`, source: c.type });
+        funnel.reject(c.name, `Country "${c.country}" not in criteria filter`);
         continue;
       }
-      // Ratings override from criteria
       if (flags.minRatings && (c.ratingsCount ?? 0) > 0 && (c.ratingsCount ?? 0) < flags.minRatings) {
-        rejections.push({ name: c.name, reason: `Only ${c.ratingsCount} ratings (criteria requires ${flags.minRatings})`, source: c.type });
+        funnel.reject(c.name, `Only ${c.ratingsCount} ratings (criteria requires ${flags.minRatings})`);
         continue;
       }
       hardFiltered.push(c);
     }
 
-    candidates.length = 0;
-    candidates.push(...hardFiltered);
-    await log(runId, "discovering", `After hard filter: ${candidates.length} candidates`);
+    funnel.pass(hardFiltered.length);
+    await log(runId, "discovering", `After hard filter: ${hardFiltered.length} candidates`);
 
-    if (candidates.length === 0) {
-      await writeRejectionReport(runId, rejections, preFilterCount, 0);
-      await setStatus(runId, "failed", "All candidates filtered out. Adjust criteria or blocklist.");
+    if (hardFiltered.length === 0) {
+      await log(runId, "discovering", funnel.report(), "warn");
+      await setStatus(runId, "failed", "All candidates filtered out. See funnel report in logs.");
       return;
     }
 
     if (await isStopped(runId)) return;
 
-    // ── PHASE 3: SCORE + ENRICH ───────────────────────────────────────────────
-    await setStatus(runId, "researching", "Scoring and enriching leads…");
+    // ── PHASE 3: ENRICH + SCORE ────────────────────────────────────────────────
+    await setStatus(runId, "researching", "Enriching and scoring leads…");
 
     // Sort: steam/mobile first (own website = better email hit rate), roblox last
     const typeOrder: Record<string, number> = { steam: 0, mobile: 1, roblox: 2 };
-    candidates.sort((a, b) => (typeOrder[a.type] ?? 2) - (typeOrder[b.type] ?? 2));
+    hardFiltered.sort((a, b) => (typeOrder[a.type] ?? 2) - (typeOrder[b.type] ?? 2));
 
-    const robloxCount = candidates.filter(c => c.type === "roblox").length;
-    const steamCount  = candidates.filter(c => c.type === "steam").length;
-    const mobileCount = candidates.filter(c => c.type === "mobile").length;
-    await log(runId, "researching", `Starting enrichment: ${candidates.length} candidates (roblox=${robloxCount} steam=${steamCount} mobile=${mobileCount})`);
+    const robloxCount = hardFiltered.filter((c) => c.type === "roblox").length;
+    const steamCount  = hardFiltered.filter((c) => c.type === "steam").length;
+    const mobileCount = hardFiltered.filter((c) => c.type === "mobile").length;
+    await log(runId, "researching", `Starting enrichment: ${hardFiltered.length} candidates (roblox=${robloxCount} steam=${steamCount} mobile=${mobileCount})`);
 
+    funnel.begin("enrichment", hardFiltered.length);
     let savedCount = 0;
-    const toProcess = candidates.slice(0, Math.min(candidates.length, run.count * 8));
+    const toProcess = hardFiltered.slice(0, Math.min(hardFiltered.length, run.count * 8));
 
-    // ── Per-candidate enrichment (run in parallel batches) ────────────────────
-    type EnrichedResult = {
-      c: Candidate;
-      finalScored: ReturnType<typeof scoreCandidate>;
-      finalGrade: string;
-      moneySignals: string[];
-      ownWebsite: string | null;
-    } | null;
-
-    async function enrichOne(c: Candidate): Promise<EnrichedResult> {
-      if (!flags.sources.has(c.type as "roblox" | "steam" | "mobile")) return null;
-      const scored = scoreCandidate(c);
-      if (scored.grade === "F") {
-        rejections.push({ name: c.name, reason: `Grade F — activityVerified=${scored.activityVerified} genrePasses=${scored.genrePasses} lastUpdate=${c.lastUpdateDate ?? "null"}`, source: c.type });
-        return null;
-      }
-
-      const ownSite = !isDomainBlocked(c.website) ? c.website : null;
-
-      // ── Email + social handles (one website fetch for both) ──────────────────
-      if (!c.contacts.email || (!c.contacts.instagram && !c.contacts.twitter)) {
+    async function enrichOne(c: Candidate): Promise<boolean> {
+      // ── Email: scrape own website if we don't have one yet ────────────────────
+      if (!c.contacts.email) {
+        const ownSite = !isOwnWebsiteBlocked(c.website) ? c.website : null;
         if (ownSite) {
-          try {
-            const res = await fetch(ownSite, {
-              headers: { "User-Agent": SCRAPE_UA, Accept: "text/html" },
-              signal: AbortSignal.timeout(5000),
-            });
-            if (res.ok) {
-              const html = await res.text();
-              // Email from homepage
-              if (!c.contacts.email) {
-                // mailto: links first
-                const mLinks = [...html.matchAll(/mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi)];
-                const mailtoEmails = mLinks.map((m) => classifyEmail(m[1])).filter(Boolean) as Array<{ email: string; generic: boolean }>;
-                const bestMailto = mailtoEmails.find((e) => !e.generic) ?? mailtoEmails[0];
-                if (bestMailto) {
-                  c.contacts.email = bestMailto.email;
-                  c.contacts.emailSource = "published";
-                  c.contacts.genericInbox = bestMailto.generic;
-                } else {
-                  const fallback = extractEmail(html);
-                  if (fallback.email) {
-                    c.contacts.email = fallback.email;
-                    c.contacts.emailSource = "published";
-                    c.contacts.genericInbox = fallback.generic;
-                  }
-                }
-              }
-              // Social handles from homepage
-              const h = extractSocialHandles(html);
-              if (!c.contacts.instagram) c.contacts.instagram = h.instagram;
-              if (!c.contacts.twitter) c.contacts.twitter = h.twitter;
-              if (!c.contacts.discord) c.contacts.discord = h.discord;
-              if (!c.contacts.linkedin) c.contacts.linkedin = h.linkedin;
-            }
-          } catch { /* best-effort */ }
-        }
-
-        // /contact page if still no email
-        if (!c.contacts.email && ownSite) {
-          const r = await scrapePageForEmail(ownSite.replace(/\/+$/, "") + "/contact");
-          if (r.email) { c.contacts.email = r.email; c.contacts.emailSource = "published"; c.contacts.genericInbox = r.generic; }
-        }
-
-        // SearXNG fallback — single fast query only
-        if (!c.contacts.email) {
-          const domain = ownSite ? extractDomain(ownSite) : null;
-          const q = domain ? `site:${domain} email OR contact` : `"${c.name}" contact email game studio`;
-          const results = await searxSearch(q);
-          const text = results.map((r) => `${r.content} ${r.title} ${r.url}`).join(" ");
-          const found = extractEmail(text);
+          const found = await findEmailOnWebsite(ownSite);
           if (found.email) {
             c.contacts.email = found.email;
-            c.contacts.emailSource = "searxng";
+            c.contacts.emailSource = "scraped";
             c.contacts.genericInbox = found.generic;
           }
         }
+        // For Roblox with no own site — try fetching the profile URL to extract handles
+        // (we already got email from bio; if none was there, leave it blank)
       }
 
-      if (!c.contacts.email) {
-        rejections.push({ name: c.name, reason: `No email found (website=${c.website.slice(0, 60)})`, source: c.type });
-        return null;
+      // ── Score (email is now soft — won't change grade unless genre fails) ─────
+      const scored = scoreCandidate(c);
+      if (scored.grade === "F") {
+        funnel.reject(c.name, `Grade F — genrePasses=${scored.genrePasses}`);
+        return false;
       }
 
-      // ── Named contact + funding (parallel, 15s combined deadline) ────────────
-      const domainForEnrich = ownSite ? extractDomain(ownSite) : null;
-      const ENRICH_TIMEOUT = 15000;
-      const timed = <T>(p: Promise<T>, fb: T) =>
-        Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fb), ENRICH_TIMEOUT))]);
-
-      const [dmResult, fundingResult] = await Promise.all([
-        timed(findNamedContact(c.name, domainForEnrich), { name: null, title: null, linkedin: null }),
-        timed(findFundingSignals(c.name, domainForEnrich), { backed: false, details: null, proofUrl: null }),
-      ]);
-
-      if (dmResult.name) {
-        c.decisionMaker = dmResult.name;
-        c.decisionMakerTitle = dmResult.title;
-        c.decisionMakerLinkedin = dmResult.linkedin ?? c.contacts.linkedin;
-        if (dmResult.linkedin && !c.contacts.linkedin) c.contacts.linkedin = dmResult.linkedin;
-      }
-      if (fundingResult.backed) {
-        c.investorBacked = true;
-        c.fundingDetails = fundingResult.details;
-        c.fundingProofUrl = fundingResult.proofUrl;
+      // ── Criteria: funding required ────────────────────────────────────────────
+      if (flags.requireFunding && !c.investorBacked) {
+        funnel.reject(c.name, "requireFunding set but studio not confirmed investor-backed");
+        return false;
       }
 
-      // Drop if criteria requires funded studios but none found
-      if (flags.requireFunding && !c.investorBacked) return null;
-
-      const finalScored = scoreCandidate(c);
-      const moneySignals: string[] = [];
-      if (c.chartRank !== null) moneySignals.push(`App Store chart rank ${c.chartRank}`);
-      if (c.installCount !== null && c.installCount > 0) moneySignals.push(`${c.installCount.toLocaleString()}+ installs`);
-      if (c.earnsRealMoney) moneySignals.push("Paid / real-money gameplay");
-      if (c.investorBacked) moneySignals.push(c.fundingDetails ?? "Investor-backed");
-
-      let finalGrade = finalScored.grade;
-      if (finalGrade === "A" && (!moneySignals.length || !c.decisionMaker || c.contacts.genericInbox)) {
-        finalGrade = "B";
-      }
-
-      return { c, finalScored, finalGrade, moneySignals, ownWebsite: ownSite };
+      return true;
     }
 
     // Process in parallel batches of 8
-    const ENRICH_BATCH = 8;
-    for (let i = 0; i < toProcess.length && savedCount < run.count; i += ENRICH_BATCH) {
+    const BATCH = 8;
+    for (let i = 0; i < toProcess.length && savedCount < run.count; i += BATCH) {
       if (await isStopped(runId)) return;
 
-      const batch = toProcess.slice(i, Math.min(i + ENRICH_BATCH, toProcess.length));
+      const batch = toProcess.slice(i, Math.min(i + BATCH, toProcess.length));
       const results = await Promise.allSettled(batch.map((c) => enrichOne(c)));
 
-      for (const r of results) {
+      for (let j = 0; j < results.length; j++) {
         if (savedCount >= run.count) break;
-        if (r.status !== "fulfilled" || !r.value) {
-          if (r.status === "fulfilled" && !r.value) {
-            // enrichOne returned null — candidate had no email or was grade F
-            const idx = results.indexOf(r);
-            if (idx >= 0) rejections.push({ name: batch[idx]?.name ?? "?", reason: "No email found or grade F", source: batch[idx]?.type ?? "?" });
-          }
-          continue;
-        }
+        const r = results[j];
+        const c = batch[j];
 
-        const { c, finalScored, finalGrade, moneySignals, ownWebsite } = r.value;
+        if (r.status === "rejected" || (r.status === "fulfilled" && !r.value)) continue;
+
+        const scored = scoreCandidate(c);
+        const segmentLabel = buildSegmentLabel(c);
+        const ownSite = !isOwnWebsiteBlocked(c.website) ? c.website : null;
+
         savedCount++;
+        funnel.pass(savedCount);
+
+        const moneySignals: string[] = [];
+        if (c.chartRank !== null) moneySignals.push(`App Store chart rank ${c.chartRank}`);
+        if (c.playingCount) moneySignals.push(`${c.playingCount.toLocaleString()} live players`);
+        if (c.ratingsCount && c.ratingsCount > 0) moneySignals.push(`${c.ratingsCount.toLocaleString()} ratings`);
+        if (c.earnsRealMoney) moneySignals.push("Paid / real-money gameplay");
+        if (c.investorBacked) moneySignals.push(c.fundingDetails ?? "Investor-backed");
 
         const signals = {
-          activityVerified: finalScored.activityVerified,
-          genrePasses: finalScored.genrePasses,
-          notBlocklisted: true,
-          hasFunding: c.investorBacked,
-          hasOtherMoneySignal: moneySignals.length > 0,
-          namedDecisionMaker: !!c.decisionMaker,
-          publishedEmail: c.contacts.emailSource === "published",
-          audienceSize: (c.ratingsCount ?? c.installCount ?? 0) >= 50000 ? "large" : (c.ratingsCount ?? c.installCount ?? 0) >= 5000 ? "medium" : "small",
-          country: c.country,
+          activityVerified: scored.activityVerified,
+          genrePasses:      scored.genrePasses,
+          notBlocklisted:   true,
+          hasFunding:       c.investorBacked,
+          hasEmail:         !!c.contacts.email,
+          emailSource:      c.contacts.emailSource,
+          genericInbox:     c.contacts.genericInbox,
+          audienceSize: (c.playingCount ?? c.ratingsCount ?? 0) >= 50000 ? "large"
+                      : (c.playingCount ?? c.ratingsCount ?? 0) >= 5000  ? "medium" : "small",
+          country:          c.country,
           realMoneyGameplay: c.earnsRealMoney,
-          breakdown: finalScored.breakdown,
-          total: finalScored.score,
+          breakdown:        scored.breakdown,
+          total:            scored.score,
         };
-
-        const segmentLabel = buildSegmentLabel(c);
 
         await prisma.leadFactoryLead.create({
           data: {
             runId,
-            num: savedCount,
+            num:             savedCount,
             company:         c.name.slice(0, 100),
-            website:         ownWebsite ?? c.storeLink,
+            website:         ownSite ?? c.storeLink,
             whatItIs:        c.description.replace(/\n/g, " ").slice(0, 250),
             segment:         segmentLabel,
-            grade:           finalGrade,
-            score:           finalScored.score,
+            grade:           scored.grade,
+            score:           scored.score,
             country:         c.country,
             decisionMaker:   c.decisionMaker,
             dmRole:          c.decisionMakerTitle,
@@ -1571,33 +1204,32 @@ export async function processLeadRun(runId: string): Promise<void> {
             instagramHandle: c.contacts.instagram,
             xHandle:         c.contacts.twitter,
             linkedinUrl:     c.decisionMakerLinkedin ?? c.contacts.linkedin,
-            bestChannel:     c.contacts.email ? (c.contacts.genericInbox ? "generic-inbox" : "email") : "direct",
+            bestChannel:     c.contacts.email
+              ? (c.contacts.genericInbox ? "generic-inbox" : "email")
+              : (c.contacts.instagram ? "instagram" : c.contacts.twitter ? "twitter" : "direct"),
             whyItFits:       Prisma.JsonNull,
             signals:         signals as unknown as Prisma.InputJsonValue,
             rawData: {
-              source:            c.type,
-              gameName:          c.gameName,
-              storeLink:         c.storeLink,
-              genre:             c.genre,
-              chartRank:         c.chartRank,
-              ratingsCount:      c.ratingsCount,
-              installCount:      c.installCount,
-              lastUpdateDate:    c.lastUpdateDate,
-              updateProofUrl:    c.updateProofUrl,
-              country:           c.country,
-              earnsRealMoney:    c.earnsRealMoney,
-              employees:         null,
-              employeesVerified: false,
-              investorBacked:    c.investorBacked,
-              latestFunding:     c.fundingDetails,
-              fundingProof:      c.fundingProofUrl,
+              source:         c.type,
+              gameName:       c.gameName,
+              storeLink:      c.storeLink,
+              genre:          c.genre,
+              chartRank:      c.chartRank,
+              ratingsCount:   c.ratingsCount,
+              playingCount:   c.playingCount,
+              lastUpdateDate: c.lastUpdateDate,
+              updateProofUrl: c.updateProofUrl,
+              country:        c.country,
+              earnsRealMoney: c.earnsRealMoney,
+              investorBacked: c.investorBacked,
+              latestFunding:  c.fundingDetails,
+              fundingProof:   c.fundingProofUrl,
               moneySignals,
-              moneySignalProof:  c.fundingProofUrl ?? c.updateProofUrl,
-              emailSource:       c.contacts.emailSource,
-              genericInbox:      c.contacts.genericInbox,
-              discord:           c.contacts.discord,
-              contactLinkedin:   c.decisionMakerLinkedin,
-              ownWebsite,
+              emailSource:    c.contacts.emailSource,
+              genericInbox:   c.contacts.genericInbox,
+              discord:        c.contacts.discord,
+              ownWebsite:     ownSite,
+              playerCount:    c.playingCount,
             } as unknown as Prisma.InputJsonValue,
           },
         });
@@ -1606,74 +1238,28 @@ export async function processLeadRun(runId: string): Promise<void> {
           where: { id: runId },
           data: {
             stage: `Saved ${savedCount} / ${run.count} leads`,
-            stats: { pulled: preFilterCount, filtered: preFilterCount - candidates.length, saved: savedCount, rejectedTotal: rejections.length },
+            stats: { pulled: preFilterCount, filtered: preFilterCount - hardFiltered.length, saved: savedCount },
           },
         });
       }
     }
 
-    // ── DONE ──────────────────────────────────────────────────────────────────
-    await writeRejectionReport(runId, rejections, preFilterCount, savedCount);
+    // ── DONE ───────────────────────────────────────────────────────────────────
+    await log(runId, "completed", funnel.report());
+    await log(runId, "completed", `✓ ${savedCount} leads saved from ${preFilterCount} candidates.`);
 
     await prisma.leadRun.update({
       where: { id: runId },
       data: {
-        status: "completed",
-        stage: null,
-        stats: { pulled: preFilterCount, saved: savedCount, rejectedTotal: rejections.length },
+        status: savedCount > 0 ? "completed" : "failed",
+        stage:  savedCount > 0 ? null : "Pipeline ran but no leads were saved — check funnel report in logs",
+        stats:  { pulled: preFilterCount, saved: savedCount },
       },
     });
-
-    await log(runId, "completed", `✓ ${savedCount} leads saved. ${rejections.length} total rejections from ${preFilterCount} candidates.`);
 
   } catch (err) {
     const msg = String(err).slice(0, 400);
     await log(runId, "failed", msg, "error").catch(() => {});
     await prisma.leadRun.update({ where: { id: runId }, data: { status: "failed", stage: msg } }).catch(() => {});
   }
-}
-
-// ─── Rejection report ─────────────────────────────────────────────────────────
-
-async function writeRejectionReport(runId: string, rejections: RejectionRecord[], pulled: number, saved: number) {
-  // Summarise by reason category
-  const counts: Record<string, number> = {};
-  for (const r of rejections) {
-    const cat = categoriseRejection(r.reason);
-    counts[cat] = (counts[cat] ?? 0) + 1;
-  }
-
-  const summary = [
-    `=== REJECTION REPORT ===`,
-    `Candidates pulled: ${pulled}`,
-    `Saved: ${saved}`,
-    `Rejected total: ${rejections.length}`,
-    ``,
-    `By category:`,
-    ...Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([cat, n]) => `  ${cat}: ${n}`),
-    ``,
-    `Examples (first 3 per category):`,
-    ...Object.keys(counts).flatMap((cat) => {
-      const examples = rejections.filter((r) => categoriseRejection(r.reason) === cat).slice(0, 3);
-      return [`  [${cat}]`, ...examples.map((r) => `    ${r.name} — ${r.reason}`)];
-    }),
-  ].join("\n");
-
-  await log(runId, "completed", summary, "info");
-}
-
-function categoriseRejection(reason: string): string {
-  if (reason.includes("blocklist") || reason.includes("blocklisted")) return "company-blocklisted";
-  if (reason.includes("genre") || reason.includes("Genre")) return "rejected-genre";
-  if (reason.includes("rating") || reason.includes("Rating")) return "low-ratings";
-  if (reason.includes("playing") || reason.includes("Playing")) return "low-player-count";
-  if (reason.includes("update") || reason.includes("Update") || reason.includes("stale")) return "inactive";
-  if (reason.includes("previous run") || reason.includes("seen")) return "duplicate";
-  if (reason.includes("email") || reason.includes("Email")) return "no-email";
-  if (reason.includes("platform") || reason.includes("URL")) return "platform-only-url";
-  if (reason.includes("Grade F")) return "low-score";
-  if (reason.includes("release") || reason.includes("Release")) return "too-old-or-unreleased";
-  return "other";
 }

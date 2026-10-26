@@ -1,0 +1,18 @@
+{
+  "_name": "all_sources",
+  "_description": "All three sources — use when criteria don't specify a platform",
+  "sources": ["steam", "mobile", "roblox"],
+  "activity": {
+    "max_age_days": 365,
+    "min_ratings": 100,
+    "min_playing_roblox": 200
+  },
+  "hard_filters": {
+    "reject_companies_in_blocklist": true,
+    "reject_blocked_domains": true,
+    "reject_coming_soon": true
+  },
+  "contact_rules": {
+    "email_required": false
+  }
+}
