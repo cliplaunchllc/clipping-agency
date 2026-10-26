@@ -328,19 +328,15 @@ async function findEmailOnWebsite(ownWebsite: string): Promise<{ email: string |
   if (!ownWebsite || isOwnWebsiteBlocked(ownWebsite)) return { email: null, generic: false };
   const base = ownWebsite.replace(/\/+$/, "");
 
-  const home = await scrapePageForEmail(base);
-  if (home.email && !home.generic) return home;
+  // Scrape homepage + all likely contact pages in parallel
+  const paths = ["", "/contact", "/contact-us", "/about", "/about-us", "/team", "/support", "/help", "/press", "/info"];
+  const results = await Promise.all(paths.map((p) => scrapePageForEmail(base + p)));
 
-  const subpages = ["/contact", "/about", "/contact-us", "/press"];
-  let best: { email: string; generic: boolean } | null = home.email ? (home as { email: string; generic: boolean }) : null;
-
-  for (const path of subpages) {
-    const r = await scrapePageForEmail(base + path);
-    if (r.email && !r.generic) return r;
-    if (r.email && !best) best = r as { email: string; generic: boolean };
-  }
-
-  return best ?? { email: null, generic: false };
+  // Prefer a named (non-generic) email; fall back to any email found
+  const named = results.find((r) => r.email && !r.generic);
+  if (named?.email) return named as { email: string; generic: boolean };
+  const any = results.find((r) => r.email);
+  return any ? (any as { email: string; generic: boolean }) : { email: null, generic: false };
 }
 
 // ─── Social handles (from href only, never from @word in text) ─────────────────
@@ -480,6 +476,7 @@ function scoreCandidate(c: Candidate): ScoreResult {
 interface CriteriaFlags {
   sources:          Set<"roblox" | "steam" | "mobile">;
   requireFunding:   boolean;
+  requireEmail:     boolean;
   requireCountries: Set<string> | null;
   minRatings:       number | null;
   minPlayers:       number | null;
@@ -534,6 +531,7 @@ function parseCriteria(raw: string | null): CriteriaFlags {
   }
 
   const requireFunding = /\b(vc.backed|vc funded|venture.backed|venture funded|investor.backed|investor funded|seed funded|series [abc] funded)\b/.test(t);
+  const requireEmail   = /\b(must have email|with email|has email|email only|only.*email|include.*email|email required|need email|needs email|have an email)\b/.test(t);
 
   const requireCountries: Set<string> | null = (() => {
     if (/\b(us|usa|united states)\s+only\b|\bonly\s+(us|usa|united states)\b/.test(t)) return new Set(["US"]);
@@ -558,14 +556,15 @@ function parseCriteria(raw: string | null): CriteriaFlags {
   const appStoreSubIds = subIdSet.size > 0 ? [...subIdSet] : null;
 
   const parts: string[] = [`sources=[${[...sources].join(",")}]`];
-  if (requireFunding)   parts.push("requireFunding");
-  if (requireCountries) parts.push(`countries=[${[...requireCountries].join(",")}]`);
-  if (minRatings)       parts.push(`minRatings=${minRatings}`);
-  if (minPlayers)       parts.push(`minPlayers=${minPlayers}`);
-  if (appStoreSubIds)   parts.push(`appStoreSubs=[${appStoreSubIds.join(",")}]`);
+  if (requireFunding)      parts.push("requireFunding");
+  if (requireEmail)        parts.push("requireEmail");
+  if (requireCountries)    parts.push(`countries=[${[...requireCountries].join(",")}]`);
+  if (minRatings)          parts.push(`minRatings=${minRatings}`);
+  if (minPlayers)          parts.push(`minPlayers=${minPlayers}`);
+  if (appStoreSubIds)      parts.push(`appStoreSubs=[${appStoreSubIds.join(",")}]`);
   if (genreOverrides.size) parts.push(`genreOverrides=[${[...genreOverrides].join(",")}]`);
 
-  return { sources, requireFunding, requireCountries, minRatings, minPlayers, appStoreSubIds, genreOverrides, extraContext: parts.join(" | ") };
+  return { sources, requireFunding, requireEmail, requireCountries, minRatings, minPlayers, appStoreSubIds, genreOverrides, extraContext: parts.join(" | ") };
 }
 
 // ─── Cross-run dedup ───────────────────────────────────────────────────────────
@@ -1315,6 +1314,12 @@ export async function processLeadRun(runId: string): Promise<void> {
       const scored = scoreCandidate(c);
       if (scored.grade === "F") {
         funnel.reject(c.name, `Grade F — genrePasses=${scored.genrePasses}`);
+        return false;
+      }
+
+      // ── Criteria: email required ──────────────────────────────────────────────
+      if (flags.requireEmail && !c.contacts.email) {
+        funnel.reject(c.name, "requireEmail set but no email found");
         return false;
       }
 
