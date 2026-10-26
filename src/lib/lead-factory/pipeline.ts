@@ -578,6 +578,7 @@ interface RobloxGame {
   id:          number;
   rootPlaceId: number;
   name:        string;
+  description: string;
   playing:     number;
   visits:      number;
   totalUpVotes: number;
@@ -675,6 +676,7 @@ async function robloxTopGames(
           id:           g.id,
           rootPlaceId:  g.rootPlaceId,
           name:         g.name ?? "",
+          description:  g.description ?? "",
           playing:      g.playing ?? 0,
           visits:       g.visits ?? 0,
           totalUpVotes: g.totalUpVotes ?? 0,
@@ -747,14 +749,33 @@ async function robloxTopGames(
         }
       } catch { /* best-effort */ }
 
-      // Extract own website from bio (not social platforms)
-      const ownUrlMatch = bio.match(
+      // Combine all text sources: bio + top-5 game descriptions
+      const gameDescText = allGames.slice(0, 5).map((g) => g.description).filter(Boolean).join(" ");
+      const combinedText = [bio, gameDescText].filter(Boolean).join(" ");
+
+      // Fetch Roblox social links (structured Twitter/Instagram/Discord/YouTube links)
+      let socialLinksText = "";
+      try {
+        const slUrl = creatorType === "Group"
+          ? `https://groups.roblox.com/v1/groups/${creatorId}/social-links`
+          : `https://users.roblox.com/v1/users/${creatorId}/social-links`;
+        const slRes = await fetch(slUrl, { headers: HEADERS, signal: AbortSignal.timeout(6000) }).catch(() => null);
+        if (slRes?.ok) {
+          const slData = await slRes.json().catch(() => ({})) as { data?: Array<{ type: string; url: string }> };
+          socialLinksText = (slData.data ?? []).map((l) => l.url).join(" ");
+        }
+      } catch { /* best-effort */ }
+
+      const allContactText = [combinedText, socialLinksText].filter(Boolean).join(" ");
+
+      // Extract own website from all text (not social platforms)
+      const ownUrlMatch = allContactText.match(
         /https?:\/\/(?!(?:www\.)?(?:roblox|twitter|x|instagram|discord|youtube|twitch|tiktok|facebook|linktr)\.)([^\s<>"',]{4,80})/i
       );
       const ownWebsite = ownUrlMatch ? ownUrlMatch[0].replace(/[.,;)]+$/, "") : null;
 
-      const { email, generic } = extractEmail(bio);
-      const handles = extractSocialHandles(bio);
+      const { email, generic } = extractEmail(allContactText);
+      const handles = extractSocialHandles(allContactText);
 
       // Build a description showing all their games
       const totalPlaying = allGames.reduce((s, g) => s + g.playing, 0);
