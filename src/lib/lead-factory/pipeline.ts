@@ -483,8 +483,27 @@ interface CriteriaFlags {
   requireCountries: Set<string> | null;
   minRatings:       number | null;
   minPlayers:       number | null;
+  appStoreSubIds:   string[] | null;   // null = all subcategories from config
+  genreOverrides:   Set<string>;       // genres explicitly requested — skip rejection for these
   extraContext:     string;
 }
+
+// Maps criteria keywords → App Store subcategory IDs + genre name for override
+const GENRE_SUBID_MAP: Array<{ re: RegExp; ids: string[]; name: string }> = [
+  { re: /\b(action|fight(ing)?|combat|shooter|fps|brawler?|pvp)\b/,                   ids: ["7001"],         name: "Action" },
+  { re: /\b(adventure|exploration|open.?world|dungeon|quest)\b/,                       ids: ["7002"],         name: "Adventure" },
+  { re: /\b(arcade|hyper.?casual|casual|endless.?run(ner)?|clicker|runner)\b/,         ids: ["7003"],         name: "Arcade" },
+  { re: /\b(family|kids|children|toddler|child)\b/,                                    ids: ["7009"],         name: "Family" },
+  { re: /\b(music|rhythm|beat|dj|song)\b/,                                             ids: ["7011"],         name: "Music" },
+  { re: /\b(racing|driving|kart|drift|car.?game|motorbike)\b/,                         ids: ["7013"],         name: "Racing" },
+  { re: /\b(rpg|role.?play(ing)?|jrpg|mmorpg|arpg)\b/,                                ids: ["7014"],         name: "Role Playing" },
+  { re: /\b(sim(ulator|ulation)?|tycoon|idle|farming|sandbox|city.?build|life.?sim)\b/,ids: ["7015"],         name: "Simulation" },
+  { re: /\b(sport|football|soccer|basketball|baseball|nfl|nba|fifa|golf|tennis)\b/,    ids: ["7016"],         name: "Sports" },
+  { re: /\b(strategy|tower.?defense|rts|moba|4x|grand.?strategy|deck.?build)\b/,      ids: ["7017"],         name: "Strategy" },
+  { re: /\b(puzzle|match.?3|brain|word.?game|block.?puzzle|tile)\b/,                   ids: ["7003", "7009"], name: "Puzzle" },
+  { re: /\b(horror|survival|zombie)\b/,                                                 ids: ["7001", "7002"], name: "Adventure" },
+  { re: /\b(anime)\b/,                                                                  ids: ["7014", "7001"], name: "Role Playing" },
+];
 
 function parseCriteria(raw: string | null): CriteriaFlags {
   const t = (raw ?? "").toLowerCase();
@@ -499,7 +518,7 @@ function parseCriteria(raw: string | null): CriteriaFlags {
 
   const wantsRoblox = /roblox/.test(negated);
   const wantsSteam  = /\bsteam\b|pc game|windows game/.test(negated);
-  const wantsMobile = /\bmobile\b|ios|iphone|ipad|app store|apple/.test(negated);
+  const wantsMobile = /\bmobile\b|ios|iphone|ipad|android|app store|apple/.test(negated);
 
   let sources: Set<"roblox" | "steam" | "mobile">;
   if      (onlyRoblox)  sources = new Set(["roblox"] as const);
@@ -527,13 +546,26 @@ function parseCriteria(raw: string | null): CriteriaFlags {
   const minRatings = explicitLarge ? 50000 : null;
   const minPlayers = explicitLarge ? 5000  : null;
 
+  // Genre detection: map criteria keywords → App Store subcategory IDs + genre overrides
+  const subIdSet      = new Set<string>();
+  const genreOverrides = new Set<string>();
+  for (const { re, ids, name } of GENRE_SUBID_MAP) {
+    if (re.test(t)) {
+      ids.forEach((id) => subIdSet.add(id));
+      genreOverrides.add(name.toLowerCase());
+    }
+  }
+  const appStoreSubIds = subIdSet.size > 0 ? [...subIdSet] : null;
+
   const parts: string[] = [`sources=[${[...sources].join(",")}]`];
   if (requireFunding)   parts.push("requireFunding");
   if (requireCountries) parts.push(`countries=[${[...requireCountries].join(",")}]`);
   if (minRatings)       parts.push(`minRatings=${minRatings}`);
   if (minPlayers)       parts.push(`minPlayers=${minPlayers}`);
+  if (appStoreSubIds)   parts.push(`appStoreSubs=[${appStoreSubIds.join(",")}]`);
+  if (genreOverrides.size) parts.push(`genreOverrides=[${[...genreOverrides].join(",")}]`);
 
-  return { sources, requireFunding, requireCountries, minRatings, minPlayers, extraContext: parts.join(" | ") };
+  return { sources, requireFunding, requireCountries, minRatings, minPlayers, appStoreSubIds, genreOverrides, extraContext: parts.join(" | ") };
 }
 
 // ─── Cross-run dedup ───────────────────────────────────────────────────────────
@@ -820,7 +852,7 @@ async function robloxTopGames(
 
 // ─── Steam source ──────────────────────────────────────────────────────────────
 
-async function steamTopGames(funnel: Funnel, dbLog: (msg: string) => void): Promise<Candidate[]> {
+async function steamTopGames(funnel: Funnel, dbLog: (msg: string) => void, genreOverrides: Set<string>): Promise<Candidate[]> {
   const [trendRes, allTimeRes] = await Promise.all([
     fetch("https://steamspy.com/api.php?request=top100in2weeks", { signal: AbortSignal.timeout(15000) }).catch(() => null),
     fetch("https://steamspy.com/api.php?request=top100forever",  { signal: AbortSignal.timeout(15000) }).catch(() => null),
@@ -887,7 +919,11 @@ async function steamTopGames(funnel: Funnel, dbLog: (msg: string) => void): Prom
     const gameName     = app.data.name ?? game.name;
     const desc         = app.data.short_description ?? "";
 
-    if (isRejectedGenre(primaryGenre, gameName, desc)) {
+    const genreExplicitlyRequested = genreOverrides.size > 0 &&
+      [...genreOverrides].some((g) =>
+        primaryGenre.toLowerCase().includes(g) || gameName.toLowerCase().includes(g)
+      );
+    if (!genreExplicitlyRequested && isRejectedGenre(primaryGenre, gameName, desc)) {
       funnel.reject(devName, `Rejected genre: "${primaryGenre}" / title: "${gameName}"`);
       return;
     }
@@ -991,9 +1027,13 @@ async function fetchItunesLookup(ids: string[]): Promise<Map<string, ITunesLooku
   return map;
 }
 
-async function appStoreTopGames(funnel: Funnel, dbLog: (msg: string) => void): Promise<Candidate[]> {
+async function appStoreTopGames(
+  funnel: Funnel,
+  dbLog: (msg: string) => void,
+  flags: Pick<CriteriaFlags, "appStoreSubIds" | "genreOverrides">,
+): Promise<Candidate[]> {
   const countries    = cfg.sources.app_store_countries;
-  const allowedSubs  = cfg.sources.app_store_allowed_subcategory_ids;
+  const allowedSubs  = flags.appStoreSubIds ?? cfg.sources.app_store_allowed_subcategory_ids;
   const skipTopN     = cfg.sources.app_store_rank_skip_top;
 
   const appIdToMeta = new Map<string, { rank: number | null; country: string }>();
@@ -1060,7 +1100,12 @@ async function appStoreTopGames(funnel: Funnel, dbLog: (msg: string) => void): P
     const primaryGenre = detail?.primaryGenreName ?? "";
     const desc        = detail?.description ?? "";
 
-    if (isRejectedGenre(primaryGenre, gameName, desc)) {
+    // Skip genre rejection if the user explicitly requested this genre
+    const genreExplicitlyRequested = flags.genreOverrides.size > 0 &&
+      [...flags.genreOverrides].some((g) =>
+        primaryGenre.toLowerCase().includes(g) || gameName.toLowerCase().includes(g)
+      );
+    if (!genreExplicitlyRequested && isRejectedGenre(primaryGenre, gameName, desc)) {
       funnel.reject(devName, `Rejected genre: "${primaryGenre}" / title: "${gameName}"`);
       seenDevs.add(key);
       continue;
@@ -1166,7 +1211,7 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     if (flags.sources.has("steam")) {
       await setStage(runId, "Fetching Steam top trending games…");
-      const steamResults = await steamTopGames(funnel, dbLog);
+      const steamResults = await steamTopGames(funnel, dbLog, flags.genreOverrides);
       steamResults.forEach(tryAdd);
       await log(runId, "discovering", `Steam: ${candidates.filter((c) => c.type === "steam").length} candidates after dedup`);
       if (await isStopped(runId)) return;
@@ -1174,7 +1219,7 @@ export async function processLeadRun(runId: string): Promise<void> {
 
     if (flags.sources.has("mobile")) {
       await setStage(runId, "Fetching App Store charts…");
-      const mobileResults = await appStoreTopGames(funnel, dbLog);
+      const mobileResults = await appStoreTopGames(funnel, dbLog, flags);
       mobileResults.forEach(tryAdd);
       await log(runId, "discovering", `App Store: ${candidates.filter((c) => c.type === "mobile").length} candidates after dedup`);
     }
@@ -1203,7 +1248,11 @@ export async function processLeadRun(runId: string): Promise<void> {
         funnel.reject(c.name, "Company name in blocklist");
         continue;
       }
-      if (isRejectedGenre(c.genre, c.gameName, c.description)) {
+      const genreExplicitlyRequested = flags.genreOverrides.size > 0 &&
+        [...flags.genreOverrides].some((g) =>
+          c.genre.toLowerCase().includes(g) || c.gameName.toLowerCase().includes(g)
+        );
+      if (!genreExplicitlyRequested && isRejectedGenre(c.genre, c.gameName, c.description)) {
         funnel.reject(c.name, `Rejected genre: "${c.genre}" title: "${c.gameName}"`);
         continue;
       }
