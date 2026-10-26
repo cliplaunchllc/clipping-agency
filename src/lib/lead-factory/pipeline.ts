@@ -704,7 +704,8 @@ async function steamTopGames(maxAgeMonths: number, rejections: RejectionRecord[]
       chartRank: null,
       ratingsCount: null,
       installCount: null,
-      lastUpdateDate: app.data.release_date?.date ?? null,
+      // SteamSpy top100in2weeks = proven active now; release date is too old to use as activity check
+      lastUpdateDate: new Date().toISOString(),
       updateProofUrl: storeLink,
       country: null,
       earnsRealMoney: false,
@@ -1389,6 +1390,11 @@ export async function processLeadRun(runId: string): Promise<void> {
     const typeOrder: Record<string, number> = { steam: 0, mobile: 1, roblox: 2 };
     candidates.sort((a, b) => (typeOrder[a.type] ?? 2) - (typeOrder[b.type] ?? 2));
 
+    const robloxCount = candidates.filter(c => c.type === "roblox").length;
+    const steamCount  = candidates.filter(c => c.type === "steam").length;
+    const mobileCount = candidates.filter(c => c.type === "mobile").length;
+    await log(runId, "researching", `Starting enrichment: ${candidates.length} candidates (roblox=${robloxCount} steam=${steamCount} mobile=${mobileCount})`);
+
     let savedCount = 0;
     const toProcess = candidates.slice(0, Math.min(candidates.length, run.count * 8));
 
@@ -1402,10 +1408,12 @@ export async function processLeadRun(runId: string): Promise<void> {
     } | null;
 
     async function enrichOne(c: Candidate): Promise<EnrichedResult> {
-      // Source-type gate (double-check after hard filter, in case of mixed batches)
       if (!flags.sources.has(c.type as "roblox" | "steam" | "mobile")) return null;
       const scored = scoreCandidate(c);
-      if (scored.grade === "F") return null;
+      if (scored.grade === "F") {
+        rejections.push({ name: c.name, reason: `Grade F — activityVerified=${scored.activityVerified} genrePasses=${scored.genrePasses} lastUpdate=${c.lastUpdateDate ?? "null"}`, source: c.type });
+        return null;
+      }
 
       const ownSite = !isDomainBlocked(c.website) ? c.website : null;
 
@@ -1469,7 +1477,10 @@ export async function processLeadRun(runId: string): Promise<void> {
         }
       }
 
-      if (!c.contacts.email) return null; // email required for every lead
+      if (!c.contacts.email) {
+        rejections.push({ name: c.name, reason: `No email found (website=${c.website.slice(0, 60)})`, source: c.type });
+        return null;
+      }
 
       // ── Named contact + funding (parallel, 15s combined deadline) ────────────
       const domainForEnrich = ownSite ? extractDomain(ownSite) : null;
