@@ -9,5 +9,5 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["src/worker/**/*", "src/lib/**/*"]
+  "include": ["src/worker/**/*", "src/lib/**/*", "scripts/**/*"]
 }
