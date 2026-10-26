@@ -983,6 +983,7 @@ interface ITunesLookupResult {
   sellerName?:                       string;
   artistName?:                       string;
   sellerUrl?:                        string;
+  supportUrl?:                       string;
   description?:                      string;
   currentVersionReleaseDate?:        string;
   releaseDate?:                      string;
@@ -1128,7 +1129,7 @@ async function appStoreTopGames(
     }
 
     const storeLink  = detail?.trackViewUrl ?? `https://apps.apple.com/us/app/id${appId}`;
-    const rawSeller  = detail?.sellerUrl ?? null;
+    const rawSeller  = detail?.sellerUrl ?? detail?.supportUrl ?? null;
     const ownWebsite = rawSeller && !isOwnWebsiteBlocked(rawSeller) ? rawSeller : null;
 
     const { email: descEmail, generic: descGeneric } = extractEmail(desc);
