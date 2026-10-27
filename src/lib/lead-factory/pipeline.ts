@@ -129,6 +129,7 @@ class Funnel {
     if (r.includes("platform") || r.includes("domain"))        return "platform-domain";
     if (r.includes("Grade F"))                                  return "low-score";
     if (r.includes("coming_soon"))                              return "unreleased";
+    if (r.includes("funding") || r.includes("investor"))       return "no-funding";
     return "other";
   }
 
@@ -260,16 +261,29 @@ function isActivityStale(lastUpdateDate: string | null, maxDays: number): boolea
 
 const EMAIL_RE = /\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g;
 
+// Free/social email domains — keep the email but always mark generic
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "ymail.com",
+  "hotmail.com", "hotmail.co.uk", "outlook.com", "live.com", "msn.com",
+  "icloud.com", "me.com", "mac.com", "proton.me", "protonmail.com",
+  "aol.com", "mail.com", "zoho.com",
+]);
+
 function classifyEmail(raw: string): { email: string; generic: boolean } | null {
   const m = raw.match(/^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/);
   if (!m) return null;
   const prefix = m[1].toLowerCase();
   const domain = m[2].toLowerCase();
-  // Reject emails on blocked domains (gmail, discord, etc.)
-  if (isDomainBlocked("https://" + domain)) return null;
-  // Never accept fabricated emails
-  if (!raw.includes("@")) return null;
-  const generic = GENERIC_EMAIL_PREFIXES.has(prefix) ||
+  // Hard-reject non-email domains (discord, social, cloud infra etc.) but NOT free email
+  const hardReject = new Set([
+    "discord.com", "discord.gg", "twitter.com", "x.com", "instagram.com",
+    "facebook.com", "youtube.com", "tiktok.com", "twitch.tv", "reddit.com",
+    "linkedin.com", "github.com", "amazonaws.com", "azurewebsites.net",
+    "herokuapp.com", "cloudfront.net",
+  ]);
+  if (hardReject.has(domain)) return null;
+  const isFreeEmail = FREE_EMAIL_DOMAINS.has(domain);
+  const generic = isFreeEmail || GENERIC_EMAIL_PREFIXES.has(prefix) ||
     [...GENERIC_EMAIL_PREFIXES].some((p) => prefix.startsWith(p + ".") || prefix.startsWith(p + "_"));
   return { email: raw.toLowerCase(), generic };
 }
