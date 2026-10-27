@@ -309,7 +309,7 @@ async function scrapePageForEmail(url: string): Promise<{ email: string | null; 
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": SCRAPE_UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.5" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) return { email: null, generic: false };
     const reader = res.body?.getReader();
@@ -544,7 +544,8 @@ function parseCriteria(raw: string | null): CriteriaFlags {
     sources = new Set(["roblox", "steam", "mobile"] as const);
   }
 
-  const requireFunding = /\b(vc.backed|vc funded|venture.backed|venture funded|investor.backed|investor funded|seed funded|series [abc] funded)\b/.test(t);
+  // Only trigger requireFunding on very explicit phrases to avoid false positives
+  const requireFunding = /\b(must be vc.backed|must be investor.backed|investor.backed only|vc.backed only|only vc.backed|only investor.backed|series [abc] funded only)\b/.test(t);
   const requireEmail   = /\b(must have email|with email|has email|email only|only.*email|include.*email|email required|need email|needs email|have an email)\b/.test(t);
 
   const requireCountries: Set<string> | null = (() => {
