@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Sidebar from "@/components/shared/Sidebar";
 import AgencySettings from "@/components/agency/AgencySettings";
 
 export default async function AgencySettingsPage() {
@@ -35,24 +34,19 @@ export default async function AgencySettingsPage() {
   const sessionIsTeamMember = (session.user as { isTeamMember?: boolean }).isTeamMember ?? false;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={dbIsTeamMember} />
-      <main className="flex-1 overflow-y-auto ml-56">
-        <AgencySettings
-          userName={currentUser?.name ?? session.user.name ?? ""}
-          email={currentUser?.email ?? session.user.email ?? ""}
-          currentUserId={session.user.id}
-          mustChangePassword={session.user.mustChangePassword ?? false}
-          isTeamMember={dbIsTeamMember}
-          needsSessionRefresh={sessionIsTeamMember !== dbIsTeamMember}
-          initialInviteCode={inviteCodeSetting?.value ?? null}
-          initialTeam={teamMembers.map((m) => ({
-            ...m,
-            teamRole: m.teamRole ?? null,
-            createdAt: m.createdAt.toISOString(),
-          }))}
-        />
-      </main>
-    </div>
+    <AgencySettings
+      userName={currentUser?.name ?? session.user.name ?? ""}
+      email={currentUser?.email ?? session.user.email ?? ""}
+      currentUserId={session.user.id}
+      mustChangePassword={session.user.mustChangePassword ?? false}
+      isTeamMember={dbIsTeamMember}
+      needsSessionRefresh={sessionIsTeamMember !== dbIsTeamMember}
+      initialInviteCode={inviteCodeSetting?.value ?? null}
+      initialTeam={teamMembers.map((m) => ({
+        ...m,
+        teamRole: m.teamRole ?? null,
+        createdAt: m.createdAt.toISOString(),
+      }))}
+    />
   );
 }

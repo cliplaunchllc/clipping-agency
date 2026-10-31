@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Sidebar from "@/components/shared/Sidebar";
 import ClientDetail from "@/components/agency/ClientDetail";
 
 export default async function AgencyClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -51,12 +50,5 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
     loginUser: client.users[0] ? { id: client.users[0].id, email: client.users[0].email } : null,
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
-      <main className="flex-1 overflow-y-auto ml-56">
-        <ClientDetail client={serialized} />
-      </main>
-    </div>
-  );
+  return <ClientDetail client={serialized} />;
 }

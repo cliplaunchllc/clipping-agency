@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Sidebar from "@/components/shared/Sidebar";
 import SopsDashboard from "@/components/shared/SopsDashboard";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +17,10 @@ export default async function AgencySopsPage() {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={isTeamMember} />
-      <main className="flex-1 overflow-y-auto ml-56">
-        <SopsDashboard
-          initialSops={sops.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() }))}
-          canEdit={!isTeamMember}
-          teamRole={isTeamMember ? teamRole : null}
-        />
-      </main>
-    </div>
+    <SopsDashboard
+      initialSops={sops.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() }))}
+      canEdit={!isTeamMember}
+      teamRole={isTeamMember ? teamRole : null}
+    />
   );
 }

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/shared/Sidebar";
 import {
   ExternalLink, ChevronDown, ChevronLeft,
   Activity, CalendarDays, ChevronRight,
@@ -59,8 +58,6 @@ interface OngoingReport {
 }
 
 interface Props {
-  userName: string;
-  isTeamMember: boolean;
   clients: AnyRecord[];
   allClients: AnyRecord[];
   clips: AnyRecord[];
@@ -88,7 +85,7 @@ function getClientStatus(cFull: AnyRecord): ClientStatus {
   return "needs attention";
 }
 
-export default function AgencyDashboard({ userName, isTeamMember, clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
+export default function AgencyDashboard({ clients, allClients, clips: initialClips, pendingClientUsers = [] }: Props) {
   const router = useRouter();
   const [allClips] = useState<AnyRecord[]>(initialClips);
   const [selectedClientId, setSelectedClientId] = useState("all");
@@ -140,11 +137,6 @@ export default function AgencyDashboard({ userName, isTeamMember, clients, allCl
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-      <Sidebar role="agency" userName={userName} isTeamMember={isTeamMember} />
-      <main className="flex-1 overflow-y-auto ml-56">
-
-
         <div className="max-w-7xl mx-auto px-8 py-8">
 
           {/* ── OVERVIEW ──────────────────────────────────────────────── */}
@@ -1331,7 +1323,5 @@ export default function AgencyDashboard({ userName, isTeamMember, clients, allCl
 
 
         </div>
-      </main>
-    </div>
   );
 }

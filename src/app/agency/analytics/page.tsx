@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Sidebar from "@/components/shared/Sidebar";
 import AgencyAnalytics from "@/components/agency/AgencyAnalytics";
 
 export default async function AgencyAnalyticsPage() {
@@ -38,12 +37,5 @@ export default async function AgencyAnalyticsPage() {
     }],
   }));
 
-  return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <Sidebar role="agency" userName={session.user.name ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
-      <main className="flex-1 overflow-y-auto ml-56">
-        <AgencyAnalytics submissions={serialized} />
-      </main>
-    </div>
-  );
+  return <AgencyAnalytics submissions={serialized} />;
 }

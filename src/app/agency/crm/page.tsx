@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Sidebar from "@/components/shared/Sidebar";
 import CrmDashboard from "@/components/agency/CrmDashboard";
 
 export default async function CrmPage() {
@@ -23,12 +22,5 @@ export default async function CrmPage() {
     updatedAt: l.updatedAt.toISOString(),
   }));
 
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar role="agency" userName={session.user.name ?? session.user.email ?? "Agency"} isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false} />
-      <main className="ml-56 flex-1 min-h-screen" style={{ background: "var(--bg-base)" }}>
-        <CrmDashboard initialLeads={serialized} />
-      </main>
-    </div>
-  );
+  return <CrmDashboard initialLeads={serialized} />;
 }

@@ -110,8 +110,6 @@ export default async function AgencyPage() {
 
   return (
     <AgencyDashboard
-      userName={session.user.name ?? "Agency"}
-      isTeamMember={(session.user as { isTeamMember?: boolean }).isTeamMember ?? false}
       clients={serializedClients}
       allClients={allClientsList}
       clips={serializedClips}
