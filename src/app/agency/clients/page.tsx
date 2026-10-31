@@ -7,13 +7,23 @@ export default async function AgencyClientsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const clients = await prisma.client.findMany({
-    include: {
-      users: { where: { role: "clipper" }, select: { id: true } },
-      _count: { select: { clips: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [clients, clipCounts] = await Promise.all([
+    prisma.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        logoUrl: true,
+        archivedAt: true,
+        createdAt: true,
+        users: { where: { role: "clipper" }, select: { id: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.clip.groupBy({ by: ["clientId"], _count: { id: true } }),
+  ]);
+
+  const clipCountMap = new Map(clipCounts.map((r) => [r.clientId, r._count.id]));
 
   const serialized = clients.map((c) => ({
     id: c.id,
@@ -22,7 +32,7 @@ export default async function AgencyClientsPage() {
     logoUrl: c.logoUrl ?? null,
     archivedAt: c.archivedAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
-    _count: c._count,
+    _count: { clips: clipCountMap.get(c.id) ?? 0 },
     users: c.users,
   }));
 

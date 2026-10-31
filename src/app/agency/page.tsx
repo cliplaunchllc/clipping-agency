@@ -7,7 +7,7 @@ export default async function AgencyPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [clients, clips, pendingClientUsers] = await Promise.all([
+  const [clients, clips, pendingClientUsers, viewsAgg] = await Promise.all([
     prisma.client.findMany({
       include: {
         _count: { select: { clips: true } },
@@ -18,21 +18,32 @@ export default async function AgencyPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.clip.findMany({
-      include: {
-        clipper: { include: { user: true } },
-        client: true,
-        subAccount: true,
+      select: {
+        id: true,
+        url: true,
+        views: true,
+        likes: true,
+        comments: true,
+        shares: true,
+        saves: true,
+        submittedAt: true,
+        clientId: true,
+        client: { select: { name: true } },
+        clipper: { select: { user: { select: { name: true, email: true } } } },
+        subAccount: { select: { platform: true, handle: true } },
       },
       orderBy: { submittedAt: "desc" },
+      take: 500,
     }),
     prisma.user.findMany({
       where: { role: "client", status: "pending" },
       select: { id: true, name: true, email: true, status: true, clientId: true },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.clip.aggregate({ _sum: { views: true } }),
   ]);
 
-  const totalViews = clips.reduce((acc, c) => acc + Number(c.views), 0);
+  const totalViews = Number(viewsAgg._sum.views ?? 0);
 
   const serializedClips = clips.map((c) => ({
     id: c.id,
@@ -46,7 +57,7 @@ export default async function AgencyPage() {
     submittedAt: c.submittedAt.toISOString(),
     clientId: c.clientId,
     client: { name: c.client.name },
-    clipper: { name: c.clipper.user.name ?? c.clipper.user.email },
+    clipper: { name: c.clipper.user.name ?? c.clipper.user.email ?? "" },
     subAccount: { platform: c.subAccount.platform, handle: c.subAccount.handle },
   }));
 

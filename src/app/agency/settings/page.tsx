@@ -7,18 +7,6 @@ export default async function AgencySettingsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  // Ensure the current user (the admin visiting settings) is never a team member
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { isTeamMember: false },
-  });
-
-  // Auto-migrate: all other agency users should be team members
-  await prisma.user.updateMany({
-    where: { role: "agency", id: { not: session.user.id }, isTeamMember: false },
-    data: { isTeamMember: true },
-  });
-
   const [currentUser, teamMembers, inviteCodeSetting] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, isTeamMember: true } }),
     prisma.user.findMany({
@@ -27,6 +15,9 @@ export default async function AgencySettingsPage() {
       orderBy: { createdAt: "asc" },
     }),
     prisma.siteSetting.findUnique({ where: { key: "admin_invite_code" } }),
+    // Ensure the current user is never a team member, and auto-migrate others — fire in parallel with reads
+    prisma.user.update({ where: { id: session.user.id }, data: { isTeamMember: false } }),
+    prisma.user.updateMany({ where: { role: "agency", id: { not: session.user.id }, isTeamMember: false }, data: { isTeamMember: true } }),
   ]);
 
   // Use the fresh DB value — the JWT may be stale
