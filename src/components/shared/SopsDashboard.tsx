@@ -19,9 +19,9 @@ interface Props {
   teamRole?: string | null;
 }
 
-const RED = "#FF3B3B";
-const RED_BG = "rgba(255,59,59,0.08)";
-const RED_BORDER = "rgba(255,59,59,0.25)";
+const RED = "#FF5A5F";
+const RED_BG = "rgba(255,90,95,0.08)";
+const RED_BORDER = "rgba(255,90,95,0.25)";
 
 // Role-based SOP categories — map 1:1 with team payment roles
 const ROLE_CATEGORIES = [

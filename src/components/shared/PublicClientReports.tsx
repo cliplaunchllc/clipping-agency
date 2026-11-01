@@ -11,7 +11,7 @@ import { PlatformIcon, PLATFORM_COLORS, PLATFORM_LABELS } from "./PlatformIcon";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ICON_COLOR = "#FF3B3B";
+const ICON_COLOR = "#FF5A5F";
 
 const DONUT_GRADIENTS: Record<string, [string, string]> = {
   tiktok:    ["#FF7070", "#AA0000"],
@@ -87,8 +87,8 @@ function wow(curr: number, prev: number | null | undefined, inverted = false) {
 
 function TrendIcon({ positive, neutral, size = 9 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
-  if (positive) return <TrendingUp size={size} color="#3DFFA2" />;
-  return <TrendingDown size={size} color="#FF3B3B" />;
+  if (positive) return <TrendingUp size={size} color="#3DD68C" />;
+  return <TrendingDown size={size} color="#FF5A5F" />;
 }
 
 function WowBadge({ curr, prev, inverted, grey }: {
@@ -113,7 +113,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
     );
   }
 
-  const color = neutral ? "var(--text-tertiary)" : positive ? "#3DFFA2" : "#FF3B3B";
+  const color = neutral ? "var(--text-tertiary)" : positive ? "#3DD68C" : "#FF5A5F";
   return (
     <span className="label-mono flex items-center gap-0.5" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} size={9} />
@@ -144,8 +144,8 @@ function BudgetBar({ paidOut, budgetRemaining }: { paidOut: number; budgetRemain
           className="h-full rounded-full transition-all duration-700"
           style={{
             width: `${paidPct}%`,
-            background: "linear-gradient(90deg, #FF3B3B 0%, #FF6B3B 100%)",
-            boxShadow: "0 0 8px rgba(255,59,59,0.4)",
+            background: "linear-gradient(90deg, #FF5A5F 0%, #FF6B3B 100%)",
+            boxShadow: "0 0 8px rgba(255,90,95,0.4)",
           }}
         />
       </div>
@@ -198,7 +198,7 @@ function DonutChart({ report }: { report: Report }) {
   if (total === 0) return null;
 
   return (
-    <div className="rounded-xl p-5" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl p-5" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 0 1px rgba(255,90,95,0.04), 0 4px 20px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-4">
         <BarChart2 size={13} color={ICON_COLOR} />
         <p className="label-mono">Platform Breakdown</p>
@@ -285,7 +285,7 @@ function StatCard({
         {icon}
         <p className="label-mono leading-tight">{label}</p>
       </div>
-      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "#3DFFA2" }}>{value}</p>
+      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "#3DD68C" }}>{value}</p>
       {sublabel && <p className="metric-sub mb-1.5">{sublabel}</p>}
       <WowBadge curr={curr} prev={prev} inverted={inverted} grey={grey} />
     </div>
@@ -344,15 +344,15 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
           rel="noopener noreferrer"
           className="flex items-center justify-between w-full rounded-xl px-4 py-3 group"
           style={{
-            background: "linear-gradient(135deg, rgba(255,59,59,0.1) 0%, rgba(255,59,59,0.04) 100%)",
-            border: "1px solid rgba(255,59,59,0.2)",
+            background: "linear-gradient(135deg, rgba(255,90,95,0.1) 0%, rgba(255,90,95,0.04) 100%)",
+            border: "1px solid rgba(255,90,95,0.2)",
             textDecoration: "none",
             transition: "border-color 0.2s, background 0.2s",
           }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,59,59,0.15)" }}>
-              <Link2 size={13} color="#FF3B3B" />
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,90,95,0.15)" }}>
+              <Link2 size={13} color="#FF5A5F" />
             </div>
             <div className="min-w-0">
               <p className="label-mono mb-0.5" style={{ color: "var(--accent)" }}>Live Campaign Tracker</p>
@@ -360,7 +360,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
               <p className="metric-sub truncate">{report.campaignLink}</p>
             </div>
           </div>
-          <ExternalLink size={14} color="#FF3B3B" className="flex-shrink-0 ml-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <ExternalLink size={14} color="#FF5A5F" className="flex-shrink-0 ml-3 opacity-60 group-hover:opacity-100 transition-opacity" />
         </a>
       )}
 
@@ -368,7 +368,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
       <div>
         <div className="flex items-center gap-2 mb-3">
           <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
-          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
+          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,214,140,0.08)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.2)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
           <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -400,9 +400,9 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
             {[
-              { icon: <Eye size={13} color="#3DFFA2" />, label: "Total Views", value: fmt(allTime.views) },
-              { icon: <DollarSign size={13} color="#3DFFA2" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
-              { icon: <CheckCircle size={13} color="#3DFFA2" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
+              { icon: <Eye size={13} color="#3DD68C" />, label: "Total Views", value: fmt(allTime.views) },
+              { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
+              { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { icon: <Target size={13} color={ICON_COLOR} />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
               { icon: <Target size={13} color="var(--warning)" />, label: "Effective CPM", value: (() => { const cpm = report.cumEffectiveCpm ?? report.effectiveCpm ?? allReports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null; return cpm != null ? fmtCurrency(cpm) : "—"; })() },
@@ -410,7 +410,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
-                <p className="metric-value text-xl leading-none" style={{ color: "#3DFFA2" }}>{c.value}</p>
+                <p className="metric-value text-xl leading-none" style={{ color: "#3DD68C" }}>{c.value}</p>
               </div>
             ))}
           </div>
@@ -426,7 +426,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
                       <PlatformIcon platform={p.key} size={11} />
                       <span className="label-mono" style={{ color: PLATFORM_COLORS[p.key] ?? "var(--text-secondary)" }}>{p.label}</span>
                     </div>
-                    <p className="metric-value text-lg leading-none" style={{ color: "#3DFFA2" }}>{fmt(p.value)}</p>
+                    <p className="metric-value text-lg leading-none" style={{ color: "#3DD68C" }}>{fmt(p.value)}</p>
                     <p className="metric-sub mt-0.5">{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"}</p>
                   </div>
                 ))}
@@ -480,10 +480,10 @@ function CopyLinkButton() {
       className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
       style={{
         background: copied
-          ? "rgba(61,255,162,0.12)"
-          : "linear-gradient(135deg, rgba(255,59,59,0.15) 0%, rgba(255,59,59,0.08) 100%)",
-        border: `1px solid ${copied ? "rgba(61,255,162,0.35)" : "rgba(255,59,59,0.25)"}`,
-        color: copied ? "#3DFFA2" : "#FF3B3B",
+          ? "rgba(61,214,140,0.12)"
+          : "linear-gradient(135deg, rgba(255,90,95,0.15) 0%, rgba(255,90,95,0.08) 100%)",
+        border: `1px solid ${copied ? "rgba(61,214,140,0.35)" : "rgba(255,90,95,0.25)"}`,
+        color: copied ? "#3DD68C" : "#FF5A5F",
         fontFamily: "var(--font-display)",
         transition: "all 0.2s ease",
         transform: copied ? "scale(0.97)" : "scale(1)",
@@ -570,9 +570,9 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
             ) : (
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "linear-gradient(135deg, rgba(255,59,59,0.2) 0%, rgba(255,59,59,0.08) 100%)", border: "1px solid rgba(255,59,59,0.25)" }}
+                style={{ background: "linear-gradient(135deg, rgba(255,90,95,0.2) 0%, rgba(255,90,95,0.08) 100%)", border: "1px solid rgba(255,90,95,0.25)" }}
               >
-                <BarChart2 size={16} color="#FF3B3B" />
+                <BarChart2 size={16} color="#FF5A5F" />
               </div>
             )}
             <div className="min-w-0">
@@ -605,14 +605,14 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                 {[
                   { icon: <Target size={13} color={ICON_COLOR} />, label: "Total Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest week" },
                   { icon: <Scissors size={13} color="var(--text-secondary)" />, label: "Total Submissions", value: allTime.clipsSubmitted.toString(), sub: "all time" },
-                  { icon: <CheckCircle size={13} color="#3DFFA2" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
-                  { icon: <Eye size={13} color="#3DFFA2" />, label: "Approved Views", value: fmt(allTime.views), sub: "cumulative" },
-                  { icon: <DollarSign size={13} color="#3DFFA2" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time" },
+                  { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
+                  { icon: <Eye size={13} color="#3DD68C" />, label: "Approved Views", value: fmt(allTime.views), sub: "cumulative" },
+                  { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time" },
                   { icon: <Wallet size={13} color="var(--warning)" />, label: "Budget Since Last Fri", value: fmtCurrency(budgetSinceFri2), sub: "this cycle" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
                     <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono leading-tight" style={{ fontSize: "0.63rem" }}>{s.label}</p></div>
-                    <p className="metric-value text-xl mb-0.5" style={{ color: "#3DFFA2" }}>{s.value}</p>
+                    <p className="metric-value text-xl mb-0.5" style={{ color: "#3DD68C" }}>{s.value}</p>
                     <p className="metric-sub" style={{ fontSize: "0.6rem" }}>{s.sub}</p>
                   </div>
                 ))}
@@ -629,7 +629,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                     if (latest.pct == null) return null;
                     const positive = latest.pct >= 0;
                     return (
-                      <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "#3DFFA2" : ICON_COLOR }}>
+                      <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "#3DD68C" : ICON_COLOR }}>
                         {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {positive ? "+" : ""}{latest.pct}% this week
                       </span>
@@ -640,8 +640,8 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                   <AreaChart data={chartData} margin={{ top: 28, right: 5, bottom: 5, left: 5 }}>
                     <defs>
                       <linearGradient id="pubViewsGradRed" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.28} />
-                        <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.03} />
+                        <stop offset="0%" stopColor="#FF5A5F" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#FF5A5F" stopOpacity={0.03} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -662,23 +662,23 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                         if (pct != null) lines.push([`${pct >= 0 ? "+" : ""}${pct}%`, "vs prev week"]);
                         return lines;
                       }}
-                      contentStyle={{ background: "rgba(15,10,20,0.95)", border: "1px solid rgba(255,59,59,0.25)", borderRadius: 8 }}
+                      contentStyle={{ background: "rgba(15,10,20,0.95)", border: "1px solid rgba(255,90,95,0.25)", borderRadius: 8 }}
                       labelStyle={{ color: "#8A93A6" }}
                       itemStyle={{ color: "#FF6B6B" }}
                     />
                     <Area
                       type="monotone"
                       dataKey="views"
-                      stroke="#FF3B3B"
+                      stroke="#FF5A5F"
                       strokeWidth={2}
                       fill="url(#pubViewsGradRed)"
                       dot={(props: any) => {
                         const { cx, cy, payload, index } = props;
                         const positive = (payload.pct ?? 0) >= 0;
-                        const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B";
+                        const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF5A5F";
                         return (
                           <g key={index}>
-                            <circle cx={cx} cy={cy} r={3.5} fill="#FF3B3B" strokeWidth={0} />
+                            <circle cx={cx} cy={cy} r={3.5} fill="#FF5A5F" strokeWidth={0} />
                             {payload.pct != null && (
                               <text x={cx} y={cy - 12} textAnchor="middle" fill={labelColor} fontSize={9} fontWeight="700">
                                 {positive ? "+" : ""}{payload.pct}%
@@ -687,7 +687,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                           </g>
                         );
                       }}
-                      activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: "#FF5A5F", strokeWidth: 0 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -703,7 +703,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                 const prev = prevReport(idx);
                 const viewsPct = prev && prev.totalViews > 0 ? Math.round(((report.totalViews - prev.totalViews) / prev.totalViews) * 100) : null;
                 return (
-                  <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: `1px solid ${expanded ? "rgba(255,59,59,0.15)" : "rgba(255,255,255,0.08)"}`, transition: "border-color 0.2s ease" }}>
+                  <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: `1px solid ${expanded ? "rgba(255,90,95,0.15)" : "rgba(255,255,255,0.08)"}`, transition: "border-color 0.2s ease" }}>
                     <button className="w-full flex items-center justify-between px-5 py-4 text-left" onClick={() => toggleExpand(report.id)}>
                       <div>
                         <p className="text-sm font-bold mb-1" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
@@ -720,7 +720,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                           {viewsPct != null && (
                             <>
                               <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                              <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: viewsPct >= 0 ? "#3DFFA2" : ICON_COLOR }}>
+                              <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: viewsPct >= 0 ? "#3DD68C" : ICON_COLOR }}>
                                 {viewsPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                                 {viewsPct >= 0 ? "+" : ""}{viewsPct}% views
                               </span>

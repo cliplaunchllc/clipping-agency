@@ -123,7 +123,7 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all nav-link"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-full text-sm nav-link transition-colors"
               style={{
                 color: isActive ? "var(--accent)" : "var(--text-secondary)",
                 background: isActive ? "var(--accent-muted)" : "transparent",
@@ -165,7 +165,7 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
         </div>
         <a
           href="/api/auth/logout"
-          className="block w-full text-xs py-2 px-3 rounded-xl text-left transition-colors nav-link"
+          className="block w-full text-xs py-2 px-3 rounded-full text-left transition-colors nav-link"
           style={{ color: "var(--text-tertiary)" }}
         >
           Sign out

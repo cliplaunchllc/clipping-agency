@@ -38,13 +38,13 @@ export default function TopClipsChart({ clips }: Props) {
     pct: f,
   }));
 
-  const rankColors = ["#3DFFA2", "#a78bfa", "#FB923C", "var(--text-tertiary)", "var(--text-tertiary)"];
+  const rankColors = ["#3DD68C", "#a78bfa", "#FB923C", "var(--text-tertiary)", "var(--text-tertiary)"];
 
   return (
     <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <Trophy size={14} color="#3DFFA2" />
+        <Trophy size={14} color="#3DD68C" />
         <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
           Top {top10.length} Clips by Views
         </h2>
@@ -82,12 +82,12 @@ export default function TopClipsChart({ clips }: Props) {
               const barHeight = Math.max(4, (clip.views / maxViews) * BAR_H);
               const isTop3 = i < 3;
               const barColor = i === 0
-                ? "linear-gradient(to top, #FF3B3B, #FF6060)"
+                ? "linear-gradient(to top, #FF5A5F, #FF6060)"
                 : i === 1
-                  ? "linear-gradient(to top, rgba(255,59,59,0.75), rgba(255,96,96,0.75))"
+                  ? "linear-gradient(to top, rgba(255,90,95,0.75), rgba(255,96,96,0.75))"
                   : i === 2
-                    ? "linear-gradient(to top, rgba(255,59,59,0.55), rgba(255,96,96,0.55))"
-                    : "linear-gradient(to top, rgba(255,59,59,0.32), rgba(255,96,96,0.32))";
+                    ? "linear-gradient(to top, rgba(255,90,95,0.55), rgba(255,96,96,0.55))"
+                    : "linear-gradient(to top, rgba(255,90,95,0.32), rgba(255,96,96,0.32))";
 
               return (
                 <div key={clip.id} className="flex-1 flex flex-col" style={{ height: BAR_H + THUMB_H, alignItems: "center", justifyContent: "flex-end" }}>

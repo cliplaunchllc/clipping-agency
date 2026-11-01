@@ -156,7 +156,7 @@ function CommissionCalculator({
                 style={{ ...inputStyle, width: "100%" }}
               />
               <div className="flex items-center px-3 py-1.5 rounded-lg"
-                style={{ background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)" }}>
+                style={{ background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.2)" }}>
                 <span className="text-xs font-semibold tabular-nums" style={{ color: "rgb(61,255,162)" }}>
                   {fmtUSD(c.commission)}
                 </span>
@@ -451,7 +451,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                 const overdue = (days ?? 1) <= 0;
                 return (
                   <span key={m.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
-                    style={{ background: overdue ? "rgba(255,59,59,0.12)" : "rgba(245,158,11,0.12)", color: overdue ? "rgb(255,90,90)" : "#f59e0b", border: `1px solid ${overdue ? "rgba(255,59,59,0.3)" : "rgba(245,158,11,0.3)"}` }}>
+                    style={{ background: overdue ? "rgba(255,90,95,0.12)" : "rgba(245,158,11,0.12)", color: overdue ? "rgb(255,90,90)" : "#f59e0b", border: `1px solid ${overdue ? "rgba(255,90,95,0.3)" : "rgba(245,158,11,0.3)"}` }}>
                     <CalendarClock size={10} />
                     {m.name}
                     <span style={{ opacity: 0.75 }}>
@@ -749,7 +749,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                                 {paidThisCycle ? (
                                   <div className="flex items-center gap-1">
                                     <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium"
-                                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.25)", color: "rgb(61,255,162)" }}>
+                                      style={{ background: "rgba(61,214,140,0.1)", border: "1px solid rgba(61,214,140,0.25)", color: "rgb(61,255,162)" }}>
                                       <BadgeCheck size={11} /> Paid
                                     </span>
                                     <button onClick={() => markPaid(m, true)} disabled={markingId === m.id}

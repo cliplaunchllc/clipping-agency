@@ -71,16 +71,16 @@ export default function ClientAnalytics({ submissions, clientName }: { submissio
             <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
               <defs>
                 <linearGradient id="clientAnalyticsGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#FF5A5F" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#FF5A5F" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                 tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; }} />
               <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmt} width={50} />
-              <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
-              <Area type="monotone" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#clientAnalyticsGrad)" dot={false} />
+              <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF5A5F" }} />
+              <Area type="monotone" dataKey="views" stroke="#FF5A5F" strokeWidth={2} fill="url(#clientAnalyticsGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
@@ -96,8 +96,8 @@ export default function ClientAnalytics({ submissions, clientName }: { submissio
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
               <XAxis dataKey="platform" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmt} width={45} />
-              <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
-              <Bar dataKey="views" fill="#FF3B3B" radius={[4, 4, 0, 0]} />
+              <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF5A5F" }} />
+              <Bar dataKey="views" fill="#FF5A5F" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

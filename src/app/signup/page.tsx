@@ -79,8 +79,8 @@ function SignupForm() {
   };
 
   const accentColor = role === "client" ? "var(--accent)" : "var(--success)";
-  const accentBg = role === "client" ? "var(--accent-muted)" : "rgba(61,255,162,0.1)";
-  const accentBorder = role === "client" ? "rgba(167,139,250,0.2)" : "rgba(61,255,162,0.2)";
+  const accentBg = role === "client" ? "var(--accent-muted)" : "rgba(61,214,140,0.1)";
+  const accentBorder = role === "client" ? "rgba(167,139,250,0.2)" : "rgba(61,214,140,0.2)";
 
   if (status === "loading" || status === "authenticated") {
     return <div className="min-h-screen" style={{ background: "var(--bg-elevated)" }} />;

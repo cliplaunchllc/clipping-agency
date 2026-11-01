@@ -18,9 +18,9 @@ const ONGOING_COLOR = "var(--accent)";
 const STATUS_META = {
   Strong: {
     label: "Strong",
-    bg: "rgba(61,255,162,0.15)",
+    bg: "rgba(61,214,140,0.15)",
     text: "var(--success)",
-    border: "rgba(61,255,162,0.3)",
+    border: "rgba(61,214,140,0.3)",
   },
   Normal: {
     label: "Normal",
@@ -30,9 +30,9 @@ const STATUS_META = {
   },
   NeedsAttention: {
     label: "Needs Attention",
-    bg: "rgba(255,59,59,0.15)",
+    bg: "rgba(255,90,95,0.15)",
     text: "var(--accent)",
-    border: "rgba(255,59,59,0.3)",
+    border: "rgba(255,90,95,0.3)",
   },
 } as const;
 
@@ -57,9 +57,9 @@ function contactDays(lastContactedAt: string | null | undefined): number {
   return Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000);
 }
 function contactColor(days: number): { bg: string; border: string; text: string; label: string; pulse: boolean } {
-  if (days <= 2) return { bg: "rgba(61,255,162,0.12)", border: "rgba(61,255,162,0.3)", text: "var(--success)", label: days === 0 ? "Today" : days === 1 ? "Yesterday" : "2 days ago", pulse: false };
+  if (days <= 2) return { bg: "rgba(61,214,140,0.12)", border: "rgba(61,214,140,0.3)", text: "var(--success)", label: days === 0 ? "Today" : days === 1 ? "Yesterday" : "2 days ago", pulse: false };
   if (days <= 3) return { bg: "rgba(245,185,74,0.12)", border: "rgba(245,185,74,0.35)", text: "var(--warning)", label: `${days}d ago`, pulse: false };
-  return { bg: "rgba(255,59,59,0.12)", border: "rgba(255,59,59,0.35)", text: "var(--accent)", label: days >= 999 ? "Never messaged" : `${days}d ago`, pulse: true };
+  return { bg: "rgba(255,90,95,0.12)", border: "rgba(255,90,95,0.35)", text: "var(--accent)", label: days >= 999 ? "Never messaged" : `${days}d ago`, pulse: true };
 }
 
 interface Report {
@@ -411,7 +411,7 @@ function CalendarPicker({ value, onChange, label, highlightDows }: {
                       onClick={() => selectDay(day)}
                       className="w-8 h-8 rounded-lg text-xs font-medium transition-colors"
                       style={{
-                        background: isSelected(day) ? "var(--accent)" : isToday(day) ? "rgba(255,59,59,0.12)" : isHL ? "var(--accent-muted)" : "transparent",
+                        background: isSelected(day) ? "var(--accent)" : isToday(day) ? "rgba(255,90,95,0.12)" : isHL ? "var(--accent-muted)" : "transparent",
                         color: isSelected(day) ? "var(--text-on-accent)" : isToday(day) ? "var(--accent)" : isHL ? ONGOING_COLOR : "var(--text-primary)",
                       }}
                     >
@@ -673,7 +673,7 @@ function ReportPreview({ report, prev, allClientReports = [] }: { report: Report
       <div>
         <div className="flex items-center gap-2 mb-3">
           <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
-          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.18)", fontSize: "0.65rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
+          <span className="label-mono px-2 py-0.5 rounded-md" style={{ background: "rgba(61,214,140,0.08)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.18)", fontSize: "0.65rem", letterSpacing: "0.08em" }}>THIS WEEK</span>
           <span className="h-px flex-1" style={{ background: "var(--border-subtle)" }} />
         </div>
         <div className="grid grid-cols-3 gap-3 mb-4">
@@ -936,9 +936,9 @@ function WeeklyReportForm({
 
       {/* ── THIS WEEK divider ── */}
       <div className="flex items-center gap-2">
-        <span className="h-px flex-1" style={{ background: "rgba(61,255,162,0.25)" }} />
-        <span className="px-2 py-0.5 rounded-md text-xs font-bold tracking-widest" style={{ background: "rgba(61,255,162,0.08)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.2)" }}>THIS WEEK</span>
-        <span className="h-px flex-1" style={{ background: "rgba(61,255,162,0.25)" }} />
+        <span className="h-px flex-1" style={{ background: "rgba(61,214,140,0.25)" }} />
+        <span className="px-2 py-0.5 rounded-md text-xs font-bold tracking-widest" style={{ background: "rgba(61,214,140,0.08)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.2)" }}>THIS WEEK</span>
+        <span className="h-px flex-1" style={{ background: "rgba(61,214,140,0.25)" }} />
       </div>
 
       {/* Week dates */}
@@ -1656,7 +1656,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(61,255,162,0.12)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.25)" }}>Weekly (F)</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(61,214,140,0.12)", color: WEEKLY_COLOR, border: "1px solid rgba(61,214,140,0.25)" }}>Weekly (F)</span>
                 <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{editingReport ? "Edit Report" : "New Weekly Report"}</h2>
               </div>
               <button onClick={() => { setShowWeeklyForm(false); setEditingReport(null); setPendingFormState(null); }}>
@@ -1776,9 +1776,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 onClick={() => setOverviewFilter(f)}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 style={{
-                  background: overviewFilter === f ? "rgba(255,59,59,0.12)" : "var(--border-subtle)",
+                  background: overviewFilter === f ? "rgba(255,90,95,0.12)" : "var(--border-subtle)",
                   color: overviewFilter === f ? "var(--accent)" : "var(--text-tertiary)",
-                  border: `1px solid ${overviewFilter === f ? "rgba(255,59,59,0.25)" : "transparent"}`,
+                  border: `1px solid ${overviewFilter === f ? "rgba(255,90,95,0.25)" : "transparent"}`,
                 }}
               >
                 {f === "all" ? "All Clients" : "Needs Attention"}
@@ -1798,13 +1798,13 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
             <>
               <style>{`
                 @keyframes contactPulse {
-                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.4); }
-                  50% { box-shadow: 0 0 0 4px rgba(255,59,59,0.1); }
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,90,95,0.4); }
+                  50% { box-shadow: 0 0 0 4px rgba(255,90,95,0.1); }
                 }
                 .contact-btn-pulse { animation: contactPulse 2s ease-in-out infinite; }
                 @keyframes cardGlowAttn {
-                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.08); }
-                  50% { box-shadow: 0 0 18px 4px rgba(255,59,59,0.12); }
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(255,90,95,0.08); }
+                  50% { box-shadow: 0 0 18px 4px rgba(255,90,95,0.12); }
                 }
                 .card-attn { animation: cardGlowAttn 2.4s ease-in-out infinite; }
                 .client-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
@@ -1823,7 +1823,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                   className={`client-card text-left rounded-2xl cursor-pointer${isOverdue ? " card-attn" : ""}`}
                   style={{
                     background: "var(--bg-surface)",
-                    border: `1px solid ${isOverdue ? "rgba(255,59,59,0.22)" : latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,59,59,0.14)" : "var(--border-subtle)"}`,
+                    border: `1px solid ${isOverdue ? "rgba(255,90,95,0.22)" : latestOngoingStatus === "NeedsAttention" || missingFlags.length > 0 ? "rgba(255,90,95,0.14)" : "var(--border-subtle)"}`,
                   }}
                 >
                   {/* Top row: identity + status + contact */}
@@ -1855,7 +1855,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                     {/* Contact button top-right */}
                     <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {isContacting ? (
-                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.2)" }}>
+                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.2)" }}>
                           <input
                             type="date"
                             value={contactDate}
@@ -1867,7 +1867,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                             onClick={() => contactDate && updateLastContacted(client.id, contactDate)}
                             disabled={!contactDate}
                             className="text-xs px-3 py-1.5 rounded-lg font-semibold flex-shrink-0"
-                            style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)", opacity: !contactDate ? 0.5 : 1 }}>
+                            style={{ background: "rgba(61,214,140,0.15)", border: "1px solid rgba(61,214,140,0.3)", color: "var(--success)", opacity: !contactDate ? 0.5 : 1 }}>
                             Save
                           </button>
                           <button onClick={() => setContactingClientId(null)} className="text-sm flex-shrink-0 px-1" style={{ color: "var(--text-tertiary)" }}>×</button>
@@ -1941,9 +1941,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               disabled={copyingLink}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
-                background: linkCopied ? "rgba(61,255,162,0.12)" : "var(--border-subtle)",
+                background: linkCopied ? "rgba(61,214,140,0.12)" : "var(--border-subtle)",
                 color: linkCopied ? "var(--success)" : "var(--text-tertiary)",
-                border: `1px solid ${linkCopied ? "rgba(61,255,162,0.3)" : "transparent"}`,
+                border: `1px solid ${linkCopied ? "rgba(61,214,140,0.3)" : "transparent"}`,
                 opacity: copyingLink ? 0.6 : 1,
               }}
             >
@@ -2016,9 +2016,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               onClick={() => setClientTab("weekly")}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
-                background: clientTab === "weekly" ? `rgba(61,255,162,0.12)` : "transparent",
+                background: clientTab === "weekly" ? `rgba(61,214,140,0.12)` : "transparent",
                 color: clientTab === "weekly" ? WEEKLY_COLOR : "var(--text-tertiary)",
-                border: clientTab === "weekly" ? `1px solid rgba(61,255,162,0.25)` : "1px solid transparent",
+                border: clientTab === "weekly" ? `1px solid rgba(61,214,140,0.25)` : "1px solid transparent",
               }}
             >
               <Calendar size={13} />
@@ -2038,7 +2038,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                 <button
                   onClick={() => { setShowWeeklyForm(true); setEditingReport(null); setPendingFormState(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: WEEKLY_COLOR, border: "1px solid rgba(61,255,162,0.2)" }}
+                  style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: WEEKLY_COLOR, border: "1px solid rgba(61,214,140,0.2)" }}
                 >
                   <Plus size={12} />New Weekly Report
                 </button>
@@ -2091,8 +2091,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <defs>
                           <linearGradient id="weeklyViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3DFFA2" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#3DFFA2" stopOpacity={0} />
+                            <stop offset="0%" stopColor="#3DD68C" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#3DD68C" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -2104,9 +2104,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           formatter={(v, name) => name === "views" ? fmt(Number(v ?? 0)) : fmtCurrency(Number(v ?? 0))}
                           contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }}
                           labelStyle={{ color: "#8A93A6" }}
-                          itemStyle={{ color: "#3DFFA2" }}
+                          itemStyle={{ color: "#3DD68C" }}
                         />
-                        <Area type="monotone" dataKey="views" stroke="#3DFFA2" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DFFA2", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DFFA2", strokeWidth: 0 }} />
+                        <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                     <p className="metric-sub mt-3 text-center">
@@ -2159,12 +2159,12 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                               return (
                                 <div key={report.id} className="rounded-lg overflow-hidden" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
                                   <div className="flex items-center gap-4 px-4 py-3">
-                                    <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(61,255,162,0.15)" }} />
+                                    <div className="w-px self-stretch flex-shrink-0 rounded-full" style={{ background: "rgba(61,214,140,0.15)" }} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                         <span className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{fmtWeek(report.weekStartDate, report.weekEndDate)}</span>
                                         {report.published ? (
-                                          <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)" }}>Published</span>
+                                          <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(61,214,140,0.12)", color: "var(--success)" }}>Published</span>
                                         ) : (
                                           <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)" }}>Draft</span>
                                         )}
@@ -2184,7 +2184,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                                       </button>
                                       {confirmDeleteId === report.id ? (
                                         <div className="flex items-center gap-1">
-                                          <button onClick={() => handleWeeklyDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.3)" }}>
+                                          <button onClick={() => handleWeeklyDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.3)" }}>
                                             {deletingId === report.id ? "…" : "Confirm"}
                                           </button>
                                           <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>
@@ -2275,8 +2275,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <defs>
                           <linearGradient id="ongoingViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0} />
+                            <stop offset="0%" stopColor="#FF5A5F" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#FF5A5F" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -2284,8 +2284,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
                         <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                           tickFormatter={(v: number) => fmt(v)} width={46} />
-                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
-                        <Area type="monotone" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#FF3B3B", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
+                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF5A5F" }} />
+                        <Area type="monotone" dataKey="views" stroke="#FF5A5F" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#FF5A5F", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF5A5F", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                     <p className="metric-sub mt-3 text-center">
@@ -2355,7 +2355,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                             </button>
                             {confirmDeleteId === report.id ? (
                               <div className="flex items-center gap-1">
-                                <button onClick={() => handleOngoingDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.3)" }}>
+                                <button onClick={() => handleOngoingDelete(report.id)} className="px-2 py-1.5 rounded-lg text-xs font-semibold" style={{ color: "var(--danger)", background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.3)" }}>
                                   {deletingId === report.id ? "…" : "Confirm"}
                                 </button>
                                 <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: "var(--text-tertiary)", background: "var(--border-subtle)" }}>

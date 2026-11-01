@@ -81,11 +81,11 @@ function CheckSection({ section }: { section: Section }) {
   const done = checked.size === section.steps.length && section.steps.length > 0;
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: `1px solid ${done ? "rgba(61,255,162,0.25)" : "var(--border-default)"}`, transition: "border-color 0.3s" }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: `1px solid ${done ? "rgba(61,214,140,0.25)" : "var(--border-default)"}`, transition: "border-color 0.3s" }}>
       <button className="w-full flex items-center justify-between px-5 py-4 text-left" onClick={() => setOpen((o) => !o)}>
         <div className="flex items-center gap-3">
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{section.title}</p>
-          {done && <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(61,255,162,0.1)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.25)" }}>Done</span>}
+          {done && <span className="label-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(61,214,140,0.1)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.25)" }}>Done</span>}
         </div>
         <div className="flex items-center gap-2">
           <span className="label-mono">{checked.size}/{section.steps.length}</span>
@@ -99,7 +99,7 @@ function CheckSection({ section }: { section: Section }) {
             return (
               <button key={step.id} onClick={() => toggle(step.id)}
                 className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-all"
-                style={{ background: isDone ? "rgba(61,255,162,0.04)" : "transparent" }}>
+                style={{ background: isDone ? "rgba(61,214,140,0.04)" : "transparent" }}>
                 <div className="mt-0.5 flex-shrink-0" style={{ color: isDone ? "var(--success)" : "var(--text-tertiary)" }}>
                   {isDone ? <CheckCircle2 size={15} /> : <Circle size={15} />}
                 </div>
@@ -150,7 +150,7 @@ export default function ReportingGuide() {
 
       {tab === "mw" && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
+          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(255,90,95,0.06)", border: "1px solid rgba(255,90,95,0.15)" }}>
             <CalendarDays size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
             <p className="metric-sub">
               File every <strong style={{ color: "var(--text-primary)" }}>Tuesday</strong> for every active client. Brief and high-level — 2 to 3 sentences max.
@@ -162,7 +162,7 @@ export default function ReportingGuide() {
 
       {tab === "weekly" && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.15)" }}>
+          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.15)" }}>
             <Clock size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
             <p className="metric-sub">
               File every <strong style={{ color: "var(--text-primary)" }}>Friday</strong> for every active client. Detailed — full breakdown of the week.

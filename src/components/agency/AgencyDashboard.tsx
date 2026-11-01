@@ -142,13 +142,13 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
           {true && <>
             <style>{`
               @keyframes liveOrbPulse {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(61,255,162,0.7), 0 0 8px rgba(61,255,162,0.5); }
-                50%      { box-shadow: 0 0 0 5px rgba(61,255,162,0.12), 0 0 18px rgba(61,255,162,0.5); }
+                0%, 100% { box-shadow: 0 0 0 0 rgba(61,214,140,0.7), 0 0 8px rgba(61,214,140,0.5); }
+                50%      { box-shadow: 0 0 0 5px rgba(61,214,140,0.12), 0 0 18px rgba(61,214,140,0.5); }
               }
               .live-orb { animation: liveOrbPulse 2.4s ease-in-out infinite; }
               @keyframes paidBarGlow {
-                0%, 100% { box-shadow: 0 0 6px 1px rgba(255,59,59,0.55); }
-                50%      { box-shadow: 0 0 14px 3px rgba(255,59,59,0.85); }
+                0%, 100% { box-shadow: 0 0 6px 1px rgba(255,90,95,0.55); }
+                50%      { box-shadow: 0 0 14px 3px rgba(255,90,95,0.85); }
               }
               .paid-bar { animation: paidBarGlow 1.8s ease-in-out infinite; }
               @keyframes warnBarGlow {
@@ -156,14 +156,14 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                 50%      { box-shadow: 0 0 12px 3px rgba(245,185,74,0.8); }
               }
               @keyframes successBarGlow {
-                0%, 100% { box-shadow: 0 0 5px 1px rgba(61,255,162,0.45); }
-                50%      { box-shadow: 0 0 12px 3px rgba(61,255,162,0.75); }
+                0%, 100% { box-shadow: 0 0 5px 1px rgba(61,214,140,0.45); }
+                50%      { box-shadow: 0 0 12px 3px rgba(61,214,140,0.75); }
               }
               .warn-bar    { animation: warnBarGlow    2s ease-in-out infinite; }
               .success-bar { animation: successBarGlow 2s ease-in-out infinite; }
               @keyframes contactOverduePulse {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.5); }
-                50%      { box-shadow: 0 0 0 3px rgba(255,59,59,0.1); }
+                0%, 100% { box-shadow: 0 0 0 0 rgba(255,90,95,0.5); }
+                50%      { box-shadow: 0 0 0 3px rgba(255,90,95,0.1); }
               }
               .contact-overdue { animation: contactOverduePulse 2s ease-in-out infinite; }
               @keyframes statCardGlow {
@@ -176,8 +176,8 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
               .client-row { transition: background 0.15s ease, box-shadow 0.15s ease; }
               .client-row:hover { background: rgba(255,255,255,0.025) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
               @keyframes attnCardPulse {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0.12); }
-                50%      { box-shadow: 0 0 16px 4px rgba(255,59,59,0.15); }
+                0%, 100% { box-shadow: 0 0 0 0 rgba(255,90,95,0.12); }
+                50%      { box-shadow: 0 0 16px 4px rgba(255,90,95,0.15); }
               }
               .attn-card { animation: attnCardPulse 2.5s ease-in-out infinite; }
               /* Futuristic sub-font treatment */
@@ -331,10 +331,10 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                           {/* Active clients */}
                           <div style={card} className="stat-card px-6 py-5">
                             <div className="flex items-center gap-2 mb-3">
-                              <div className="live-orb w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)" }} />
+                              <div className="live-orb w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--danger)", boxShadow: "0 0 8px rgba(255,90,95,0.6)" }} />
                               <p className="label-mono">Active Clients</p>
                             </div>
-                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DFFA2" }}>{activeClients.length}</p>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{activeClients.length}</p>
                             <p className="metric-sub">{prelaunchClients.length} pre-launch</p>
                           </div>
                           {/* Revenue managed */}
@@ -343,7 +343,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               <DollarSign size={11} style={{ color: "var(--danger)" }} />
                               <p className="label-mono">Active Revenue Managed</p>
                             </div>
-                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DFFA2" }}>{fmtCurrency(totalRevenue)}</p>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{fmtCurrency(totalRevenue)}</p>
                             <p className="metric-sub">total budgets across {budgetClients.length} campaign{budgetClients.length !== 1 ? "s" : ""}</p>
                           </div>
                           {/* Total views */}
@@ -352,7 +352,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               <Eye size={11} style={{ color: "var(--danger)" }} />
                               <p className="label-mono">Total Views</p>
                             </div>
-                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DFFA2" }}>{fmt(totalViews)}</p>
+                            <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{fmt(totalViews)}</p>
                             <p className="metric-sub">cumulative across all active clients</p>
                           </div>
                           {/* Needs attention */}
@@ -407,8 +407,8 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               const pctUsed = Math.round(c.pct);
                               const bColor = barColor(c.pct);
                               const bClass = barClass(c.pct);
-                              const urgencyBg = c.pct >= 60 ? "rgba(61,255,162,0.04)" : c.pct >= 30 ? "rgba(245,185,74,0.04)" : "rgba(255,59,59,0.06)";
-                              const urgencyBorder = c.pct >= 60 ? "rgba(61,255,162,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.15)" : "rgba(255,59,59,0.18)";
+                              const urgencyBg = c.pct >= 60 ? "rgba(61,214,140,0.04)" : c.pct >= 30 ? "rgba(245,185,74,0.04)" : "rgba(255,90,95,0.06)";
+                              const urgencyBorder = c.pct >= 60 ? "rgba(61,214,140,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.15)" : "rgba(255,90,95,0.18)";
                               return (
                                 <div key={c.id} className="rounded-xl px-4 py-3.5" style={{ background: urgencyBg, border: `1px solid ${urgencyBorder}` }}>
                                   {/* Row 1: rank + logo + name + % badge */}
@@ -419,7 +419,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                       {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-full h-full object-cover" /> : c.name[0]}
                                     </div>
                                     <p className="text-sm font-semibold flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{c.name}</p>
-                                    <span className="flex-shrink-0 tabular-nums font-bold text-xs px-2 py-0.5 rounded-md" style={{ background: c.pct >= 60 ? "rgba(61,255,162,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.12)" : "rgba(255,59,59,0.15)", color: bColor, letterSpacing: "0.04em" }}>
+                                    <span className="flex-shrink-0 tabular-nums font-bold text-xs px-2 py-0.5 rounded-md" style={{ background: c.pct >= 60 ? "rgba(61,214,140,0.12)" : c.pct >= 30 ? "rgba(245,185,74,0.12)" : "rgba(255,90,95,0.15)", color: bColor, letterSpacing: "0.04em" }}>
                                       {pctUsed}%
                                     </span>
                                   </div>
@@ -462,8 +462,8 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               const isOverdue = row.days >= 4;
                               const isWarn = row.days === 3;
                               const dotColor = isOverdue ? "var(--danger)" : isWarn ? "var(--warning)" : "var(--success)";
-                              const badgeBg = isOverdue ? "rgba(255,59,59,0.1)" : isWarn ? "rgba(245,185,74,0.1)" : "rgba(61,255,162,0.1)";
-                              const badgeBorder = isOverdue ? "rgba(255,59,59,0.3)" : isWarn ? "rgba(245,185,74,0.3)" : "rgba(61,255,162,0.25)";
+                              const badgeBg = isOverdue ? "rgba(255,90,95,0.1)" : isWarn ? "rgba(245,185,74,0.1)" : "rgba(61,214,140,0.1)";
+                              const badgeBorder = isOverdue ? "rgba(255,90,95,0.3)" : isWarn ? "rgba(245,185,74,0.3)" : "rgba(61,214,140,0.25)";
                               const label = row.days >= 999 ? "Never" : row.days === 0 ? "Today" : row.days === 1 ? "Yesterday" : `${row.days}d ago`;
                               return (
                                 <div key={row.id} className="flex items-center gap-4 px-6 py-4">
@@ -519,8 +519,8 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                   {r.logoUrl ? <img src={r.logoUrl} alt="" className="w-full h-full object-cover" /> : r.name[0]}
                                 </div>
                                 <p className="text-sm font-semibold flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{r.name}</p>
-                                {r.campaignName && <span className="label-mono px-2 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(255,59,59,0.08)", color: "var(--danger)", border: "1px solid rgba(255,59,59,0.18)" }}>{r.campaignName}</span>}
-                                <span className="tabular-nums font-bold text-sm flex-shrink-0" style={{ color: "#3DFFA2" }}>{fmt(r.views)}</span>
+                                {r.campaignName && <span className="label-mono px-2 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(255,90,95,0.08)", color: "var(--danger)", border: "1px solid rgba(255,90,95,0.18)" }}>{r.campaignName}</span>}
+                                <span className="tabular-nums font-bold text-sm flex-shrink-0" style={{ color: "#3DD68C" }}>{fmt(r.views)}</span>
                               </button>
                             ))}
                           </div>
@@ -568,18 +568,18 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                           const lastContactedAt = cFull?.lastContactedAt as string | null | undefined;
                           const contactDaysAgo = lastContactedAt ? Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000) : 999;
                           const contactBadge = contactDaysAgo <= 2
-                            ? { bg: "rgba(61,255,162,0.1)", border: "rgba(61,255,162,0.25)", text: "var(--success)", label: contactDaysAgo === 0 ? "Today" : contactDaysAgo === 1 ? "Yesterday" : "2d ago" }
+                            ? { bg: "rgba(61,214,140,0.1)", border: "rgba(61,214,140,0.25)", text: "var(--success)", label: contactDaysAgo === 0 ? "Today" : contactDaysAgo === 1 ? "Yesterday" : "2d ago" }
                             : contactDaysAgo <= 3
                             ? { bg: "rgba(245,185,74,0.1)", border: "rgba(245,185,74,0.3)", text: "var(--warning)", label: `${contactDaysAgo}d ago` }
-                            : { bg: "rgba(255,59,59,0.1)", border: "rgba(255,59,59,0.3)", text: "var(--danger)", label: contactDaysAgo >= 999 ? "Never" : `${contactDaysAgo}d ago` };
+                            : { bg: "rgba(255,90,95,0.1)", border: "rgba(255,90,95,0.3)", text: "var(--danger)", label: contactDaysAgo >= 999 ? "Never" : `${contactDaysAgo}d ago` };
                           const latestWeekly  = cFull?.campaignReports?.[0]  as CampaignReport | undefined;
                           const latestOngoing = cFull?.ongoingReports?.[0]   as OngoingReport  | undefined;
                           const isExpanded    = expandedClientIds.has(c.id);
 
                           const statusDot   = status === "good" ? "var(--success)" : status === "just launched" ? "#60a5fa" : status === "neutral" ? "var(--warning)" : "var(--danger)";
                           const statusLabel = status === "good" ? "Good" : status === "just launched" ? "Just Launched" : status === "neutral" ? "Neutral" : "Needs Attention";
-                          const statusBg    = status === "good" ? "rgba(61,255,162,0.1)" : status === "just launched" ? "rgba(96,165,250,0.1)" : status === "neutral" ? "rgba(245,185,74,0.1)" : "rgba(255,59,59,0.1)";
-                          const statusBorder= status === "good" ? "rgba(61,255,162,0.25)" : status === "just launched" ? "rgba(96,165,250,0.25)" : status === "neutral" ? "rgba(245,185,74,0.25)" : "rgba(255,59,59,0.25)";
+                          const statusBg    = status === "good" ? "rgba(61,214,140,0.1)" : status === "just launched" ? "rgba(96,165,250,0.1)" : status === "neutral" ? "rgba(245,185,74,0.1)" : "rgba(255,90,95,0.1)";
+                          const statusBorder= status === "good" ? "rgba(61,214,140,0.25)" : status === "just launched" ? "rgba(96,165,250,0.25)" : status === "neutral" ? "rgba(245,185,74,0.25)" : "rgba(255,90,95,0.25)";
 
                           const allReports: Array<{ kind: "daily" | "weekly"; date: string; report: OngoingReport | CampaignReport }> = [
                             ...(cFull?.ongoingReports ?? []).map((r: OngoingReport) => ({ kind: "daily" as const, date: r.date, report: r })),
@@ -646,7 +646,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                   {cFull?.campaignTrackerUrl && (
                                     <a href={cFull.campaignTrackerUrl} target="_blank" rel="noopener noreferrer"
                                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
-                                      style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
+                                      style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,90,95,0.2)", color: "var(--accent)" }}>
                                       <ExternalLink size={11} /> Tracker
                                     </a>
                                   )}
@@ -785,7 +785,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                     {/* Active campaign banner */}
                     {activeCampaign && (
                       <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl"
-                        style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.18)" }}>
+                        style={{ background: "rgba(255,90,95,0.06)", border: "1px solid rgba(255,90,95,0.18)" }}>
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--accent)", boxShadow: "0 0 6px var(--accent)" }} />
                         <span className="label-mono" style={{ color: "var(--text-tertiary)" }}>LIVE CAMPAIGN</span>
                         <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{activeCampaign.name}</span>
@@ -800,7 +800,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                     {/* Latest weekly banner */}
                     {latestWeekly && (
                       <div className="mb-5 rounded-xl px-4 py-3.5 flex items-center gap-4"
-                        style={{ background: "linear-gradient(135deg, rgba(61,255,162,0.07) 0%, rgba(61,255,162,0.03) 100%)", border: "1px solid var(--accent-border)" }}>
+                        style={{ background: "linear-gradient(135deg, rgba(61,214,140,0.07) 0%, rgba(61,214,140,0.03) 100%)", border: "1px solid var(--accent-border)" }}>
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
                           <CalendarDays size={15} style={{ color: "var(--accent)" }} />
@@ -914,7 +914,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                             },
                             {
                               label: "Clips Posted", value: totalSubmissions.toLocaleString(), sub: "all time",
-                              color: "#3DFFA2", Icon: Scissors,
+                              color: "#3DD68C", Icon: Scissors,
                               badge: wowBadge(r0?.totalSubmissions ?? 0, r1?.totalSubmissions),
                             },
                             {
@@ -933,7 +933,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                       <p className="label-mono">{s.label}</p>
                                     </div>
                                     <div className="flex items-end gap-2 mb-0.5">
-                                      <p className="text-2xl metric-value" style={{ color: "#3DFFA2" }}>{s.value}</p>
+                                      <p className="text-2xl metric-value" style={{ color: "#3DD68C" }}>{s.value}</p>
                                       {s.badge}
                                     </div>
                                     <p className="metric-sub">{s.sub}</p>
@@ -950,7 +950,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                     </span>
                                   </div>
                                   <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                                    <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.6)", transition: "width 0.6s ease" }} />
+                                    <div className="paid-bar h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,90,95,0.6)", transition: "width 0.6s ease" }} />
                                   </div>
                                   <div className="flex items-center justify-between mt-2">
                                     <p className="metric-sub">{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
@@ -1191,8 +1191,8 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                                     })()}
                                                     {[
                                                       { key: "weeklySummary",   label: "Weekly Summary",      value: wr.weeklySummary,   border: "var(--accent-border)",  bg: "var(--accent-muted)",        color: "var(--accent)" },
-                                                      { key: "whatsWorking",    label: "What's Working",      value: wr.whatsWorking,    border: "rgba(61,255,162,0.3)",  bg: "var(--success-bg)",          color: "var(--success)" },
-                                                      { key: "whatsNotWorking", label: "What's Not Working",  value: wr.whatsNotWorking, border: "rgba(255,59,59,0.2)",   bg: "rgba(255,59,59,0.06)",       color: "var(--danger)" },
+                                                      { key: "whatsWorking",    label: "What's Working",      value: wr.whatsWorking,    border: "rgba(61,214,140,0.3)",  bg: "var(--success-bg)",          color: "var(--success)" },
+                                                      { key: "whatsNotWorking", label: "What's Not Working",  value: wr.whatsNotWorking, border: "rgba(255,90,95,0.2)",   bg: "rgba(255,90,95,0.06)",       color: "var(--danger)" },
                                                       { key: "nextWeekFocus",   label: "Next Week Focus",     value: wr.nextWeekFocus,   border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",          color: "var(--warning)" },
                                                     ].filter((s) => s.value).map((s) => (
                                                       <div key={s.key} className="rounded-lg p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>

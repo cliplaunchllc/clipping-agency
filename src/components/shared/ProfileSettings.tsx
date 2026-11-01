@@ -100,8 +100,8 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
   }
 
   const accentColor = role === "client" ? "var(--accent)" : "var(--success)";
-  const accentBg = role === "client" ? "rgba(167,139,250,0.12)" : "rgba(61,255,162,0.12)";
-  const accentBorder = role === "client" ? "rgba(167,139,250,0.25)" : "rgba(61,255,162,0.25)";
+  const accentBg = role === "client" ? "rgba(167,139,250,0.12)" : "rgba(61,214,140,0.12)";
+  const accentBorder = role === "client" ? "rgba(167,139,250,0.25)" : "rgba(61,214,140,0.25)";
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg-elevated)" }}>
@@ -147,9 +147,9 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
               {profileMsg && (
                 <div className="text-xs px-4 py-3 rounded-xl"
                   style={{
-                    background: profileMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
+                    background: profileMsg.type === "ok" ? "rgba(61,214,140,0.08)" : "rgba(255,71,87,0.1)",
                     color: profileMsg.type === "ok" ? "var(--success)" : "var(--danger)",
-                    border: `1px solid ${profileMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
+                    border: `1px solid ${profileMsg.type === "ok" ? "rgba(61,214,140,0.2)" : "rgba(255,71,87,0.2)"}`,
                   }}>
                   {profileMsg.text}
                 </div>
@@ -220,9 +220,9 @@ export default function ProfileSettings({ role, userName: initialName, userEmail
               {passwordMsg && (
                 <div className="text-xs px-4 py-3 rounded-xl"
                   style={{
-                    background: passwordMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
+                    background: passwordMsg.type === "ok" ? "rgba(61,214,140,0.08)" : "rgba(255,71,87,0.1)",
                     color: passwordMsg.type === "ok" ? "var(--success)" : "var(--danger)",
-                    border: `1px solid ${passwordMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
+                    border: `1px solid ${passwordMsg.type === "ok" ? "rgba(61,214,140,0.2)" : "rgba(255,71,87,0.2)"}`,
                   }}>
                   {passwordMsg.text}
                 </div>

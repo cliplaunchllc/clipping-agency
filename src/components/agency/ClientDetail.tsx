@@ -320,7 +320,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 onClick={() => bannerFileRef.current?.click()}
                 disabled={savingBanner}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
-                style={{ background: savingBanner ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${bannerSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: bannerSaved ? "var(--success)" : "var(--accent)" }}
+                style={{ background: savingBanner ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${bannerSaved ? "rgba(61,214,140,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: bannerSaved ? "var(--success)" : "var(--accent)" }}
               >
                 {bannerSaved ? <><Check size={12} /> Uploaded</> : savingBanner ? "Uploading…" : <><Upload size={12} /> Upload Image</>}
               </button>
@@ -335,7 +335,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                     if (res.ok) setBannerUrl("");
                   }}
                   className="px-3 py-2 rounded-lg text-xs font-semibold"
-                  style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--danger)" }}
+                  style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.2)", color: "var(--danger)" }}
                 >
                   Remove
                 </button>
@@ -392,7 +392,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                         <input type="number" value={editCampaignBudget} onChange={(e) => setEditCampaignBudget(e.target.value)} placeholder="Budget $" style={{ ...inputStyle, flex: 1 }} />
                         <button onClick={() => saveCampaignEdit(camp.id)}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
-                          style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)" }}>
+                          style={{ background: "rgba(61,214,140,0.15)", border: "1px solid rgba(61,214,140,0.3)", color: "var(--success)" }}>
                           <Check size={11} /> Save
                         </button>
                         <button onClick={() => setEditingCampaignId(null)} className="px-2 py-1.5 rounded-lg text-xs flex-shrink-0" style={{ color: "var(--text-tertiary)" }}>×</button>
@@ -462,7 +462,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 onClick={() => contractFileRef.current?.click()}
                 disabled={savingContract}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
-                style={{ background: savingContract ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${contractSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
+                style={{ background: savingContract ? "var(--border-subtle)" : "var(--accent-muted)", border: `1px solid ${contractSaved ? "rgba(61,214,140,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: contractSaved ? "var(--success)" : "var(--accent)" }}
               >
                 {contractSaved ? <><Check size={12} /> Uploaded</> : savingContract ? "Uploading…" : <><Upload size={12} /> Upload PDF</>}
               </button>
@@ -545,9 +545,9 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                 {loginMsg && (
                   <div className="text-xs px-3 py-2 rounded-lg"
                     style={{
-                      background: loginMsg.type === "ok" ? "rgba(61,255,162,0.08)" : "rgba(255,71,87,0.1)",
+                      background: loginMsg.type === "ok" ? "rgba(61,214,140,0.08)" : "rgba(255,71,87,0.1)",
                       color: loginMsg.type === "ok" ? "var(--success)" : "var(--danger)",
-                      border: `1px solid ${loginMsg.type === "ok" ? "rgba(61,255,162,0.2)" : "rgba(255,71,87,0.2)"}`,
+                      border: `1px solid ${loginMsg.type === "ok" ? "rgba(61,214,140,0.2)" : "rgba(255,71,87,0.2)"}`,
                     }}>
                     {loginMsg.text}
                   </div>
@@ -570,7 +570,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
               onClick={saveAllSettings}
               disabled={savingSettings}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: settingsSaved ? "rgba(61,255,162,0.15)" : "var(--accent-muted)", border: `1px solid ${settingsSaved ? "rgba(61,255,162,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: settingsSaved ? "var(--success)" : "var(--accent)", opacity: savingSettings ? 0.6 : 1 }}
+              style={{ background: settingsSaved ? "rgba(61,214,140,0.15)" : "var(--accent-muted)", border: `1px solid ${settingsSaved ? "rgba(61,214,140,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`, color: settingsSaved ? "var(--success)" : "var(--accent)", opacity: savingSettings ? 0.6 : 1 }}
             >
               {settingsSaved ? <><Check size={14} /> Settings Saved</> : savingSettings ? "Saving…" : <><Save size={14} /> Save Settings</>}
             </button>

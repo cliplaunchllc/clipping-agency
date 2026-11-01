@@ -1,7 +1,7 @@
 "use client";
 
 export const PLATFORM_COLORS: Record<string, string> = {
-  tiktok: "#FF3B3B",
+  tiktok: "#FF5A5F",
   instagram: "#FF8800",
   youtube: "#CC1A1A",
   twitter: "#5B9BD5",

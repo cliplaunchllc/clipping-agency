@@ -360,7 +360,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
               <button key={tab.id} onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left"
                 style={{
-                  color: activeTab === tab.id ? "#FF3B3B" : "var(--text-tertiary)",
+                  color: activeTab === tab.id ? "#FF5A5F" : "var(--text-tertiary)",
                   background: activeTab === tab.id ? "var(--accent-muted)" : "transparent",
                 }}>
                 <Icon size={15} />
@@ -387,9 +387,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <button onClick={handleSaveEmail} disabled={emailSaving || newEmail === currentEmail}
                     className="px-4 rounded-xl text-sm font-medium flex-shrink-0"
                     style={{
-                      background: emailSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.12)",
-                      border: `1px solid ${emailSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.25)"}`,
-                      color: emailSaved ? "#3DFFA2" : "#FF3B3B",
+                      background: emailSaved ? "rgba(61,214,140,0.15)" : "rgba(255,90,95,0.12)",
+                      border: `1px solid ${emailSaved ? "rgba(61,214,140,0.3)" : "rgba(255,90,95,0.25)"}`,
+                      color: emailSaved ? "#3DD68C" : "#FF5A5F",
                       opacity: emailSaving || newEmail === currentEmail ? 0.5 : 1,
                       cursor: emailSaving || newEmail === currentEmail ? "not-allowed" : "pointer",
                     }}>
@@ -401,8 +401,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
               </div>
               <div>
                 <label className="block text-xs mb-1.5" style={{ color: "var(--text-secondary)" }}>Role</label>
-                <div className="flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)" }}>
-                  <Shield size={14} color="#FF3B3B" />
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.2)" }}>
+                  <Shield size={14} color="#FF5A5F" />
                   <span className="text-sm" style={{ color: "var(--accent)" }}>Agency Admin</span>
                 </div>
               </div>
@@ -410,9 +410,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
               <button onClick={handleSave} disabled={nameSaving}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: saved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
-                  border: `1px solid ${saved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                  color: saved ? "#3DFFA2" : "#FF3B3B",
+                  background: saved ? "rgba(61,214,140,0.15)" : "rgba(255,90,95,0.15)",
+                  border: `1px solid ${saved ? "rgba(61,214,140,0.3)" : "rgba(255,90,95,0.3)"}`,
+                  color: saved ? "#3DD68C" : "#FF5A5F",
                   opacity: nameSaving ? 0.6 : 1,
                   cursor: nameSaving ? "not-allowed" : "pointer",
                 }}>
@@ -447,9 +447,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <button onClick={handleSaveSelfRole} disabled={selfRoleSaving}
                     className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
                     style={{
-                      background: selfRoleSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
-                      border: `1px solid ${selfRoleSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                      color: selfRoleSaved ? "#3DFFA2" : "#FF3B3B",
+                      background: selfRoleSaved ? "rgba(61,214,140,0.15)" : "rgba(255,90,95,0.15)",
+                      border: `1px solid ${selfRoleSaved ? "rgba(61,214,140,0.3)" : "rgba(255,90,95,0.3)"}`,
+                      color: selfRoleSaved ? "#3DD68C" : "#FF5A5F",
                       opacity: selfRoleSaving ? 0.6 : 1,
                       cursor: selfRoleSaving ? "not-allowed" : "pointer",
                     }}>
@@ -473,9 +473,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
               <button onClick={handleChangePassword} disabled={passwordSaving}
                 className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: passwordSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
-                  border: `1px solid ${passwordSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                  color: passwordSaved ? "#3DFFA2" : "#FF3B3B",
+                  background: passwordSaved ? "rgba(61,214,140,0.15)" : "rgba(255,90,95,0.15)",
+                  border: `1px solid ${passwordSaved ? "rgba(61,214,140,0.3)" : "rgba(255,90,95,0.3)"}`,
+                  color: passwordSaved ? "#3DD68C" : "#FF5A5F",
                   opacity: passwordSaving ? 0.6 : 1,
                   cursor: passwordSaving ? "not-allowed" : "pointer",
                 }}>
@@ -493,7 +493,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   {/* Preview */}
                   <div className="relative group">
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center"
-                      style={{ background: agencyLogo ? "transparent" : "rgba(255,59,59,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      style={{ background: agencyLogo ? "transparent" : "rgba(255,90,95,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
                       {agencyLogo ? (
                         <img src={agencyLogo} alt="Agency logo" className="w-full h-full object-cover" />
                       ) : (
@@ -505,7 +505,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <div className="space-y-2">
                     <button onClick={() => logoInputRef.current?.click()} disabled={logoSaving}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-                      style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)", opacity: logoSaving ? 0.6 : 1 }}>
+                      style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,90,95,0.2)", color: "var(--accent)", opacity: logoSaving ? 0.6 : 1 }}>
                       <Camera size={14} />
                       {logoSaving ? "Saving..." : agencyLogo ? "Change Logo" : "Upload Logo"}
                     </button>
@@ -533,7 +533,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                 <button
                   onClick={() => { setShowAddMember(true); setMemberError(""); }}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "var(--accent)" }}>
+                  style={{ background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.25)", color: "var(--accent)" }}>
                   <Plus size={14} />
                   Add Member
                 </button>
@@ -549,7 +549,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                       style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
                       {/* Avatar */}
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.25)" }}>
+                        style={{ background: "rgba(255,90,95,0.15)", border: "1px solid rgba(255,90,95,0.25)" }}>
                         <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
                           {(member.name ?? member.email)[0].toUpperCase()}
                         </span>
@@ -563,7 +563,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                           </span>
                           {isCurrentUser && (
                             <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ background: "rgba(61,255,162,0.12)", color: "var(--success)", border: "1px solid rgba(61,255,162,0.25)" }}>
+                              style={{ background: "rgba(61,214,140,0.12)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.25)" }}>
                               You
                             </span>
                           )}
@@ -617,8 +617,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                             title={member.isTeamMember ? "Team member (restricted access) — click to grant admin access" : "Admin access — click to restrict"}
                             className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all"
                             style={{
-                              background: member.isTeamMember ? "rgba(245,158,11,0.1)" : "rgba(61,255,162,0.1)",
-                              border: `1px solid ${member.isTeamMember ? "rgba(245,158,11,0.3)" : "rgba(61,255,162,0.3)"}`,
+                              background: member.isTeamMember ? "rgba(245,158,11,0.1)" : "rgba(61,214,140,0.1)",
+                              border: `1px solid ${member.isTeamMember ? "rgba(245,158,11,0.3)" : "rgba(61,214,140,0.3)"}`,
                               color: member.isTeamMember ? "#f59e0b" : "rgb(61,214,140)",
                             }}>
                             {member.isTeamMember ? "Team" : "Admin"}
@@ -678,8 +678,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                   <button onClick={handleAddMember} disabled={memberLoading}
                     className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                     style={{
-                      background: "rgba(255,59,59,0.15)",
-                      border: "1px solid rgba(255,59,59,0.3)",
+                      background: "rgba(255,90,95,0.15)",
+                      border: "1px solid rgba(255,90,95,0.3)",
                       color: "var(--accent)",
                       opacity: memberLoading ? 0.6 : 1,
                       cursor: memberLoading ? "not-allowed" : "pointer",
@@ -702,7 +702,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
 
                 {inviteCode && (
                   <div className="flex items-center gap-2 mb-3 px-4 py-3 rounded-xl"
-                    style={{ background: "rgba(255,59,59,0.05)", border: "1px solid rgba(255,59,59,0.15)" }}>
+                    style={{ background: "rgba(255,90,95,0.05)", border: "1px solid rgba(255,90,95,0.15)" }}>
                     <span className="flex-1 font-mono text-sm tracking-wider" style={{ color: "var(--text-primary)" }}>
                       {showInviteCode ? inviteCode : "•".repeat(inviteCode.length)}
                     </span>
@@ -728,9 +728,9 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     disabled={inviteCodeSaving || inviteCodeInput.trim() === inviteCode}
                     className="px-4 rounded-xl text-sm font-medium flex-shrink-0"
                     style={{
-                      background: inviteCodeSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.12)",
-                      border: `1px solid ${inviteCodeSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.25)"}`,
-                      color: inviteCodeSaved ? "#3DFFA2" : "#FF3B3B",
+                      background: inviteCodeSaved ? "rgba(61,214,140,0.15)" : "rgba(255,90,95,0.12)",
+                      border: `1px solid ${inviteCodeSaved ? "rgba(61,214,140,0.3)" : "rgba(255,90,95,0.25)"}`,
+                      color: inviteCodeSaved ? "#3DD68C" : "#FF5A5F",
                       opacity: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? 0.5 : 1,
                       cursor: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? "not-allowed" : "pointer",
                     }}>
@@ -758,7 +758,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{item.desc}</p>
                   </div>
                   <div className="w-10 h-5 rounded-full flex items-center cursor-pointer relative"
-                    style={{ background: "rgba(255,59,59,0.3)" }}>
+                    style={{ background: "rgba(255,90,95,0.3)" }}>
                     <div className="w-4 h-4 rounded-full absolute right-0.5"
                       style={{ background: "var(--accent-solid)" }} />
                   </div>
