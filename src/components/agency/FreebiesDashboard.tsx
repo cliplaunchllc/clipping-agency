@@ -6,7 +6,7 @@ import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink } from "lucide-
 export interface FreebieLink { id: string; label: string; url: string; order: number; }
 export interface FreebieAsset { id: string; label: string; url: string; order: number; }
 export interface FreebieItem {
-  id: string; name: string; description: string | null; type: string;
+  id: string; name: string; headerImageUrl: string | null; description: string | null; type: string;
   shareToken: string; order: number; links: FreebieLink[]; assets: FreebieAsset[];
   createdAt: string;
 }
@@ -80,7 +80,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
     setFreebies((prev) => prev.filter((f) => f.id !== id));
   }
 
-  async function updateFreebie(id: string, patch: Partial<Pick<FreebieItem, "name" | "description">>) {
+  async function updateFreebie(id: string, patch: Partial<Pick<FreebieItem, "name" | "headerImageUrl" | "description">>) {
     const res = await fetch(`/api/agency/freebies/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -168,7 +168,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
         </div>
         <button onClick={createFreebie} disabled={creating} style={btnStyle()} className="transition-opacity">
           <Plus size={13} />
-          {creating ? "Creating…" : `+ New ${itemLabel}`}
+          {creating ? "Creating…" : `New ${itemLabel}`}
         </button>
       </div>
 
@@ -191,6 +191,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
               onCopy={copy}
               onDelete={() => deleteFreebie(f.id)}
               onUpdateName={(name) => updateFreebie(f.id, { name })}
+              onUpdateHeaderImageUrl={(headerImageUrl) => updateFreebie(f.id, { headerImageUrl })}
               onUpdateDescription={(description) => updateFreebie(f.id, { description })}
               onAddLink={(label, url) => addLink(f.id, label, url)}
               onRemoveLink={(linkId) => removeLink(f.id, linkId)}
@@ -208,7 +209,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
 
 function FreebieCard({
   freebie, shareUrl, copied, onCopy,
-  onDelete, onUpdateName, onUpdateDescription,
+  onDelete, onUpdateName, onUpdateHeaderImageUrl, onUpdateDescription,
   onAddLink, onRemoveLink, onUpdateLink,
   onAddAsset, onRemoveAsset, onUpdateAsset,
 }: {
@@ -218,6 +219,7 @@ function FreebieCard({
   onCopy: (text: string, key: string) => void;
   onDelete: () => void;
   onUpdateName: (name: string) => void;
+  onUpdateHeaderImageUrl: (url: string) => void;
   onUpdateDescription: (desc: string) => void;
   onAddLink: (label: string, url: string) => void;
   onRemoveLink: (id: string) => void;
@@ -227,6 +229,7 @@ function FreebieCard({
   onUpdateAsset: (id: string, patch: { label?: string; url?: string }) => void;
 }) {
   const [name, setName] = useState(freebie.name);
+  const [headerImageUrl, setHeaderImageUrl] = useState(freebie.headerImageUrl ?? "");
   const [description, setDescription] = useState(freebie.description ?? "");
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
@@ -267,6 +270,26 @@ function FreebieCard({
       <div className="mb-4 px-3 py-2 rounded-md text-xs font-mono truncate"
         style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: "var(--text-tertiary)" }}>
         {shareUrl}
+      </div>
+
+      {/* Header image */}
+      <div className="mb-4">
+        <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Header image URL <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(optional — shown at top of public page)</span></label>
+        <div className="flex gap-2 items-center">
+          <input
+            style={{ ...inputStyle, flex: 1 }}
+            value={headerImageUrl}
+            onChange={(e) => setHeaderImageUrl(e.target.value)}
+            onBlur={() => headerImageUrl !== (freebie.headerImageUrl ?? "") && onUpdateHeaderImageUrl(headerImageUrl)}
+            placeholder="https://…"
+          />
+          {headerImageUrl && (
+            <img src={headerImageUrl} alt="" className="w-12 h-8 object-cover rounded flex-shrink-0"
+              style={{ border: "1px solid var(--border-subtle)" }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Description */}

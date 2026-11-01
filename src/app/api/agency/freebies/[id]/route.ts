@@ -13,6 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data: {
       ...(body.name !== undefined && { name: body.name }),
+      ...(body.headerImageUrl !== undefined && { headerImageUrl: body.headerImageUrl || null }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.order !== undefined && { order: body.order }),
     },

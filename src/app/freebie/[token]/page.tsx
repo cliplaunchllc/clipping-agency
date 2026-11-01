@@ -16,13 +16,22 @@ export default async function PublicFreebiePage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+      {/* Header image */}
+      {freebie.headerImageUrl && (
+        <div className="w-full" style={{ maxHeight: 320, overflow: "hidden" }}>
+          <img src={freebie.headerImageUrl} alt={freebie.name} className="w-full object-cover" style={{ maxHeight: 320 }} />
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="mb-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
-            style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
-            Free Resource
-          </div>
+          {!freebie.headerImageUrl && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6"
+              style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+              Free Resource
+            </div>
+          )}
           <h1 className="text-3xl font-bold mb-4" style={{ letterSpacing: "-0.02em" }}>{freebie.name}</h1>
           {freebie.description && (
             <p className="text-base leading-relaxed" style={{ color: "var(--text-secondary)" }}>

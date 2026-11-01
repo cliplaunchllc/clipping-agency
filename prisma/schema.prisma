@@ -348,9 +348,10 @@ model TeamPaymentMember {
 
 model Freebie {
   id          String   @id @default(cuid())
-  name        String
-  description String?  @db.Text
-  type        String   @default("freebie") // freebie | skool
+  name           String
+  headerImageUrl String?
+  description    String?  @db.Text
+  type           String   @default("freebie") // freebie | skool
   shareToken  String   @unique @default(cuid())
   order       Int      @default(0)
   createdAt   DateTime @default(now())
