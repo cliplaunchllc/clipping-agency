@@ -60,62 +60,75 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
     });
   }, [role]);
 
-  // Always fetch real name from DB so it reflects changes without re-login
   useEffect(() => {
     fetch("/api/user/profile").then((r) => r.ok ? r.json() : null).then((d) => {
       if (d?.name) setUserName(d.name);
     }).catch(() => {});
   }, []);
 
+  const initials = userName.charAt(0).toUpperCase();
+
   return (
     <aside
-      className="w-56 flex flex-col h-screen fixed left-0 top-0 z-40"
       style={{
+        width: 232,
+        minWidth: 232,
+        position: "fixed",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 40,
+        display: "flex",
+        flexDirection: "column",
         background: "var(--bg-subtle)",
         borderRight: "1px solid var(--border-subtle)",
+        overflowY: "auto",
       }}
     >
       {/* Logo */}
-      <div
-        className="px-5 py-4 flex items-center gap-3"
-        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 12px 24px", paddingTop: 24 }}>
+        {/* Brand mark — glows with shadow-glow like the primary button */}
         <div
-          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
-          style={
-            agencyLogo
-              ? { border: "1px solid var(--border-default)" }
-              : {
-                  background: "var(--accent-muted)",
-                  border: "1px solid var(--accent-border)",
-                }
-          }
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: agencyLogo ? "transparent" : "var(--accent-solid)",
+            boxShadow: agencyLogo ? undefined : "var(--shadow-glow)",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            overflow: "hidden",
+          }}
         >
           {agencyLogo ? (
-            <img src={agencyLogo} alt="Logo" className="w-full h-full object-cover" />
+            <img src={agencyLogo} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="var(--accent)" />
-              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="var(--accent)" opacity="0.5" />
-              <circle cx="12" cy="9" r="1.5" fill="white" opacity="0.9" />
-              <circle cx="12" cy="9" r="0.7" fill="var(--accent)" />
-              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="var(--accent-solid)" />
-              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="var(--accent-solid)" />
-              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="var(--accent-solid)" />
-              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="var(--warning)" opacity="0.9" />
+              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="white" />
+              <path d="M12 2C10.8 3.5 9.8 5.5 9.2 8H12V2Z" fill="white" opacity="0.55" />
+              <circle cx="12" cy="9" r="1.5" fill="var(--accent-solid)" opacity="0.9" />
+              <circle cx="12" cy="9" r="0.7" fill="white" />
+              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="white" />
+              <path d="M8 12.5L5.5 15.5L8 15.5V12.5Z" fill="white" opacity="0.8" />
+              <path d="M16 12.5L18.5 15.5L16 15.5V12.5Z" fill="white" opacity="0.8" />
+              <path d="M10.5 16.5C10.5 16.5 11 18 12 19.5C13 18 13.5 16.5 13.5 16.5H10.5Z" fill="#F5B544" opacity="0.95" />
             </svg>
           )}
         </div>
-        <span
-          className="font-semibold text-sm tracking-tight"
-          style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-        >
+        <span style={{
+          fontWeight: 700,
+          fontSize: 18,
+          letterSpacing: "-0.02em",
+          color: "var(--text-primary)",
+          lineHeight: 1,
+        }}>
           ClipLaunch
         </span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto min-h-0">
+      <nav style={{ flex: 1, padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -123,11 +136,20 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-full text-sm nav-link transition-colors"
+              className="nav-link"
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                height: 40,
+                padding: "0 12px",
+                borderRadius: 999,
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 500,
                 color: isActive ? "var(--accent)" : "var(--text-secondary)",
                 background: isActive ? "var(--accent-muted)" : "transparent",
-                fontWeight: isActive ? 500 : 400,
+                textDecoration: "none",
+                transition: "background 120ms ease, color 120ms ease",
               }}
             >
               <Icon size={16} strokeWidth={isActive ? 2 : 1.75} />
@@ -137,39 +159,54 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
         })}
       </nav>
 
-      {/* Section divider + role label */}
-      <div className="px-5 pb-1 pt-2 flex-shrink-0">
-        <p className="label-mono">
-          {role === "agency" ? (isTeamMember ? "Team Member" : "Agency Admin") : role}
-        </p>
-      </div>
-
-      {/* User */}
-      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-        <div className="flex items-center gap-2.5 px-2 mb-2">
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
-            style={{
+      {/* User footer — matches side-foot card from dashboard-example */}
+      <div style={{ padding: "12px 8px 16px" }}>
+        <div style={{
+          padding: "12px",
+          borderRadius: 14,
+          border: "1px solid var(--border-subtle)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
               background: "var(--accent-muted)",
               color: "var(--accent)",
-              fontSize: 10,
+              display: "grid",
+              placeItems: "center",
+              fontSize: 11,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}>
+              {initials}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {userName}
+              </p>
+              <p style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.3 }}>
+                {role === "agency" ? (isTeamMember ? "Team Member" : "Agency Admin") : role}
+              </p>
+            </div>
+          </div>
+          <a
+            href="/api/auth/logout"
+            style={{
+              fontSize: 12,
+              color: "var(--text-tertiary)",
+              textDecoration: "none",
+              transition: "color 120ms ease",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-tertiary)")}
           >
-            {userName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
-              {userName}
-            </p>
-          </div>
+            Sign out
+          </a>
         </div>
-        <a
-          href="/api/auth/logout"
-          className="block w-full text-xs py-2 px-3 rounded-full text-left transition-colors nav-link"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Sign out
-        </a>
       </div>
     </aside>
   );

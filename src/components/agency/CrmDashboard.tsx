@@ -136,7 +136,7 @@ function StaleBadge({ days }: { days: number | null }) {
   let bg = "rgba(61,214,140,0.12)";
   let color = "var(--success)";
   let label = `${days}d ago`;
-  if (days >= 7) { bg = "rgba(255,90,95,0.12)"; color = "var(--error, #ff5a5a)"; }
+  if (days >= 7) { bg = "rgba(255,59,59,0.12)"; color = "var(--error, #ff5a5a)"; }
   else if (days >= 3) { bg = "rgba(255,179,0,0.12)"; color = "var(--warning, #ffb300)"; }
   return (
     <span className="inline-flex items-center rounded-full px-2 py-0.5" style={{ background: bg, color, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap" }}>
@@ -430,7 +430,7 @@ function CsvConfirmModal({ toAdd, duplicates, onConfirm, onCancel, importing }: 
             <p className="text-2xl font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{total}</p>
             <p style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>In CSV</p>
           </div>
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(255,90,95,0.06)", border: "1px solid rgba(255,90,95,0.2)" }}>
+          <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.2)" }}>
             <p className="text-2xl font-semibold" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{duplicates.length}</p>
             <p style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", opacity: 0.8 }}>Already Exist</p>
           </div>
@@ -442,7 +442,7 @@ function CsvConfirmModal({ toAdd, duplicates, onConfirm, onCancel, importing }: 
 
         {/* Duplicate list */}
         {duplicates.length > 0 && (
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,90,95,0.2)", background: "rgba(255,90,95,0.04)" }}>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,59,59,0.2)", background: "rgba(255,59,59,0.04)" }}>
             <button className="w-full flex items-center justify-between px-4 py-2.5 text-left" onClick={() => setShowDupes((s) => !s)}>
               <div className="flex items-center gap-2">
                 <AlertTriangle size={12} style={{ color: "var(--accent)" }} />
@@ -453,7 +453,7 @@ function CsvConfirmModal({ toAdd, duplicates, onConfirm, onCancel, importing }: 
               <DropIcon size={12} style={{ color: "var(--accent)", transform: showDupes ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
             </button>
             {showDupes && (
-              <div className="px-4 pb-3 max-h-36 overflow-y-auto" style={{ borderTop: "1px solid rgba(255,90,95,0.15)" }}>
+              <div className="px-4 pb-3 max-h-36 overflow-y-auto" style={{ borderTop: "1px solid rgba(255,59,59,0.15)" }}>
                 {duplicates.map((name) => (
                   <p key={name} className="py-1 text-xs" style={{ color: "var(--text-secondary)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>{name}</p>
                 ))}
@@ -739,7 +739,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
   const sectionBg: Record<string, string> = {
     outreach: "rgba(79,142,247,0.05)",
     messages: "rgba(61,214,140,0.05)",
-    pipeline: "rgba(255,90,95,0.05)",
+    pipeline: "rgba(255,59,59,0.05)",
   };
 
   const thBase: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.02em", borderBottom: "2px solid var(--border-default)", padding: "10px 12px", whiteSpace: "nowrap", background: "var(--bg-subtle)" };
@@ -810,7 +810,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
             onClick={() => setShowDeleteAll(true)}
             disabled={leads.length === 0}
             className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.25)", color: "rgb(255,80,80)", opacity: leads.length === 0 ? 0.4 : 1 }}
+            style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.25)", color: "rgb(255,80,80)", opacity: leads.length === 0 ? 0.4 : 1 }}
           >
             <Trash2 size={14} />
             Delete All
@@ -908,7 +908,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
               accent: "var(--text-tertiary)",
               filters: [
                 { v: "all", label: "All" },
-                { v: "inConvo", label: "In Convo", dot: "rgba(255,90,95,0.8)" },
+                { v: "inConvo", label: "In Convo", dot: "rgba(255,59,59,0.8)" },
               ],
             },
             {
@@ -927,7 +927,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
               accent: "var(--text-tertiary)",
               filters: [
                 { v: "all", label: "All" },
-                { v: "inConvo", label: "In Convo", dot: "rgba(255,90,95,0.8)", red: true },
+                { v: "inConvo", label: "In Convo", dot: "rgba(255,59,59,0.8)", red: true },
                 { v: "replied", label: "Replied" },
                 { v: "booked", label: "Booked" },
                 { v: "showed", label: "Showed" },
@@ -957,10 +957,10 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all"
                       style={{
                         fontFamily: "var(--font-display)",
-                        background: active ? (isRed ? "rgba(255,90,95,0.12)" : "var(--accent-muted)") : "transparent",
+                        background: active ? (isRed ? "rgba(255,59,59,0.12)" : "var(--accent-muted)") : "transparent",
                         color: active ? (isRed ? "rgb(255,80,80)" : "var(--accent)") : "var(--text-secondary)",
-                        border: `1px solid ${active ? (isRed ? "rgba(255,90,95,0.4)" : "var(--accent-border)") : "var(--border-subtle)"}`,
-                        boxShadow: active && isRed ? "0 0 8px rgba(255,90,95,0.25)" : undefined,
+                        border: `1px solid ${active ? (isRed ? "rgba(255,59,59,0.4)" : "var(--accent-border)") : "var(--border-subtle)"}`,
+                        boxShadow: active && isRed ? "0 0 8px rgba(255,59,59,0.25)" : undefined,
                       }}
                     >
                       {"dot" in f && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: f.dot as string }} />}
@@ -1092,10 +1092,10 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                             onClick={() => patch(lead.id, "inConvo", !lead.inConvo)}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-full text-left transition-all w-fit"
                             style={{
-                              background: lead.inConvo ? "rgba(255,90,95,0.15)" : "transparent",
-                              border: lead.inConvo ? "1px solid rgba(255,90,95,0.5)" : "1px solid var(--border-subtle)",
+                              background: lead.inConvo ? "rgba(255,59,59,0.15)" : "transparent",
+                              border: lead.inConvo ? "1px solid rgba(255,59,59,0.5)" : "1px solid var(--border-subtle)",
                               color: lead.inConvo ? "rgb(255,80,80)" : "var(--text-tertiary)",
-                              boxShadow: lead.inConvo ? "0 0 8px rgba(255,90,95,0.3)" : undefined,
+                              boxShadow: lead.inConvo ? "0 0 8px rgba(255,59,59,0.3)" : undefined,
                             }}
                           >
                             <Radio size={9} />
@@ -1284,7 +1284,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-9 h-9 rounded-full" style={{ background: "rgba(255,90,95,0.12)" }}>
+              <div className="flex items-center justify-center w-9 h-9 rounded-full" style={{ background: "rgba(255,59,59,0.12)" }}>
                 <Trash2 size={16} style={{ color: "rgb(255,80,80)" }} />
               </div>
               <div>
@@ -1305,7 +1305,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                 onClick={deleteAllLeads}
                 disabled={deletingAll}
                 className="px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: "rgba(255,90,95,0.15)", border: "1px solid rgba(255,90,95,0.4)", color: "rgb(255,80,80)" }}
+                style={{ background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.4)", color: "rgb(255,80,80)" }}
               >
                 {deletingAll ? "Deleting…" : "Delete All"}
               </button>

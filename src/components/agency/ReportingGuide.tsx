@@ -150,7 +150,7 @@ export default function ReportingGuide() {
 
       {tab === "mw" && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(255,90,95,0.06)", border: "1px solid rgba(255,90,95,0.15)" }}>
+          <div className="flex items-center gap-3 mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(255,59,59,0.06)", border: "1px solid rgba(255,59,59,0.15)" }}>
             <CalendarDays size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
             <p className="metric-sub">
               File every <strong style={{ color: "var(--text-primary)" }}>Tuesday</strong> for every active client. Brief and high-level — 2 to 3 sentences max.

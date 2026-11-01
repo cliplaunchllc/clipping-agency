@@ -451,7 +451,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                 const overdue = (days ?? 1) <= 0;
                 return (
                   <span key={m.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium"
-                    style={{ background: overdue ? "rgba(255,90,95,0.12)" : "rgba(245,158,11,0.12)", color: overdue ? "rgb(255,90,90)" : "#f59e0b", border: `1px solid ${overdue ? "rgba(255,90,95,0.3)" : "rgba(245,158,11,0.3)"}` }}>
+                    style={{ background: overdue ? "rgba(255,59,59,0.12)" : "rgba(245,158,11,0.12)", color: overdue ? "rgb(255,90,90)" : "#f59e0b", border: `1px solid ${overdue ? "rgba(255,59,59,0.3)" : "rgba(245,158,11,0.3)"}` }}>
                     <CalendarClock size={10} />
                     {m.name}
                     <span style={{ opacity: 0.75 }}>

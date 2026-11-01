@@ -252,7 +252,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 <button key={m.id} type="button" onClick={() => { setAddMode(m.id); setError(""); }}
                   className="flex-1 py-2.5 text-xs font-medium transition-colors"
                   style={{
-                    background: addMode === m.id ? "rgba(255,90,95,0.12)" : "transparent",
+                    background: addMode === m.id ? "rgba(255,59,59,0.12)" : "transparent",
                     color: addMode === m.id ? "var(--accent)" : "var(--text-tertiary)",
                     borderRight: m.id === "connect" ? "1px solid rgba(255,255,255,0.08)" : "none",
                   }}>
@@ -318,8 +318,8 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 disabled={loading || !name || (addMode === "connect" ? !selectedUserId : (!email || !password))}
                 className="w-full py-3 rounded-xl text-sm font-semibold"
                 style={{
-                  background: "rgba(255,90,95,0.15)",
-                  border: "1px solid rgba(255,90,95,0.3)",
+                  background: "rgba(255,59,59,0.15)",
+                  border: "1px solid rgba(255,59,59,0.3)",
                   color: "var(--accent)",
                   opacity: loading || !name || (addMode === "connect" ? !selectedUserId : (!email || !password)) ? 0.5 : 1,
                 }}>
@@ -333,8 +333,8 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       {/* Delete confirm modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
-          <div className="rounded-xl p-7 w-full max-w-sm" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,90,95,0.3)" }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.25)" }}>
+          <div className="rounded-xl p-7 w-full max-w-sm" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,59,59,0.3)" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)" }}>
               <Trash2 size={18} style={{ color: "var(--accent)" }} />
             </div>
             <h2 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
@@ -362,8 +362,8 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                 disabled={deleteConfirmName !== deleteTarget.name || deleting}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-opacity"
                 style={{
-                  background: "rgba(255,90,95,0.18)",
-                  border: "1px solid rgba(255,90,95,0.35)",
+                  background: "rgba(255,59,59,0.18)",
+                  border: "1px solid rgba(255,59,59,0.35)",
                   color: "var(--accent)",
                   opacity: deleteConfirmName !== deleteTarget.name || deleting ? 0.4 : 1,
                 }}>
@@ -395,7 +395,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         {!isTeamMember && (
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,90,95,0.2)", color: "var(--accent)" }}>
+            style={{ background: "var(--accent-muted)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--accent)" }}>
             <Plus size={14} /> Add Client
           </button>
         )}
@@ -477,7 +477,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                       <button
                         onClick={() => { setAssigningUserId(u.id); setAssignClientId(""); }}
                         className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
-                        style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.15)", color: "var(--accent)" }}>
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                         <UserCheck size={12} />
                         Assign
                       </button>
@@ -515,7 +515,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                         <input value={editName} onChange={(e) => setEditName(e.target.value)}
                           className="text-sm px-3 py-1.5 rounded-lg outline-none"
                           style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.15)", color: "var(--text-primary)" }} />
-                        <button onClick={() => handleRename(c.id)} className="text-xs px-2 py-1 rounded" style={{ background: "rgba(255,90,95,0.15)", color: "var(--accent)" }}>Save</button>
+                        <button onClick={() => handleRename(c.id)} className="text-xs px-2 py-1 rounded" style={{ background: "rgba(255,59,59,0.15)", color: "var(--accent)" }}>Save</button>
                         <button onClick={() => setEditingId(null)} className="text-xs px-2 py-1 rounded" style={{ color: "var(--text-secondary)" }}>Cancel</button>
                       </div>
                     ) : (
@@ -621,7 +621,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
                             className="p-1.5 rounded-lg transition-opacity"
                             title="Delete client"
                             style={{ background: "transparent", border: "1px solid transparent", color: "var(--text-tertiary)" }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,90,95,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,90,95,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,59,59,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,59,59,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
                           >
                             <Trash2 size={13} />

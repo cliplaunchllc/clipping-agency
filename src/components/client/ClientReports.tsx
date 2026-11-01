@@ -64,7 +64,7 @@ function wow(curr: number, prev: number | null | undefined, inverted = false) {
 function TrendIcon({ positive, neutral, size = 12 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
   if (positive) return <TrendingUp size={size} color="#3DD68C" />;
-  return <TrendingDown size={size} color="#FF5A5F" />;
+  return <TrendingDown size={size} color="#FF3B3B" />;
 }
 
 function WowBadge({ curr, prev, inverted, grey }: {
@@ -86,7 +86,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
     );
   }
 
-  const color = neutral ? "#8A93A6" : positive ? "#3DD68C" : "#FF5A5F";
+  const color = neutral ? "#8A93A6" : positive ? "#3DD68C" : "#FF3B3B";
   return (
     <span className="text-xs flex items-center gap-1" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} />
@@ -363,7 +363,7 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                   if (latest.pct == null) return null;
                   const positive = latest.pct >= 0;
                   return (
-                    <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "var(--success)" : "#FF5A5F" }}>
+                    <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "var(--success)" : "#FF3B3B" }}>
                       {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                       {positive ? "+" : ""}{latest.pct}% this week
                     </span>
@@ -374,8 +374,8 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                 <AreaChart data={chartData} margin={{ top: 28, right: 5, bottom: 5, left: 5 }}>
                   <defs>
                     <linearGradient id="clientViewsGradRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF5A5F" stopOpacity={0.28} />
-                      <stop offset="100%" stopColor="#FF5A5F" stopOpacity={0.03} />
+                      <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.28} />
+                      <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0.03} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -390,23 +390,23 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                       if (pct != null) lines.push([`${pct >= 0 ? "+" : ""}${pct}%`, "vs prev week"]);
                       return lines;
                     }}
-                    contentStyle={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,90,95,0.2)", borderRadius: 8 }}
+                    contentStyle={{ background: "var(--bg-elevated)", border: "1px solid rgba(255,59,59,0.2)", borderRadius: 8 }}
                     labelStyle={{ color: "#8A93A6" }}
                     itemStyle={{ color: "#FF6B6B" }}
                   />
                   <Area
                     type="monotone"
                     dataKey="views"
-                    stroke="#FF5A5F"
+                    stroke="#FF3B3B"
                     strokeWidth={2}
                     fill="url(#clientViewsGradRed)"
                     dot={(props: any) => {
                       const { cx, cy, payload, index } = props;
                       const positive = (payload.pct ?? 0) >= 0;
-                      const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF5A5F";
+                      const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF3B3B";
                       return (
                         <g key={index}>
-                          <circle cx={cx} cy={cy} r={3.5} fill="#FF5A5F" strokeWidth={0} />
+                          <circle cx={cx} cy={cy} r={3.5} fill="#FF3B3B" strokeWidth={0} />
                           {payload.pct != null && (
                             <text x={cx} y={cy - 12} textAnchor="middle" fill={labelColor} fontSize={9} fontWeight="700">
                               {positive ? "+" : ""}{payload.pct}%
@@ -415,7 +415,7 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                         </g>
                       );
                     }}
-                    activeDot={{ r: 5, fill: "#FF5A5F", strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -441,7 +441,7 @@ export default function ClientReports({ reports, clientName }: { reports: Report
                           {fmt(report.totalViews)} views · {fmtCurrency(report.paidOut)} paid out
                         </span>
                         {viewsPct != null && (
-                          <span className="text-xs flex items-center gap-0.5 font-semibold" style={{ color: viewsPct >= 0 ? "var(--success)" : "#FF5A5F" }}>
+                          <span className="text-xs flex items-center gap-0.5 font-semibold" style={{ color: viewsPct >= 0 ? "var(--success)" : "#FF3B3B" }}>
                             {viewsPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                             {viewsPct >= 0 ? "+" : ""}{viewsPct}%
                           </span>

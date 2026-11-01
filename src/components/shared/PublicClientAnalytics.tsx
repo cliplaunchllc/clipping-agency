@@ -144,8 +144,8 @@ export default function PublicClientAnalytics({ client }: Props) {
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <ChevronDown size={10} color="#8A93A6" style={{ opacity: 0.3 }} />;
     return sortDir === "desc"
-      ? <ChevronDown size={10} color="#FF5A5F" />
-      : <ChevronUp size={10} color="#FF5A5F" />;
+      ? <ChevronDown size={10} color="#FF3B3B" />
+      : <ChevronUp size={10} color="#FF3B3B" />;
   }
 
   const tooltipStyle = {
@@ -165,7 +165,7 @@ export default function PublicClientAnalytics({ client }: Props) {
               style={{ border: "1px solid rgba(255,255,255,0.1)" }} />
           ) : (
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0"
-              style={{ background: "rgba(255,90,95,0.15)", color: "var(--accent)" }}>
+              style={{ background: "rgba(255,59,59,0.15)", color: "var(--accent)" }}>
               {client.name[0]}
             </div>
           )}
@@ -190,7 +190,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                 className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
                 style={{
                   background: timePeriod === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                  color: timePeriod === p ? "#FF5A5F" : "var(--text-tertiary)",
+                  color: timePeriod === p ? "#FF3B3B" : "var(--text-tertiary)",
                 }}>
                 {p === "all" ? "All Time" : p === "1d" ? "Today" : p === "7d" ? "7 Days" : p === "mtd" ? "This Month" : "Custom"}
               </button>
@@ -220,8 +220,8 @@ export default function PublicClientAnalytics({ client }: Props) {
                 <div key={item.label} className="flex items-center gap-4 px-6 py-6"
                   style={{ borderRight, borderBottom }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,90,95,0.12)" }}>
-                    <Icon size={18} color="#FF5A5F" />
+                    style={{ background: "rgba(255,59,59,0.12)" }}>
+                    <Icon size={18} color="#FF3B3B" />
                   </div>
                   <div>
                     <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
@@ -257,8 +257,8 @@ export default function PublicClientAnalytics({ client }: Props) {
               <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <defs>
                   <linearGradient id="pubGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF5A5F" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#FF5A5F" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
@@ -267,8 +267,8 @@ export default function PublicClientAnalytics({ client }: Props) {
                 <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v: number) => fmt(v)} width={48} />
                 <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--success)" }} />
-                <Area type="linear" dataKey="views" stroke="#FF5A5F" strokeWidth={2} fill="url(#pubGrad)"
-                  dot={{ fill: "#FF5A5F", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF5A5F", strokeWidth: 0 }} />
+                <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#pubGrad)"
+                  dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -345,7 +345,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                       <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>views</p>
                       <a href={clip.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg"
-                        style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.15)", color: "var(--accent)" }}>
+                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
                         <ExternalLink size={10} /> Open
                       </a>
                     </div>
@@ -390,7 +390,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                     <span style={{ color: "var(--text-secondary)" }}>{fmt(clip.likes)} likes</span>
                   </div>
                   <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                    <ExternalLink size={11} color="#FF5A5F" />
+                    <ExternalLink size={11} color="#FF3B3B" />
                   </a>
                 </div>
               ))}
@@ -411,7 +411,7 @@ export default function PublicClientAnalytics({ client }: Props) {
           <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
             style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-center gap-2">
-              <BarChart2 size={14} color="#FF5A5F" />
+              <BarChart2 size={14} color="#FF3B3B" />
               <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
                 All Clips
               </h2>
@@ -429,14 +429,14 @@ export default function PublicClientAnalytics({ client }: Props) {
                   className="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
                   style={{
                     background: platformFilter === "all" ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                    color: platformFilter === "all" ? "#FF5A5F" : "var(--text-tertiary)",
+                    color: platformFilter === "all" ? "#FF3B3B" : "var(--text-tertiary)",
                   }}>All</button>
                 {platforms.map((p) => (
                   <button key={p} onClick={() => setPlatformFilter(p)}
                     className="px-3 py-1 text-xs font-medium rounded-lg capitalize transition-colors"
                     style={{
                       background: platformFilter === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                      color: platformFilter === p ? "#FF5A5F" : (PLATFORM_COLORS[p] ?? "var(--text-tertiary)"),
+                      color: platformFilter === p ? "#FF3B3B" : (PLATFORM_COLORS[p] ?? "var(--text-tertiary)"),
                     }}>{p === "twitter" ? "X" : p}</button>
                 ))}
               </div>
@@ -505,7 +505,7 @@ export default function PublicClientAnalytics({ client }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink size={11} color="#FF5A5F" />
+                        <ExternalLink size={11} color="#FF3B3B" />
                       </a>
                     </td>
                   </tr>

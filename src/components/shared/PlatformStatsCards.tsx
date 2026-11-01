@@ -41,7 +41,7 @@ function DonutCard({ title, dataByPlatform, totalLabel, icon }: DonutCardProps) 
   const emptySlice = [{ name: "empty", value: 1, color: "rgba(255,255,255,0.07)", gradId: "dg-empty", grad: ["rgba(255,255,255,0.07)", "rgba(255,255,255,0.07)"] as [string, string] }];
 
   return (
-    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,90,95,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <div className="flex items-center gap-2 mb-5">
         {icon}
         <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
@@ -133,14 +133,14 @@ export function PlatformBreakdownTable({ viewsByPlatform, clipsByPlatform }: Pro
 
   if (platforms.length === 0) {
     return (
-      <div className="rounded-xl p-8 text-center" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,90,95,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+      <div className="rounded-xl p-8 text-center" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No platform data in this period</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,90,95,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 0 0 1px rgba(255,59,59,0.04), 0 4px 24px rgba(0,0,0,0.5)" }}>
       <table className="w-full">
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -199,7 +199,7 @@ export default function PlatformStatsCards({ viewsByPlatform, clipsByPlatform }:
         dataByPlatform={clipsByPlatform}
         totalLabel="posts"
         icon={
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#FF5A5F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="23 7 16 12 23 17 23 7"/>
             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
           </svg>

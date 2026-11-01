@@ -59,7 +59,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending: "#94a3b8", queued: "#f59e0b", planning: "#fbbf24",
   discovering: "#818cf8", researching: "#60a5fa", verifying: "#f59e0b",
   scoring: "#a78bfa", building: "#22d3ee",
-  completed: "#3DD68C", stopped: "#64748b", failed: "#FF5A5F",
+  completed: "#3DD68C", stopped: "#64748b", failed: "#FF3B3B",
 };
 
 const GRADE: Record<string, { color: string; bg: string; border: string }> = {
@@ -255,7 +255,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
         <button
           onClick={() => setShowNewRun((v) => !v)}
           className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-          style={{ background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.25)", color: "var(--accent)" }}
+          style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)", color: "var(--accent)" }}
         >
           {showNewRun ? <X size={13} /> : <Plus size={13} />}
           {showNewRun ? "Cancel" : "New Run"}
@@ -298,7 +298,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
               disabled={runSaving}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
-                background: "rgba(255,90,95,0.15)", border: "1px solid rgba(255,90,95,0.3)", color: "var(--accent)",
+                background: "rgba(255,59,59,0.15)", border: "1px solid rgba(255,59,59,0.3)", color: "var(--accent)",
                 opacity: runSaving ? 0.4 : 1, cursor: runSaving ? "not-allowed" : "pointer",
               }}
             >
@@ -330,8 +330,8 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                 onClick={() => loadLeads(run)}
                 className="group rounded-xl px-3.5 py-3 cursor-pointer transition-all"
                 style={{
-                  background: selected ? "rgba(255,90,95,0.06)" : "var(--bg-surface)",
-                  border: `1px solid ${selected ? "rgba(255,90,95,0.28)" : "var(--border-default)"}`,
+                  background: selected ? "rgba(255,59,59,0.06)" : "var(--bg-surface)",
+                  border: `1px solid ${selected ? "rgba(255,59,59,0.28)" : "var(--border-default)"}`,
                 }}
               >
                 {/* Top row */}
@@ -465,7 +465,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   {!isActive(selectedRun) && (
                     <button onClick={() => setShowAddLead((v) => !v)}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.18)", color: "var(--accent)" }}>
+                      style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.18)", color: "var(--accent)" }}>
                       {showAddLead ? <X size={10} /> : <Plus size={10} />}
                       {showAddLead ? "Cancel" : "Add"}
                     </button>
@@ -516,16 +516,16 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
 
               {/* ── Failed: error message ─────────────────────────────────────── */}
               {selectedRun.status === "failed" && selectedRun.stage && (
-                <div className="flex-shrink-0 px-5 py-2.5" style={{ borderBottom: "1px solid rgba(255,90,95,0.12)", background: "rgba(255,90,95,0.04)" }}>
-                  <p className="text-xs" style={{ color: "#FF5A5F", wordBreak: "break-word" }}>{selectedRun.stage}</p>
+                <div className="flex-shrink-0 px-5 py-2.5" style={{ borderBottom: "1px solid rgba(255,59,59,0.12)", background: "rgba(255,59,59,0.04)" }}>
+                  <p className="text-xs" style={{ color: "#FF3B3B", wordBreak: "break-word" }}>{selectedRun.stage}</p>
                   {logs.length > 0 && (
                     <div className="mt-2 flex flex-col gap-1 max-h-32 overflow-y-auto">
                       {logs.map((l) => (
                         <div key={l.id} className="flex gap-2 text-xs">
-                          <span className="flex-shrink-0 font-mono opacity-50" style={{ color: l.level === "error" ? "#FF5A5F" : "var(--text-tertiary)" }}>
+                          <span className="flex-shrink-0 font-mono opacity-50" style={{ color: l.level === "error" ? "#FF3B3B" : "var(--text-tertiary)" }}>
                             [{l.stage}]
                           </span>
-                          <span style={{ color: l.level === "error" ? "#FF5A5F" : "var(--text-secondary)", wordBreak: "break-word" }}>
+                          <span style={{ color: l.level === "error" ? "#FF3B3B" : "var(--text-secondary)", wordBreak: "break-word" }}>
                             {l.message}
                           </span>
                         </div>
@@ -575,7 +575,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   </div>
                   <button onClick={handleAddLead} disabled={leadSaving || !leadForm.company.trim()}
                     className="px-4 py-1.5 rounded-lg text-xs font-semibold"
-                    style={{ background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.25)",
+                    style={{ background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.25)",
                       color: "var(--accent)", opacity: leadSaving || !leadForm.company.trim() ? 0.4 : 1 }}>
                     {leadSaving ? "Adding…" : "Add Lead"}
                   </button>
@@ -629,7 +629,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                                 )}
                                 {dnc && (
                                   <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
-                                    style={{ background: "rgba(255,90,95,0.08)", color: "var(--accent)", border: "1px solid rgba(255,90,95,0.15)" }}>
+                                    style={{ background: "rgba(255,59,59,0.08)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.15)" }}>
                                     DNC
                                   </span>
                                 )}
@@ -718,7 +718,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                                 className="text-xs px-3 py-1 rounded-lg font-medium"
                                 style={dnc
                                   ? { background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.2)", color: "#3DD68C" }
-                                  : { background: "rgba(255,90,95,0.07)", border: "1px solid rgba(255,90,95,0.18)", color: "var(--accent)" }}>
+                                  : { background: "rgba(255,59,59,0.07)", border: "1px solid rgba(255,59,59,0.18)", color: "var(--accent)" }}>
                                 {dnc ? "Remove DNC" : "Mark DNC"}
                               </button>
                             </div>

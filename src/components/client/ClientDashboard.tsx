@@ -455,10 +455,10 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                       <div className="space-y-4">
 
                         {/* ── (1) LIVE CAMPAIGN + tracker — top of overview ── */}
-                        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,90,95,0.28)", background: "rgba(255,90,95,0.06)" }}>
+                        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,59,59,0.28)", background: "rgba(255,59,59,0.06)" }}>
                           {/* Header row */}
-                          <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,90,95,0.15)" }}>
-                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: "#FF5A5F", boxShadow: "0 0 8px rgba(255,90,95,0.8)" }} />
+                          <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,59,59,0.15)" }}>
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: "#FF3B3B", boxShadow: "0 0 8px rgba(255,59,59,0.8)" }} />
                             <span className="label-mono" style={{ color: "rgba(255,110,110,0.9)" }}>LIVE CAMPAIGN</span>
                             {activeCampaign && (
                               <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{activeCampaign.name}</span>
@@ -486,9 +486,9 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                                style={{ background: "#FF5A5F", color: "#fff", textDecoration: "none", boxShadow: "0 0 12px rgba(255,90,95,0.35)" }}
+                                style={{ background: "#FF3B3B", color: "#fff", textDecoration: "none", boxShadow: "0 0 12px rgba(255,59,59,0.35)" }}
                                 onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#e02f2f")}
-                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FF5A5F")}
+                                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FF3B3B")}
                               >
                                 <ExternalLink size={12} /> Open Live Tracker
                               </a>
@@ -498,7 +498,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                           </div>
                           {/* Banner inside the red box */}
                           {client.bannerUrl && (
-                            <div className="px-5 pb-5" style={{ borderTop: "1px solid rgba(255,90,95,0.15)" }}>
+                            <div className="px-5 pb-5" style={{ borderTop: "1px solid rgba(255,59,59,0.15)" }}>
                               <img
                                 src={client.bannerUrl}
                                 alt="Campaign banner"
@@ -556,7 +556,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                               </span>
                             </div>
                             <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,90,95,0.5)", transition: "width 0.6s ease" }} />
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (totalPaidOut / totalBudget) * 100)}%`, background: "var(--danger)", boxShadow: "0 0 8px rgba(255,59,59,0.5)", transition: "width 0.6s ease" }} />
                             </div>
                             <div className="flex items-center justify-between mt-2">
                               <p className="metric-sub">{Math.round((totalPaidOut / totalBudget) * 100)}% used</p>
@@ -1061,7 +1061,7 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                                         {[
                                           { key: "weeklySummary",   label: "Weekly Summary",     value: wr.weeklySummary,   border: "var(--accent-border)", bg: "var(--accent-muted)",  color: "var(--accent)" },
                                           { key: "whatsWorking",    label: "What's Working",     value: wr.whatsWorking,    border: "rgba(61,214,140,0.3)", bg: "var(--success-bg)",    color: "var(--success)" },
-                                          { key: "whatsNotWorking", label: "What's Not Working", value: wr.whatsNotWorking, border: "rgba(255,90,95,0.2)",  bg: "rgba(255,90,95,0.06)", color: "var(--danger)" },
+                                          { key: "whatsNotWorking", label: "What's Not Working", value: wr.whatsNotWorking, border: "rgba(255,59,59,0.2)",  bg: "rgba(255,59,59,0.06)", color: "var(--danger)" },
                                           { key: "nextWeekFocus",   label: "Next Week Focus",    value: wr.nextWeekFocus,   border: "rgba(245,185,74,0.3)", bg: "var(--warning-bg)",    color: "var(--warning)" },
                                         ].filter((s) => s.value).map((s) => (
                                           <div key={s.key} className="rounded-lg p-4" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -1183,8 +1183,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
                   50%      { box-shadow: 0 0 0 5px rgba(61,214,140,0.12), 0 0 22px rgba(61,214,140,0.55); }
                 }
                 @keyframes paidBarGlow {
-                  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,90,95,0.55); }
-                  50%      { box-shadow: 0 0 14px 3px rgba(255,90,95,0.85); }
+                  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,59,59,0.55); }
+                  50%      { box-shadow: 0 0 14px 3px rgba(255,59,59,0.85); }
                 }
                 .paid-bar { animation: paidBarGlow 1.8s ease-in-out infinite; }
                 /*

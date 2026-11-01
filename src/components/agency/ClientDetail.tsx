@@ -335,7 +335,7 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
                     if (res.ok) setBannerUrl("");
                   }}
                   className="px-3 py-2 rounded-lg text-xs font-semibold"
-                  style={{ background: "rgba(255,90,95,0.08)", border: "1px solid rgba(255,90,95,0.2)", color: "var(--danger)" }}
+                  style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)", color: "var(--danger)" }}
                 >
                   Remove
                 </button>

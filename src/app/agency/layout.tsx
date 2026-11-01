@@ -15,7 +15,7 @@ export default async function AgencyLayout({ children }: { children: React.React
         userName={session.user.name ?? session.user.email ?? "Agency"}
         isTeamMember={isTeamMember}
       />
-      <main className="flex-1 overflow-y-auto ml-56">
+      <main className="flex-1 overflow-y-auto ml-[232px]">
         {children}
       </main>
     </div>
