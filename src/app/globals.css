@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -199,9 +199,9 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     line-height: 1.2;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   /* Focus rings */
@@ -304,7 +304,7 @@
   }
   .metric-value {
     font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
