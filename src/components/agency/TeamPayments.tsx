@@ -156,8 +156,8 @@ function CommissionCalculator({
                 style={{ ...inputStyle, width: "100%" }}
               />
               <div className="flex items-center px-3 py-1.5 rounded-lg"
-                style={{ background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.2)" }}>
-                <span className="text-xs font-semibold tabular-nums" style={{ color: "rgb(61,214,140)" }}>
+                style={{ background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)" }}>
+                <span className="text-xs font-semibold tabular-nums" style={{ color: "rgb(61,255,162)" }}>
                   {fmtUSD(c.commission)}
                 </span>
               </div>
@@ -749,7 +749,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                                 {paidThisCycle ? (
                                   <div className="flex items-center gap-1">
                                     <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium"
-                                      style={{ background: "rgba(61,214,140,0.1)", border: "1px solid rgba(61,214,140,0.25)", color: "rgb(61,214,140)" }}>
+                                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.25)", color: "rgb(61,255,162)" }}>
                                       <BadgeCheck size={11} /> Paid
                                     </span>
                                     <button onClick={() => markPaid(m, true)} disabled={markingId === m.id}
@@ -816,7 +816,7 @@ export default function TeamPayments({ initialMembers }: Props) {
                                         <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
                                           {c.budget > 0 ? fmtUSD(c.budget) : "—"}
                                         </span>
-                                        <span className="text-xs tabular-nums font-semibold" style={{ color: "rgb(61,214,140)" }}>
+                                        <span className="text-xs tabular-nums font-semibold" style={{ color: "rgb(61,255,162)" }}>
                                           {fmtUSD(c.commission)}
                                         </span>
                                       </div>

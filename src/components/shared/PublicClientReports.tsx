@@ -87,7 +87,7 @@ function wow(curr: number, prev: number | null | undefined, inverted = false) {
 
 function TrendIcon({ positive, neutral, size = 9 }: { positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
-  if (positive) return <TrendingUp size={size} color="#3DD68C" />;
+  if (positive) return <TrendingUp size={size} color="#3DFFA2" />;
   return <TrendingDown size={size} color="#FF3B3B" />;
 }
 
@@ -113,7 +113,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
     );
   }
 
-  const color = neutral ? "var(--text-tertiary)" : positive ? "#3DD68C" : "#FF3B3B";
+  const color = neutral ? "var(--text-tertiary)" : positive ? "#3DFFA2" : "#FF3B3B";
   return (
     <span className="label-mono flex items-center gap-0.5" style={{ color }}>
       <TrendIcon positive={positive} neutral={neutral} size={9} />
@@ -285,7 +285,7 @@ function StatCard({
         {icon}
         <p className="label-mono leading-tight">{label}</p>
       </div>
-      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "#3DD68C" }}>{value}</p>
+      <p className="metric-value text-xl mb-1 leading-none" style={{ color: "#3DFFA2" }}>{value}</p>
       {sublabel && <p className="metric-sub mb-1.5">{sublabel}</p>}
       <WowBadge curr={curr} prev={prev} inverted={inverted} grey={grey} />
     </div>
@@ -400,9 +400,9 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
             {[
-              { icon: <Eye size={13} color="#3DD68C" />, label: "Total Views", value: fmt(allTime.views) },
-              { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
-              { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
+              { icon: <Eye size={13} color="#3DFFA2" />, label: "Total Views", value: fmt(allTime.views) },
+              { icon: <DollarSign size={13} color="#3DFFA2" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut) },
+              { icon: <CheckCircle size={13} color="#3DFFA2" />, label: "Approved Videos", value: allTime.clipsApproved.toString() },
               { icon: <Scissors size={13} color={ICON_COLOR} />, label: "Videos Submitted", value: allTime.clipsSubmitted.toString() },
               { icon: <Target size={13} color={ICON_COLOR} />, label: "All-Time Approval", value: allTimeApprovalRate != null ? `${allTimeApprovalRate.toFixed(1)}%` : "—" },
               { icon: <Target size={13} color="var(--warning)" />, label: "Effective CPM", value: (() => { const cpm = report.cumEffectiveCpm ?? report.effectiveCpm ?? allReports.find((r) => r.cumEffectiveCpm != null)?.cumEffectiveCpm ?? allReports.find((r) => r.effectiveCpm != null)?.effectiveCpm ?? null; return cpm != null ? fmtCurrency(cpm) : "—"; })() },
@@ -410,7 +410,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
             ].map((c) => (
               <div key={c.label} className="rounded-xl p-4" style={{ background: "var(--bg-base)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="flex items-center gap-2 mb-2">{c.icon}<p className="label-mono leading-tight">{c.label}</p></div>
-                <p className="metric-value text-xl leading-none" style={{ color: "#3DD68C" }}>{c.value}</p>
+                <p className="metric-value text-xl leading-none" style={{ color: "#3DFFA2" }}>{c.value}</p>
               </div>
             ))}
           </div>
@@ -426,7 +426,7 @@ function ReportCard({ report, prev, allReports = [] }: { report: Report; prev: R
                       <PlatformIcon platform={p.key} size={11} />
                       <span className="label-mono" style={{ color: PLATFORM_COLORS[p.key] ?? "var(--text-secondary)" }}>{p.label}</span>
                     </div>
-                    <p className="metric-value text-lg leading-none" style={{ color: "#3DD68C" }}>{fmt(p.value)}</p>
+                    <p className="metric-value text-lg leading-none" style={{ color: "#3DFFA2" }}>{fmt(p.value)}</p>
                     <p className="metric-sub mt-0.5">{allTime.views > 0 ? `${Math.round((p.value / allTime.views) * 100)}%` : "—"}</p>
                   </div>
                 ))}
@@ -483,7 +483,7 @@ function CopyLinkButton() {
           ? "rgba(61,255,162,0.12)"
           : "linear-gradient(135deg, rgba(255,59,59,0.15) 0%, rgba(255,59,59,0.08) 100%)",
         border: `1px solid ${copied ? "rgba(61,255,162,0.35)" : "rgba(255,59,59,0.25)"}`,
-        color: copied ? "#3DD68C" : "#FF3B3B",
+        color: copied ? "#3DFFA2" : "#FF3B3B",
         fontFamily: "var(--font-display)",
         transition: "all 0.2s ease",
         transform: copied ? "scale(0.97)" : "scale(1)",
@@ -605,14 +605,14 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                 {[
                   { icon: <Target size={13} color={ICON_COLOR} />, label: "Total Effective CPM", value: latestCpm != null ? fmtCurrency(latestCpm) : "—", sub: "latest week" },
                   { icon: <Scissors size={13} color="var(--text-secondary)" />, label: "Total Submissions", value: allTime.clipsSubmitted.toString(), sub: "all time" },
-                  { icon: <CheckCircle size={13} color="#3DD68C" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
-                  { icon: <Eye size={13} color="#3DD68C" />, label: "Approved Views", value: fmt(allTime.views), sub: "cumulative" },
-                  { icon: <DollarSign size={13} color="#3DD68C" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time" },
+                  { icon: <CheckCircle size={13} color="#3DFFA2" />, label: "Approved Videos", value: allTime.clipsApproved.toString(), sub: "all time" },
+                  { icon: <Eye size={13} color="#3DFFA2" />, label: "Approved Views", value: fmt(allTime.views), sub: "cumulative" },
+                  { icon: <DollarSign size={13} color="#3DFFA2" />, label: "Total Paid Out", value: fmtCurrency(allTime.paidOut), sub: "all time" },
                   { icon: <Wallet size={13} color="var(--warning)" />, label: "Budget Since Last Fri", value: fmtCurrency(budgetSinceFri2), sub: "this cycle" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-4" style={{ background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.09)" }}>
                     <div className="flex items-center gap-1.5 mb-2">{s.icon}<p className="label-mono leading-tight" style={{ fontSize: "0.63rem" }}>{s.label}</p></div>
-                    <p className="metric-value text-xl mb-0.5" style={{ color: "#3DD68C" }}>{s.value}</p>
+                    <p className="metric-value text-xl mb-0.5" style={{ color: "#3DFFA2" }}>{s.value}</p>
                     <p className="metric-sub" style={{ fontSize: "0.6rem" }}>{s.sub}</p>
                   </div>
                 ))}
@@ -629,7 +629,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                     if (latest.pct == null) return null;
                     const positive = latest.pct >= 0;
                     return (
-                      <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "#3DD68C" : ICON_COLOR }}>
+                      <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: positive ? "#3DFFA2" : ICON_COLOR }}>
                         {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         {positive ? "+" : ""}{latest.pct}% this week
                       </span>
@@ -675,7 +675,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                       dot={(props: any) => {
                         const { cx, cy, payload, index } = props;
                         const positive = (payload.pct ?? 0) >= 0;
-                        const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DD68C" : "#FF3B3B";
+                        const labelColor = payload.pct == null ? "#8A93A6" : positive ? "#3DFFA2" : "#FF3B3B";
                         return (
                           <g key={index}>
                             <circle cx={cx} cy={cy} r={3.5} fill="#FF3B3B" strokeWidth={0} />
@@ -720,7 +720,7 @@ export default function PublicClientReports({ clientName, logoUrl, agencyLogoUrl
                           {viewsPct != null && (
                             <>
                               <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "10px" }}>·</span>
-                              <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: viewsPct >= 0 ? "#3DD68C" : ICON_COLOR }}>
+                              <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: viewsPct >= 0 ? "#3DFFA2" : ICON_COLOR }}>
                                 {viewsPct >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                                 {viewsPct >= 0 ? "+" : ""}{viewsPct}% views
                               </span>

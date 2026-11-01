@@ -389,7 +389,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     style={{
                       background: emailSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.12)",
                       border: `1px solid ${emailSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.25)"}`,
-                      color: emailSaved ? "#3DD68C" : "#FF3B3B",
+                      color: emailSaved ? "#3DFFA2" : "#FF3B3B",
                       opacity: emailSaving || newEmail === currentEmail ? 0.5 : 1,
                       cursor: emailSaving || newEmail === currentEmail ? "not-allowed" : "pointer",
                     }}>
@@ -412,7 +412,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                 style={{
                   background: saved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
                   border: `1px solid ${saved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                  color: saved ? "#3DD68C" : "#FF3B3B",
+                  color: saved ? "#3DFFA2" : "#FF3B3B",
                   opacity: nameSaving ? 0.6 : 1,
                   cursor: nameSaving ? "not-allowed" : "pointer",
                 }}>
@@ -449,7 +449,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     style={{
                       background: selfRoleSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
                       border: `1px solid ${selfRoleSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                      color: selfRoleSaved ? "#3DD68C" : "#FF3B3B",
+                      color: selfRoleSaved ? "#3DFFA2" : "#FF3B3B",
                       opacity: selfRoleSaving ? 0.6 : 1,
                       cursor: selfRoleSaving ? "not-allowed" : "pointer",
                     }}>
@@ -475,7 +475,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                 style={{
                   background: passwordSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.15)",
                   border: `1px solid ${passwordSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.3)"}`,
-                  color: passwordSaved ? "#3DD68C" : "#FF3B3B",
+                  color: passwordSaved ? "#3DFFA2" : "#FF3B3B",
                   opacity: passwordSaving ? 0.6 : 1,
                   cursor: passwordSaving ? "not-allowed" : "pointer",
                 }}>
@@ -617,8 +617,8 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                             title={member.isTeamMember ? "Team member (restricted access) — click to grant admin access" : "Admin access — click to restrict"}
                             className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all"
                             style={{
-                              background: member.isTeamMember ? "rgba(245,158,11,0.1)" : "rgba(61,214,140,0.1)",
-                              border: `1px solid ${member.isTeamMember ? "rgba(245,158,11,0.3)" : "rgba(61,214,140,0.3)"}`,
+                              background: member.isTeamMember ? "rgba(245,158,11,0.1)" : "rgba(61,255,162,0.1)",
+                              border: `1px solid ${member.isTeamMember ? "rgba(245,158,11,0.3)" : "rgba(61,255,162,0.3)"}`,
                               color: member.isTeamMember ? "#f59e0b" : "rgb(61,214,140)",
                             }}>
                             {member.isTeamMember ? "Team" : "Admin"}
@@ -730,7 +730,7 @@ export default function AgencySettings({ userName, email, currentUserId, initial
                     style={{
                       background: inviteCodeSaved ? "rgba(61,255,162,0.15)" : "rgba(255,59,59,0.12)",
                       border: `1px solid ${inviteCodeSaved ? "rgba(61,255,162,0.3)" : "rgba(255,59,59,0.25)"}`,
-                      color: inviteCodeSaved ? "#3DD68C" : "#FF3B3B",
+                      color: inviteCodeSaved ? "#3DFFA2" : "#FF3B3B",
                       opacity: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? 0.5 : 1,
                       cursor: inviteCodeSaving || inviteCodeInput.trim() === inviteCode ? "not-allowed" : "pointer",
                     }}>

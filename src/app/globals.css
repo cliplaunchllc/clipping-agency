@@ -98,47 +98,51 @@
   --radius: 8px;
 
   /* ── Shadows ──────────────────────────────────────────────── */
-  --shadow-sm:        0 1px 2px rgba(0,0,0,0.5);
-  --shadow-md:        0 1px 2px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.35);
-  --shadow-lg:        0 1px 2px rgba(0,0,0,0.5), 0 12px 32px rgba(0,0,0,0.45);
-  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-sm:        0 1px 2px rgba(0,0,0,0.6);
+  --shadow-md:        0 1px 2px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.45);
+  --shadow-lg:        0 1px 2px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.55);
+  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,0.04);
+  --shadow-card:      0 1px 3px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-glow:      0 0 20px rgba(255,59,59,0.35);
+  --shadow-glow-green: 0 0 20px rgba(61,255,162,0.35);
+  --shadow-pop:       0 8px 32px rgba(0,0,0,0.55);
 }
 
 :root {
   /* ── Backgrounds ──────────────────────────────────────────── */
-  --bg-base:     #0D0D11;
-  --bg-subtle:   #121218;
-  --bg-surface:  #1A1A21;
-  --bg-elevated: #202028;
-  --bg-hover:    #28282F;
-  --bg-active:   #30303A;
+  --bg-base:     #05070D;
+  --bg-subtle:   #0B0E17;
+  --bg-surface:  #131825;
+  --bg-elevated: #1a1f2e;
+  --bg-hover:    #1f2538;
+  --bg-active:   #252c40;
 
   /* ── Borders ──────────────────────────────────────────────── */
-  --border-subtle:  rgba(255,255,255,0.08);
-  --border-default: rgba(255,255,255,0.12);
-  --border-strong:  rgba(255,255,255,0.18);
+  --border-subtle:  rgba(255,255,255,0.06);
+  --border-default: rgba(255,255,255,0.08);
+  --border-strong:  rgba(255,255,255,0.14);
 
   /* ── Text ─────────────────────────────────────────────────── */
-  --text-primary:   #EFEFF1;
-  --text-secondary: #ABABBA;
-  --text-tertiary:  #7A7A8A;
+  --text-primary:   #F5F6FA;
+  --text-secondary: #8A93A6;
+  --text-tertiary:  #6B7385;
   --text-on-accent: #FFFFFF;
 
   /* ── Brand red ────────────────────────────────────────────── */
-  --accent:             #FF5A5F;
-  --accent-solid:       #DC2626;
-  --accent-solid-hover: #E53935;
-  --accent-muted:       rgba(255,90,95,0.12);
-  --accent-border:      rgba(255,90,95,0.35);
-  --accent-glow:        rgba(255,60,60,0.25);
+  --accent:             #FF3B3B;
+  --accent-solid:       #FF3B3B;
+  --accent-solid-hover: #E53232;
+  --accent-muted:       rgba(255,59,59,0.12);
+  --accent-border:      rgba(255,59,59,0.30);
+  --accent-glow:        rgba(255,59,59,0.35);
 
   /* ── Semantic ─────────────────────────────────────────────── */
-  --success:    #3DD68C;
-  --success-bg: rgba(61,214,140,0.12);
+  --success:    #3DFFA2;
+  --success-bg: rgba(61,255,162,0.12);
   --warning:    #F5B94A;
   --warning-bg: rgba(245,185,74,0.12);
-  --danger:     #FF5A5F;
-  --danger-bg:  rgba(255,90,95,0.12);
+  --danger:     #FF3B3B;
+  --danger-bg:  rgba(255,59,59,0.12);
 
   /* ── Sidebar (Radix/shadcn primitives read from here) ─────── */
   --sidebar:                    var(--bg-subtle);
@@ -151,11 +155,11 @@
   --sidebar-ring:               var(--accent);
 
   /* ── Charts ───────────────────────────────────────────────── */
-  --chart-1: #DC2626;
-  --chart-2: #3DD68C;
+  --chart-1: #FF3B3B;
+  --chart-2: #3DFFA2;
   --chart-3: #F5B94A;
   --chart-4: #A1A1AA;
-  --chart-5: #EFEFF1;
+  --chart-5: #F5F6FA;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -233,22 +237,41 @@
   }
 
   /* ── Universal button transitions ─────────────────────────── */
-  /* Hover: color/background/border only — no lifts, no glows, no brightness */
   button:not(:disabled) {
     transition:
-      background-color 120ms ease,
-      border-color     120ms ease,
-      color            120ms ease,
-      opacity          120ms ease;
+      filter       180ms ease,
+      opacity      180ms ease,
+      box-shadow   200ms ease,
+      background-color 180ms ease,
+      transform    180ms ease,
+      border-color 180ms ease,
+      color        120ms ease;
+  }
+  button:not(:disabled):hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
   }
   button:not(:disabled):active {
-    opacity: 0.85;
+    transform: translateY(0);
+    filter: brightness(0.95);
   }
 
-  /* ── Tab navigation ───────────────────────────────────────── */
+  /* ── Tab navigation — suppress lift, just color change ─────── */
   .tab-btn:not(:disabled):hover {
     background: var(--bg-hover) !important;
     border-radius: var(--radius-md);
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* ── Accent (red) button glow ─────────────────────────────── */
+  .btn-accent:not(:disabled):hover {
+    box-shadow: 0 0 18px rgba(255,59,59,0.45), 0 4px 12px rgba(0,0,0,0.3) !important;
+  }
+
+  /* ── Green/success button glow ────────────────────────────── */
+  .btn-success:not(:disabled):hover {
+    box-shadow: 0 0 18px rgba(61,255,162,0.40), 0 4px 12px rgba(0,0,0,0.3) !important;
   }
 
   /* ── Step / checkbox toggles ──────────────────────────────── */
@@ -259,6 +282,8 @@
   /* ── Icon-only buttons ────────────────────────────────────── */
   .icon-btn:not(:disabled):hover {
     background: var(--bg-hover) !important;
+    filter: none !important;
+    transform: none !important;
   }
 
   /* ── Sidebar nav links ────────────────────────────────────── */
@@ -267,6 +292,8 @@
   }
   .nav-link:hover {
     background: var(--bg-hover) !important;
+    filter: none !important;
+    transform: none !important;
   }
 
   /* ── Table rows ───────────────────────────────────────────── */
@@ -310,24 +337,26 @@
   }
 
   /* ── Card surface ─────────────────────────────────────────── */
-  /* Depth from border brightening, not shadows or lifts */
   .glass-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-inset-top);
-    transition: border-color 160ms ease;
+    transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
   }
   .glass-card:hover {
     border-color: var(--border-strong);
+    box-shadow: var(--shadow-pop), 0 0 0 1px rgba(255,59,59,0.08);
+    transform: translateY(-1px);
   }
 
-  /* Alias — card-lift is now the same as glass-card (no physical lift) */
   .card-lift {
-    transition: border-color 160ms ease;
+    transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
   }
   .card-lift:hover {
     border-color: var(--border-strong) !important;
+    box-shadow: var(--shadow-pop), 0 0 0 1px rgba(255,59,59,0.08);
+    transform: translateY(-1px);
   }
 
   /* ── Link transitions ─────────────────────────────────────── */

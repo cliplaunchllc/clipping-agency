@@ -56,9 +56,9 @@ export default function AgencyAnalytics({ submissions }: { submissions: AnyRecor
 
   // svgColor is used for SVG presentation attributes (stroke/fill); cssColor for HTML style props
   const metrics = [
-    { key: "views",    label: "Total Views", value: totalViews,    icon: Eye,           svgColor: "#DC2626", cssColor: "var(--accent-solid)" },
-    { key: "likes",    label: "Total Likes", value: totalLikes,    icon: Heart,         svgColor: "#3DD68C", cssColor: "var(--success)" },
-    { key: "comments", label: "Comments",    value: totalComments, icon: MessageCircle, svgColor: "#DC2626", cssColor: "var(--accent-solid)" },
+    { key: "views",    label: "Total Views", value: totalViews,    icon: Eye,           svgColor: "#FF3B3B", cssColor: "var(--accent-solid)" },
+    { key: "likes",    label: "Total Likes", value: totalLikes,    icon: Heart,         svgColor: "#3DFFA2", cssColor: "var(--success)" },
+    { key: "comments", label: "Comments",    value: totalComments, icon: MessageCircle, svgColor: "#FF3B3B", cssColor: "var(--accent-solid)" },
     { key: "shares",   label: "Shares",      value: totalShares,   icon: Share2,        svgColor: "#F5B94A", cssColor: "var(--warning)" },
   ];
 
@@ -140,8 +140,8 @@ export default function AgencyAnalytics({ submissions }: { submissions: AnyRecor
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                 <XAxis dataKey="platform" tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmt} width={45} />
-                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#DC2626" }} />
-                <Bar dataKey="views" fill="#DC2626" radius={[4, 4, 0, 0]} />
+                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={tooltipStyle} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
+                <Bar dataKey="views" fill="#FF3B3B" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (

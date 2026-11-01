@@ -59,11 +59,11 @@ const STATUS_COLOR: Record<string, string> = {
   pending: "#94a3b8", queued: "#f59e0b", planning: "#fbbf24",
   discovering: "#818cf8", researching: "#60a5fa", verifying: "#f59e0b",
   scoring: "#a78bfa", building: "#22d3ee",
-  completed: "#3DD68C", stopped: "#64748b", failed: "#FF3B3B",
+  completed: "#3DFFA2", stopped: "#64748b", failed: "#FF3B3B",
 };
 
 const GRADE: Record<string, { color: string; bg: string; border: string }> = {
-  A: { color: "#3DD68C", bg: "rgba(61,214,140,0.1)",  border: "rgba(61,214,140,0.25)" },
+  A: { color: "#3DFFA2", bg: "rgba(61,255,162,0.1)",  border: "rgba(61,255,162,0.25)" },
   B: { color: "#60a5fa", bg: "rgba(96,165,250,0.1)",  border: "rgba(96,165,250,0.25)" },
   C: { color: "#fbbf24", bg: "rgba(251,191,36,0.1)",  border: "rgba(251,191,36,0.25)" },
   D: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.25)" },
@@ -290,7 +290,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
           <div className="px-6 py-3 flex items-center justify-between"
             style={{ background: "rgba(255,255,255,0.015)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-              <span style={{ color: "#3DD68C", fontWeight: 600 }}>{fmtCost(estimateCost(count))}</span>
+              <span style={{ color: "#3DFFA2", fontWeight: 600 }}>{fmtCost(estimateCost(count))}</span>
               &nbsp;· {count} lead{count !== 1 ? "s" : ""}
             </span>
             <button
@@ -346,7 +346,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                       <button onClick={(e) => { e.stopPropagation(); handleStartRun(run.id); }}
                         disabled={startingId === run.id}
                         className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/5"
-                        style={{ color: "#3DD68C" }}>
+                        style={{ color: "#3DFFA2" }}>
                         {startingId === run.id ? <RotateCcw size={11} className="animate-spin" /> : <Play size={11} />}
                       </button>
                     )}
@@ -443,7 +443,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                   {canStart(selectedRun) && (
                     <button onClick={() => handleStartRun(selectedRun.id)} disabled={startingId === selectedRun.id}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DD68C" }}>
+                      style={{ background: "rgba(61,255,162,0.1)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }}>
                       {startingId === selectedRun.id ? <RotateCcw size={10} className="animate-spin" /> : <Play size={10} />}
                       {startingId === selectedRun.id ? "Starting…" : "Start"}
                     </button>
@@ -717,7 +717,7 @@ export default function LeadFactory({ initialRuns }: { initialRuns: LeadRun[] })
                                 onClick={() => handleLeadStatus(lead.id, dnc ? "active" : "do_not_contact")}
                                 className="text-xs px-3 py-1 rounded-lg font-medium"
                                 style={dnc
-                                  ? { background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DD68C" }
+                                  ? { background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.2)", color: "#3DFFA2" }
                                   : { background: "rgba(255,59,59,0.07)", border: "1px solid rgba(255,59,59,0.18)", color: "var(--accent)" }}>
                                 {dnc ? "Remove DNC" : "Mark DNC"}
                               </button>

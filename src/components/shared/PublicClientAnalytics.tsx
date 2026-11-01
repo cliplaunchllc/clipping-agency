@@ -282,7 +282,7 @@ export default function PublicClientAnalytics({ client }: Props) {
             <div className="flex items-center justify-between px-6 py-4"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2">
-                <TrendingUp size={14} color="#3DD68C" />
+                <TrendingUp size={14} color="#3DFFA2" />
                 <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clips</h2>
               </div>
               <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>

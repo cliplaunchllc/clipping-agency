@@ -57,7 +57,7 @@ function contactDays(lastContactedAt: string | null | undefined): number {
   return Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000);
 }
 function contactColor(days: number): { bg: string; border: string; text: string; label: string; pulse: boolean } {
-  if (days <= 2) return { bg: "rgba(61,214,140,0.12)", border: "rgba(61,214,140,0.3)", text: "var(--success)", label: days === 0 ? "Today" : days === 1 ? "Yesterday" : "2 days ago", pulse: false };
+  if (days <= 2) return { bg: "rgba(61,255,162,0.12)", border: "rgba(61,255,162,0.3)", text: "var(--success)", label: days === 0 ? "Today" : days === 1 ? "Yesterday" : "2 days ago", pulse: false };
   if (days <= 3) return { bg: "rgba(245,185,74,0.12)", border: "rgba(245,185,74,0.35)", text: "var(--warning)", label: `${days}d ago`, pulse: false };
   return { bg: "rgba(255,59,59,0.12)", border: "rgba(255,59,59,0.35)", text: "var(--accent)", label: days >= 999 ? "Never messaged" : `${days}d ago`, pulse: true };
 }
@@ -1855,7 +1855,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                     {/* Contact button top-right */}
                     <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {isContacting ? (
-                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.2)" }}>
+                        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.2)" }}>
                           <input
                             type="date"
                             value={contactDate}
@@ -1867,7 +1867,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                             onClick={() => contactDate && updateLastContacted(client.id, contactDate)}
                             disabled={!contactDate}
                             className="text-xs px-3 py-1.5 rounded-lg font-semibold flex-shrink-0"
-                            style={{ background: "rgba(61,214,140,0.15)", border: "1px solid rgba(61,214,140,0.3)", color: "var(--success)", opacity: !contactDate ? 0.5 : 1 }}>
+                            style={{ background: "rgba(61,255,162,0.15)", border: "1px solid rgba(61,255,162,0.3)", color: "var(--success)", opacity: !contactDate ? 0.5 : 1 }}>
                             Save
                           </button>
                           <button onClick={() => setContactingClientId(null)} className="text-sm flex-shrink-0 px-1" style={{ color: "var(--text-tertiary)" }}>×</button>
@@ -2091,8 +2091,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <defs>
                           <linearGradient id="weeklyViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3DD68C" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#3DD68C" stopOpacity={0} />
+                            <stop offset="0%" stopColor="#3DFFA2" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#3DFFA2" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -2104,9 +2104,9 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           formatter={(v, name) => name === "views" ? fmt(Number(v ?? 0)) : fmtCurrency(Number(v ?? 0))}
                           contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }}
                           labelStyle={{ color: "#8A93A6" }}
-                          itemStyle={{ color: "#3DD68C" }}
+                          itemStyle={{ color: "#3DFFA2" }}
                         />
-                        <Area type="monotone" dataKey="views" stroke="#3DD68C" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DD68C", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DD68C", strokeWidth: 0 }} />
+                        <Area type="monotone" dataKey="views" stroke="#3DFFA2" strokeWidth={2} fill="url(#weeklyViewsGrad)" dot={{ r: 3, fill: "#3DFFA2", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#3DFFA2", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                     <p className="metric-sub mt-3 text-center">
@@ -2275,8 +2275,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <defs>
                           <linearGradient id="ongoingViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#DC2626" stopOpacity={0.18} />
-                            <stop offset="100%" stopColor="#DC2626" stopOpacity={0} />
+                            <stop offset="0%" stopColor="#FF3B3B" stopOpacity={0.18} />
+                            <stop offset="100%" stopColor="#FF3B3B" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -2284,8 +2284,8 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
                           tickFormatter={(v: string) => { const d = new Date(v); return `${d.getMonth()+1}/${d.getDate()}`; }} />
                         <YAxis tick={{ fill: "#8A93A6", fontSize: 11 }} axisLine={false} tickLine={false}
                           tickFormatter={(v: number) => fmt(v)} width={46} />
-                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#DC2626" }} />
-                        <Area type="monotone" dataKey="views" stroke="#DC2626" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#DC2626", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#DC2626", strokeWidth: 0 }} />
+                        <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8 }} labelStyle={{ color: "#8A93A6" }} itemStyle={{ color: "#FF3B3B" }} />
+                        <Area type="monotone" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#ongoingViewsGrad)" dot={{ r: 3, fill: "#FF3B3B", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                     <p className="metric-sub mt-3 text-center">

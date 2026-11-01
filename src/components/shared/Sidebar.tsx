@@ -123,21 +123,14 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm relative transition-colors nav-link"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all nav-link"
               style={{
                 color: isActive ? "var(--accent)" : "var(--text-secondary)",
                 background: isActive ? "var(--accent-muted)" : "transparent",
                 fontWeight: isActive ? 500 : 400,
               }}
             >
-              {/* Active indicator bar */}
-              {isActive && (
-                <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full"
-                  style={{ height: "60%", background: "var(--accent)" }}
-                />
-              )}
-              <Icon size={15} strokeWidth={isActive ? 2 : 1.75} />
+              <Icon size={16} strokeWidth={isActive ? 2 : 1.75} />
               {item.label}
             </Link>
           );
@@ -172,7 +165,7 @@ export default function Sidebar({ role, userName: userNameProp, isTeamMember }: 
         </div>
         <a
           href="/api/auth/logout"
-          className="block w-full text-xs py-1.5 px-3 rounded-md text-left transition-colors nav-link"
+          className="block w-full text-xs py-2 px-3 rounded-xl text-left transition-colors nav-link"
           style={{ color: "var(--text-tertiary)" }}
         >
           Sign out

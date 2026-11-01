@@ -59,7 +59,7 @@ const SOURCE_OPTIONS = [
 
 function leadTemperature(lead: CrmLead): { label: string; color: string; bg: string; border: string } {
   if (lead.leadLost)         return { label: "Lost",    color: "rgb(160,80,80)",     bg: "rgba(160,80,80,0.1)",    border: "rgba(160,80,80,0.3)"   };
-  if (lead.closedCall)       return { label: "Closed",  color: "rgb(61,214,140)",    bg: "rgba(61,214,140,0.12)",  border: "rgba(61,214,140,0.4)"  };
+  if (lead.closedCall)       return { label: "Closed",  color: "rgb(61,255,162)",    bg: "rgba(61,255,162,0.12)",  border: "rgba(61,255,162,0.4)"  };
   if (lead.showedUpToCall)   return { label: "Hot 🔥",  color: "rgb(255,120,60)",    bg: "rgba(255,120,60,0.12)",  border: "rgba(255,120,60,0.4)"  };
   if (lead.callBooked)       return { label: "Hot",     color: "rgb(255,160,40)",    bg: "rgba(255,160,40,0.12)",  border: "rgba(255,160,40,0.4)"  };
   if (lead.replied || lead.inConvo) return { label: "Warm", color: "rgb(251,191,36)", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.4)" };
@@ -133,7 +133,7 @@ function daysSinceLastTouch(lead: CrmLead): number | null {
 
 function StaleBadge({ days }: { days: number | null }) {
   if (days === null) return <span style={{ color: "var(--text-tertiary)", fontSize: 10 }}>—</span>;
-  let bg = "rgba(61,214,140,0.12)";
+  let bg = "rgba(61,255,162,0.12)";
   let color = "var(--success)";
   let label = `${days}d ago`;
   if (days >= 7) { bg = "rgba(255,59,59,0.12)"; color = "var(--error, #ff5a5a)"; }
@@ -165,12 +165,12 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: (v: boole
       onClick={() => onChange(!checked)}
       className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-all mx-auto"
       style={{
-        background: checked ? "rgba(61,214,140,0.22)" : "transparent",
-        border: checked ? "1px solid rgba(61,214,140,0.7)" : "1px solid var(--border-default)",
-        boxShadow: checked ? "0 0 10px rgba(61,214,140,0.4)" : undefined,
+        background: checked ? "rgba(61,255,162,0.22)" : "transparent",
+        border: checked ? "1px solid rgba(61,255,162,0.7)" : "1px solid var(--border-default)",
+        boxShadow: checked ? "0 0 10px rgba(61,255,162,0.4)" : undefined,
       }}
     >
-      {checked && <CheckCircle2 size={15} color="rgb(61,214,140)" strokeWidth={2.5} />}
+      {checked && <CheckCircle2 size={15} color="rgb(61,255,162)" strokeWidth={2.5} />}
     </button>
   );
 }
@@ -285,15 +285,15 @@ function OutreachPills({ lead, patch }: { lead: CrmLead; patch: (id: string, fie
             style={{
               width: 36,
               height: 36,
-              background: checked ? "rgba(61,214,140,0.15)" : "var(--bg-base)",
-              border: `1px solid ${checked ? "rgba(61,214,140,0.6)" : "var(--border-subtle)"}`,
-              boxShadow: checked ? "0 0 10px rgba(61,214,140,0.3)" : undefined,
+              background: checked ? "rgba(61,255,162,0.15)" : "var(--bg-base)",
+              border: `1px solid ${checked ? "rgba(61,255,162,0.6)" : "var(--border-subtle)"}`,
+              boxShadow: checked ? "0 0 10px rgba(61,255,162,0.3)" : undefined,
               opacity: checked ? 1 : 0.45,
             }}
           >
             {icon}
             {checked && (
-              <span style={{ fontSize: 7, fontWeight: 700, color: "rgb(61,214,140)", letterSpacing: "0.02em", lineHeight: 1 }}>✓</span>
+              <span style={{ fontSize: 7, fontWeight: 700, color: "rgb(61,255,162)", letterSpacing: "0.02em", lineHeight: 1 }}>✓</span>
             )}
           </button>
         );
@@ -434,7 +434,7 @@ function CsvConfirmModal({ toAdd, duplicates, onConfirm, onCancel, importing }: 
             <p className="text-2xl font-semibold" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{duplicates.length}</p>
             <p style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", opacity: 0.8 }}>Already Exist</p>
           </div>
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(61,214,140,0.06)", border: "1px solid rgba(61,214,140,0.2)" }}>
+          <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(61,255,162,0.06)", border: "1px solid rgba(61,255,162,0.2)" }}>
             <p className="text-2xl font-semibold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>{toAdd.length}</p>
             <p style={{ fontSize: 10, color: "var(--success)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", opacity: 0.8 }}>Will Be Added</p>
           </div>
@@ -738,7 +738,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
 
   const sectionBg: Record<string, string> = {
     outreach: "rgba(79,142,247,0.05)",
-    messages: "rgba(61,214,140,0.05)",
+    messages: "rgba(61,255,162,0.05)",
     pipeline: "rgba(255,59,59,0.05)",
   };
 
@@ -846,7 +846,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
 
       {/* Import / dedup feedback toast */}
       {importMsg && (
-        <div className="flex items-center justify-between mb-4 px-4 py-2.5 rounded-lg" style={{ background: "rgba(61,214,140,0.08)", border: "1px solid rgba(61,214,140,0.25)" }}>
+        <div className="flex items-center justify-between mb-4 px-4 py-2.5 rounded-lg" style={{ background: "rgba(61,255,162,0.08)", border: "1px solid rgba(61,255,162,0.25)" }}>
           <p className="text-sm" style={{ color: "var(--success)" }}>{importMsg}</p>
           <button onClick={() => setImportMsg(null)} style={{ color: "var(--text-tertiary)" }}><X size={13} /></button>
         </div>
@@ -1022,9 +1022,9 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                   background: isBookmarked
                     ? "rgba(251,191,36,0.09)"
                     : isDone
-                    ? "rgba(61,214,140,0.06)"
+                    ? "rgba(61,255,162,0.06)"
                     : isNew
-                    ? "rgba(61,214,140,0.07)"
+                    ? "rgba(61,255,162,0.07)"
                     : isLost
                     ? "rgba(100,60,60,0.06)"
                     : i % 2 === 0 ? "var(--bg-surface)" : "var(--bg-base)",
@@ -1033,11 +1033,11 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                   // Bookmark: thick solid amber outline = banner effect
                   outline: isBookmarked
                     ? "2px solid rgba(251,191,36,0.75)"
-                    : isNew ? "1px solid rgba(61,214,140,0.3)" : undefined,
+                    : isNew ? "1px solid rgba(61,255,162,0.3)" : undefined,
                   boxShadow: isBookmarked
                     ? "inset 5px 0 0 rgb(251,191,36)"
                     : isDone
-                    ? "inset 4px 0 0 rgb(61,214,140)"
+                    ? "inset 4px 0 0 rgb(61,255,162)"
                     : isLost
                     ? "inset 3px 0 0 rgba(160,80,80,0.5)"
                     : undefined,
@@ -1066,7 +1066,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                           onClick={() => patch(lead.id, "markedDone", !isDone)}
                           title={isDone ? "Mark as not done" : "Mark as done"}
                           className="crm-pin transition-all"
-                          style={{ opacity: isDone ? 1 : 0, color: "rgb(61,214,140)" }}
+                          style={{ opacity: isDone ? 1 : 0, color: "rgb(61,255,162)" }}
                         >
                           <CheckCircle2 size={14} />
                         </button>

@@ -38,13 +38,13 @@ export default function TopClipsChart({ clips }: Props) {
     pct: f,
   }));
 
-  const rankColors = ["#3DD68C", "#a78bfa", "#FB923C", "var(--text-tertiary)", "var(--text-tertiary)"];
+  const rankColors = ["#3DFFA2", "#a78bfa", "#FB923C", "var(--text-tertiary)", "var(--text-tertiary)"];
 
   return (
     <div className="rounded-xl p-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <Trophy size={14} color="#3DD68C" />
+        <Trophy size={14} color="#3DFFA2" />
         <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
           Top {top10.length} Clips by Views
         </h2>
