@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink, Upload, X } from "lucide-react";
 
 export interface FreebieLink { id: string; label: string; url: string; order: number; }
 export interface FreebieAsset { id: string; label: string; url: string; order: number; }
@@ -235,35 +235,54 @@ function FreebieCard({
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newAssetLabel, setNewAssetLabel] = useState("");
   const [newAssetUrl, setNewAssetUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleImageFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setHeaderImageUrl(dataUrl);
+      onUpdateHeaderImageUrl(dataUrl);
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
 
   return (
     <div style={card}>
-      {/* Header row */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Top action row */}
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <button
+          onClick={() => onCopy(shareUrl, freebie.id)}
+          style={btnStyle("var(--accent)")}
+          title="Copy share link"
+        >
+          {copied === freebie.id ? <Check size={12} /> : <Copy size={12} />}
+          {copied === freebie.id ? "Copied!" : "Copy link"}
+        </button>
+        <a href={shareUrl} target="_blank" rel="noopener noreferrer" style={btnStyle("var(--text-secondary)")} title="Preview">
+          <ExternalLink size={12} />
+        </a>
+        <button onClick={onDelete} style={btnStyle("var(--danger)")} title="Delete">
+          <Trash2 size={12} />
+        </button>
+      </div>
+
+      {/* Page title — what viewers see as the H1 */}
+      <div className="mb-4">
+        <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+          Page Title <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown as the heading on the public page)</span>
+        </label>
         <input
-          className="flex-1 text-base font-semibold bg-transparent border-none outline-none"
-          style={{ color: "var(--text-primary)" }}
+          style={inputStyle}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name.trim() && name !== freebie.name && onUpdateName(name.trim())}
           placeholder="Lead magnet name"
         />
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => onCopy(shareUrl, freebie.id)}
-            style={btnStyle("var(--accent)")}
-            title="Copy share link"
-          >
-            {copied === freebie.id ? <Check size={12} /> : <Copy size={12} />}
-            {copied === freebie.id ? "Copied!" : "Copy link"}
-          </button>
-          <a href={shareUrl} target="_blank" rel="noopener noreferrer" style={btnStyle("var(--text-secondary)")} title="Preview">
-            <ExternalLink size={12} />
-          </a>
-          <button onClick={onDelete} style={btnStyle("var(--danger)")} title="Delete">
-            <Trash2 size={12} />
-          </button>
-        </div>
       </div>
 
       {/* Share link display */}
@@ -274,22 +293,69 @@ function FreebieCard({
 
       {/* Header image */}
       <div className="mb-4">
-        <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Header image URL <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(optional — shown at top of public page)</span></label>
-        <div className="flex gap-2 items-center">
-          <input
-            style={{ ...inputStyle, flex: 1 }}
-            value={headerImageUrl}
-            onChange={(e) => setHeaderImageUrl(e.target.value)}
-            onBlur={() => headerImageUrl !== (freebie.headerImageUrl ?? "") && onUpdateHeaderImageUrl(headerImageUrl)}
-            placeholder="https://…"
-          />
-          {headerImageUrl && (
-            <img src={headerImageUrl} alt="" className="w-12 h-8 object-cover rounded flex-shrink-0"
-              style={{ border: "1px solid var(--border-subtle)" }}
+        <label className="text-xs font-medium mb-2 block" style={{ color: "var(--text-secondary)" }}>
+          Header Image <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at top of public page)</span>
+        </label>
+        {headerImageUrl ? (
+          <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-default)" }}>
+            <img
+              src={headerImageUrl}
+              alt="Header"
+              style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
-          )}
-        </div>
+            <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6 }}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{ ...btnStyle("var(--text-primary)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(6px)" }}
+                title="Replace image"
+              >
+                <Upload size={11} />
+                Replace
+              </button>
+              <button
+                onClick={() => { setHeaderImageUrl(""); onUpdateHeaderImageUrl(""); }}
+                style={{ ...btnStyle("var(--danger)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,59,59,0.25)", backdropFilter: "blur(6px)" }}
+                title="Remove image"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImageFile(f); }}
+            style={{
+              border: "1px dashed var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              padding: "24px 16px",
+              textAlign: "center",
+              cursor: "pointer",
+              transition: "border-color 120ms ease, background 120ms ease",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLDivElement).style.background = "var(--bg-hover)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+          >
+            {uploading ? (
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Uploading…</p>
+            ) : (
+              <>
+                <Upload size={18} style={{ color: "var(--text-tertiary)", margin: "0 auto 8px" }} />
+                <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Click or drag to upload</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>PNG, JPG, GIF, WebP</p>
+              </>
+            )}
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = ""; }}
+        />
       </div>
 
       {/* Description */}
