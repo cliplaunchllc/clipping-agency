@@ -27,7 +27,6 @@ export default function RootLayout({
       </head>
       <body
         style={{
-          background: "var(--bg-base)",
           color: "var(--text-primary)",
           fontFamily: '"Instrument Sans", ui-sans-serif, system-ui, sans-serif',
         }}

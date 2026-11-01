@@ -9,7 +9,7 @@ export default async function AgencyLayout({ children }: { children: React.React
   const isTeamMember = (session.user as { isTeamMember?: boolean }).isTeamMember ?? false;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-base)" }}>
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         role="agency"
         userName={session.user.name ?? session.user.email ?? "Agency"}
