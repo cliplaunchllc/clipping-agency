@@ -60,7 +60,7 @@ const selectStyle: React.CSSProperties = {
 export default function ClientManagement({ initialClients, pendingClientUsers: initialPending = [], allClients: allClientOptions = [], isTeamMember = false }: Props) {
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [pendingUsers, setPendingUsers] = useState<PendingClientUser[]>(initialPending);
-  const [tab, setTab] = useState<"active" | "justlaunched" | "prelaunch" | "archived" | "pending">("active");
+  const [tab, setTab] = useState<"active" | "prelaunch" | "archived" | "pending">("active");
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<"connect" | "create">("connect");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -135,8 +135,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
   }
 
   const visible = clients.filter((c) =>
-    tab === "active" ? c.status === "active" :
-    tab === "justlaunched" ? c.status === "justlaunched" :
+    tab === "active" ? (c.status === "active" || c.status === "justlaunched") :
     tab === "prelaunch" ? c.status === "prelaunch" :
     tab === "archived" ? c.status === "archived" : false
   );
@@ -407,10 +406,9 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
         {(isTeamMember
           ? [{ id: "active", label: `Active (${clients.filter((c) => c.status === "active").length})` }]
           : [
-              { id: "active",        label: `Active (${clients.filter((c) => c.status === "active").length})` },
-              { id: "justlaunched",  label: `Just Launched (${clients.filter((c) => c.status === "justlaunched").length})` },
-              { id: "prelaunch",     label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
-              { id: "archived",      label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
+              { id: "active",    label: `Active (${clients.filter((c) => c.status === "active" || c.status === "justlaunched").length})` },
+              { id: "prelaunch", label: `Pre-launch (${clients.filter((c) => c.status === "prelaunch").length})` },
+              { id: "archived",  label: `Archived (${clients.filter((c) => c.status === "archived").length})` },
               { id: "pending",       label: `Pending Signup (${pendingUsers.length})` },
             ]
         ).map((t) => (
@@ -498,7 +496,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
       )}
 
       {/* ACTIVE / JUST LAUNCHED / PRE-LAUNCH / ARCHIVED TABLE */}
-      {(tab === "active" || tab === "justlaunched" || tab === "prelaunch" || tab === "archived") && (
+      {(tab === "active" || tab === "prelaunch" || tab === "archived") && (
         <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <table className="w-full">
             <thead>
@@ -636,7 +634,7 @@ export default function ClientManagement({ initialClients, pendingClientUsers: i
               ))}
               {visible.length === 0 && (
                 <tr><td colSpan={3} className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-                  {tab === "archived" ? "No archived clients" : tab === "prelaunch" ? "No pre-launch clients" : tab === "justlaunched" ? "No just launched clients" : "No clients yet — add your first client"}
+                  {tab === "archived" ? "No archived clients" : tab === "prelaunch" ? "No pre-launch clients" : "No clients yet — add your first client"}
                 </td></tr>
 
               )}

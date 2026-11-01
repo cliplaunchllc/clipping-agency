@@ -344,6 +344,42 @@ model TeamPaymentMember {
   updatedAt      DateTime  @updatedAt
 }
 
+// ─── Freebies / Skool ────────────────────────────────────────────────────────
+
+model Freebie {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  type        String   @default("freebie") // freebie | skool
+  shareToken  String   @unique @default(cuid())
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  links  FreebieLink[]
+  assets FreebieAsset[]
+}
+
+model FreebieLink {
+  id        String @id @default(cuid())
+  freebieId String
+  label     String
+  url       String
+  order     Int    @default(0)
+
+  freebie Freebie @relation(fields: [freebieId], references: [id], onDelete: Cascade)
+}
+
+model FreebieAsset {
+  id        String @id @default(cuid())
+  freebieId String
+  label     String
+  url       String
+  order     Int    @default(0)
+
+  freebie Freebie @relation(fields: [freebieId], references: [id], onDelete: Cascade)
+}
+
 // ─── Lead Factory ────────────────────────────────────────────────────────────
 
 model LeadRun {

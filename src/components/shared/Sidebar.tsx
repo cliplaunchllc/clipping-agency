@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, Settings, BarChart2, ContactRound, BookOpen, Wallet,
+  LayoutDashboard, Users, Settings, BarChart2, ContactRound, BookOpen, Wallet, Gift, School,
 } from "lucide-react";
 
 const NAV_ITEMS = {
@@ -13,6 +13,8 @@ const NAV_ITEMS = {
     { label: "Clients", href: "/agency/clients", icon: Users },
     { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
     { label: "CRM", href: "/agency/crm", icon: ContactRound },
+    { label: "Freebies", href: "/agency/freebies", icon: Gift },
+    { label: "Skool", href: "/agency/skool", icon: School },
     { label: "SOPs", href: "/agency/sops", icon: BookOpen },
     { label: "Team Payments", href: "/agency/team-payments", icon: Wallet },
     { label: "Settings", href: "/agency/settings", icon: Settings },

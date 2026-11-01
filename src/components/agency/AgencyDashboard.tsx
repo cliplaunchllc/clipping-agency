@@ -91,7 +91,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
   const [selectedClientId, setSelectedClientId] = useState("all");
   const [viewMode, setViewMode] = useState<"agency" | "client">("agency");
   const [previewClientId, setPreviewClientId] = useState("");
-  const [clientListTab, setClientListTab] = useState<"active" | "justlaunched" | "prelaunch" | "archived">("active");
+  const [clientListTab, setClientListTab] = useState<"active" | "prelaunch" | "archived">("active");
   // Per-client inline report breakout
   const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
   function toggleClientBreakout(id: string) {
@@ -116,8 +116,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClientId]);
 
-  const activeClients       = clients.filter((c) => c.status === "active");
-  const justLaunchedClients = clients.filter((c) => c.status === "justlaunched");
+  const activeClients       = clients.filter((c) => c.status === "active" || c.status === "justlaunched");
   const prelaunchClients    = clients.filter((c) => c.status === "prelaunch");
   const archivedClients     = clients.filter((c) => c.status === "archived");
   const selectedClient = allClients.find((c) => c.id === selectedClientId) ?? null;
@@ -336,7 +335,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               <p className="label-mono">Active Clients</p>
                             </div>
                             <p className="text-4xl metric-value mb-1.5" style={{ color: "#3DD68C" }}>{activeClients.length}</p>
-                            <p className="metric-sub">{justLaunchedClients.length > 0 ? `${justLaunchedClients.length} just launched · ` : ""}{prelaunchClients.length} pre-launch</p>
+                            <p className="metric-sub">{prelaunchClients.length} pre-launch</p>
                           </div>
                           {/* Revenue managed */}
                           <div style={card} className="stat-card px-6 py-5">
@@ -532,10 +531,9 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                     {/* ── Client list tabs ── */}
                     <div className="flex gap-1 mb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                       {([
-                        { id: "active",        label: `Active (${activeClients.length})` },
-                        { id: "justlaunched",  label: `Just Launched (${justLaunchedClients.length})` },
-                        { id: "prelaunch",     label: `Pre-launch (${prelaunchClients.length})` },
-                        { id: "archived",      label: `Archived (${archivedClients.length})` },
+                        { id: "active",    label: `Active (${activeClients.length})` },
+                        { id: "prelaunch", label: `Pre-launch (${prelaunchClients.length})` },
+                        { id: "archived",  label: `Archived (${archivedClients.length})` },
                       ] as const).map((t) => (
                         <button key={t.id} onClick={() => setClientListTab(t.id)}
                           className="px-4 py-2.5 text-sm font-medium relative"
@@ -550,11 +548,9 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                     {(() => {
                       const visibleClients =
                         clientListTab === "active" ? activeClients :
-                        clientListTab === "justlaunched" ? justLaunchedClients :
                         clientListTab === "prelaunch" ? prelaunchClients : archivedClients;
                       const emptyMsg =
                         clientListTab === "active" ? ["No active clients", "Add a client to get started."] :
-                        clientListTab === "justlaunched" ? ["No just launched clients", "Mark a client as Just Launched from the Clients page."] :
                         clientListTab === "prelaunch" ? ["No pre-launch clients", "Mark a client as Pre-launch from the Clients page."] :
                         ["No archived clients", "Archive a client from the Clients page."];
                       return visibleClients.length === 0 ? (
