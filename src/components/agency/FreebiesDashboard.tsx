@@ -177,7 +177,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
         <div className="py-16 text-center rounded-xl" style={{ border: "1px dashed var(--border-subtle)" }}>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No {itemLabel.toLowerCase()}s yet</p>
           <button onClick={createFreebie} className="mt-3 text-xs" style={{ color: "var(--accent)" }}>
-            + Create your first {itemLabel.toLowerCase()}
+            Create your first {itemLabel.toLowerCase()}
           </button>
         </div>
       ) : (
@@ -330,7 +330,7 @@ function FreebieCard({
             onClick={() => { if (newLinkLabel && newLinkUrl) { onAddLink(newLinkLabel, newLinkUrl); setNewLinkLabel(""); setNewLinkUrl(""); } }}
             style={btnStyle()}
           >
-            <Plus size={12} /> Add
+            Add
           </button>
         </div>
       </div>
@@ -359,7 +359,7 @@ function FreebieCard({
             onClick={() => { if (newAssetLabel && newAssetUrl) { onAddAsset(newAssetLabel, newAssetUrl); setNewAssetLabel(""); setNewAssetUrl(""); } }}
             style={btnStyle()}
           >
-            <Plus size={12} /> Add
+            Add
           </button>
         </div>
       </div>

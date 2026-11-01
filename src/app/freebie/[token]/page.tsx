@@ -1,18 +1,23 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ExternalLink, FileBox } from "lucide-react";
+import ClipLaunchLogo from "@/components/shared/ClipLaunchLogo";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicFreebiePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const freebie = await prisma.freebie.findUnique({
-    where: { shareToken: token },
-    include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
-  });
+  const [freebie, logoSetting] = await Promise.all([
+    prisma.freebie.findUnique({
+      where: { shareToken: token },
+      include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
+    }),
+    prisma.siteSetting.findUnique({ where: { key: "agency_logo" } }),
+  ]);
 
   if (!freebie) notFound();
+  const logoUrl = logoSetting?.value ?? null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
@@ -87,9 +92,9 @@ export default async function PublicFreebiePage({ params }: { params: Promise<{ 
           </div>
         )}
 
-        <p className="text-center text-xs mt-12" style={{ color: "var(--text-tertiary)" }}>
-          Powered by ClipLaunch
-        </p>
+        <div className="flex justify-center mt-12">
+          <ClipLaunchLogo logoUrl={logoUrl} />
+        </div>
       </div>
     </div>
   );

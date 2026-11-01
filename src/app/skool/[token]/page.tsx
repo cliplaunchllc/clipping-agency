@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ExternalLink, FileBox, ChevronDown } from "lucide-react";
+import ClipLaunchLogo from "@/components/shared/ClipLaunchLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,9 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   const tokenSetting = await prisma.siteSetting.findUnique({ where: { key: "skool_portal_token" } });
   if (!tokenSetting || tokenSetting.value !== token) notFound();
 
-  const [nameSetting, freebies] = await Promise.all([
+  const [nameSetting, logoSetting, freebies] = await Promise.all([
     prisma.siteSetting.findUnique({ where: { key: "skool_community_name" } }),
+    prisma.siteSetting.findUnique({ where: { key: "agency_logo" } }),
     prisma.freebie.findMany({
       where: { type: "skool" },
       include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
@@ -20,19 +22,14 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   ]);
 
   const communityName = nameSetting?.value ?? "Member Resources";
+  const logoUrl = logoSetting?.value ?? null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
       {/* Header */}
       <div style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-subtle)" }}>
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ background: "var(--accent-muted)", border: "1px solid var(--accent-border)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C9.5 4.5 8 8 8 12H16C16 8 14.5 4.5 12 2Z" fill="var(--accent)" />
-              <path d="M8 12H16V15.5C16 15.5 14 16.5 12 16.5C10 16.5 8 15.5 8 15.5V12Z" fill="var(--accent-solid)" />
-            </svg>
-          </div>
+          <ClipLaunchLogo logoUrl={logoUrl} compact />
           <h1 className="font-semibold text-base">{communityName}</h1>
         </div>
       </div>
