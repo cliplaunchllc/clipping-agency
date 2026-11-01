@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink, Upload, X } from "lucide-react";
+import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink, Upload, X, ChevronDown, ChevronRight } from "lucide-react";
+
+function normalizeUrl(url: string): string {
+  const t = url.trim();
+  if (!t) return t;
+  if (/^https?:\/\//i.test(t)) return t;
+  return "https://" + t;
+}
 
 export interface FreebieLink { id: string; label: string; url: string; order: number; }
 export interface FreebieAsset { id: string; label: string; url: string; order: number; }
@@ -236,6 +243,7 @@ function FreebieCard({
   const [newAssetLabel, setNewAssetLabel] = useState("");
   const [newAssetUrl, setNewAssetUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleImageFile(file: File) {
@@ -254,7 +262,17 @@ function FreebieCard({
   return (
     <div style={card}>
       {/* Top action row */}
-      <div className="flex items-center justify-end gap-2 mb-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          style={{ ...btnStyle("var(--text-secondary)"), padding: "5px 8px", marginRight: "auto" }}
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+          <span style={{ maxWidth: collapsed ? 220 : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--text-primary)" }}>
+            {name || "Untitled"}
+          </span>
+        </button>
         <button
           onClick={() => onCopy(shareUrl, freebie.id)}
           style={btnStyle("var(--accent)")}
@@ -270,6 +288,8 @@ function FreebieCard({
           <Trash2 size={12} />
         </button>
       </div>
+
+      {collapsed ? null : (<>
 
       {/* Page title — what viewers see as the H1 */}
       <div className="mb-4">
@@ -393,7 +413,7 @@ function FreebieCard({
           <input style={{ ...inputStyle, flex: 1 }} placeholder="Label" value={newLinkLabel} onChange={(e) => setNewLinkLabel(e.target.value)} />
           <input style={{ ...inputStyle, flex: 2 }} placeholder="URL" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} />
           <button
-            onClick={() => { if (newLinkLabel && newLinkUrl) { onAddLink(newLinkLabel, newLinkUrl); setNewLinkLabel(""); setNewLinkUrl(""); } }}
+            onClick={() => { if (newLinkLabel && newLinkUrl) { onAddLink(newLinkLabel, normalizeUrl(newLinkUrl)); setNewLinkLabel(""); setNewLinkUrl(""); } }}
             style={btnStyle()}
           >
             Add
@@ -422,13 +442,14 @@ function FreebieCard({
           <input style={{ ...inputStyle, flex: 1 }} placeholder="Label" value={newAssetLabel} onChange={(e) => setNewAssetLabel(e.target.value)} />
           <input style={{ ...inputStyle, flex: 2 }} placeholder="URL" value={newAssetUrl} onChange={(e) => setNewAssetUrl(e.target.value)} />
           <button
-            onClick={() => { if (newAssetLabel && newAssetUrl) { onAddAsset(newAssetLabel, newAssetUrl); setNewAssetLabel(""); setNewAssetUrl(""); } }}
+            onClick={() => { if (newAssetLabel && newAssetUrl) { onAddAsset(newAssetLabel, normalizeUrl(newAssetUrl)); setNewAssetLabel(""); setNewAssetUrl(""); } }}
             style={btnStyle()}
           >
             Add
           </button>
         </div>
       </div>
+      </>)}
     </div>
   );
 }
@@ -445,7 +466,7 @@ function LinkRow({ label, url, onUpdate, onRemove }: {
       <input style={{ ...inputStyle, flex: 1 }} value={l} onChange={(e) => setL(e.target.value)}
         onBlur={() => l !== label && onUpdate({ label: l })} placeholder="Label" />
       <input style={{ ...inputStyle, flex: 2 }} value={u} onChange={(e) => setU(e.target.value)}
-        onBlur={() => u !== url && onUpdate({ url: u })} placeholder="URL" />
+        onBlur={() => { const n = normalizeUrl(u); if (n !== u) setU(n); if (n !== url) onUpdate({ url: n }); }} placeholder="URL" />
       <button onClick={onRemove} style={{ ...btnStyle("var(--danger)"), padding: "5px 8px" }}>
         <Trash2 size={12} />
       </button>

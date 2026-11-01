@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { ExternalLink, FileBox } from "lucide-react";
 import ClipLaunchLogo from "@/components/shared/ClipLaunchLogo";
 
+function safeUrl(url: string) {
+  const t = url.trim();
+  if (!t) return "#";
+  return /^https?:\/\//i.test(t) ? t : "https://" + t;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function PublicFreebiePage({ params }: { params: Promise<{ token: string }> }) {
@@ -53,7 +59,7 @@ export default async function PublicFreebiePage({ params }: { params: Promise<{ 
               {freebie.links.map((link) => (
                 <a
                   key={link.id}
-                  href={link.url}
+                  href={safeUrl(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl transition-colors group"
@@ -75,7 +81,7 @@ export default async function PublicFreebiePage({ params }: { params: Promise<{ 
               {freebie.assets.map((asset) => (
                 <a
                   key={asset.id}
-                  href={asset.url}
+                  href={safeUrl(asset.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl transition-colors"
