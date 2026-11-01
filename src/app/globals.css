@@ -192,8 +192,10 @@
     font-size: 15px;
     line-height: 22px;
     font-weight: 400;
-    /* Ambient glow — one faint brand light at the top of the page */
-    background-image: radial-gradient(ellipse 70% 45% at 30% -10%, rgba(225,29,42,0.14), rgba(225,29,42,0) 70%);
+    /* Ambient glow — static red light at top of page */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -5%, rgba(225,29,42,0.28), transparent 65%),
+      radial-gradient(ellipse 50% 35% at 80% 5%, rgba(225,29,42,0.12), transparent 60%);
     background-attachment: fixed;
   }
 
