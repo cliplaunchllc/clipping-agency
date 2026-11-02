@@ -351,6 +351,7 @@ model Freebie {
   name           String
   headerImageUrl String?
   description    String?  @db.Text
+  category       String?
   type           String   @default("freebie") // freebie | skool
   shareToken  String   @unique @default(cuid())
   order       Int      @default(0)

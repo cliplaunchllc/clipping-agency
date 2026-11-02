@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(body.name !== undefined && { name: body.name }),
       ...(body.headerImageUrl !== undefined && { headerImageUrl: body.headerImageUrl || null }),
       ...(body.description !== undefined && { description: body.description }),
+      ...(body.category !== undefined && { category: body.category || null }),
       ...(body.order !== undefined && { order: body.order }),
     },
     include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },

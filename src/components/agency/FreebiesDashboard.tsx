@@ -13,7 +13,8 @@ function normalizeUrl(url: string): string {
 export interface FreebieLink { id: string; label: string; url: string; order: number; }
 export interface FreebieAsset { id: string; label: string; url: string; order: number; }
 export interface FreebieItem {
-  id: string; name: string; headerImageUrl: string | null; description: string | null; type: string;
+  id: string; name: string; headerImageUrl: string | null; description: string | null;
+  category: string | null; type: string;
   shareToken: string; order: number; links: FreebieLink[]; assets: FreebieAsset[];
   createdAt: string;
 }
@@ -87,7 +88,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
     setFreebies((prev) => prev.filter((f) => f.id !== id));
   }
 
-  async function updateFreebie(id: string, patch: Partial<Pick<FreebieItem, "name" | "headerImageUrl" | "description">>) {
+  async function updateFreebie(id: string, patch: Partial<Pick<FreebieItem, "name" | "headerImageUrl" | "description" | "category">>) {
     const res = await fetch(`/api/agency/freebies/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -193,6 +194,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
             <FreebieCard
               key={f.id}
               freebie={f}
+              type={type}
               shareUrl={`${shareBase}/${f.shareToken}`}
               copied={copied}
               onCopy={copy}
@@ -200,6 +202,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
               onUpdateName={(name) => updateFreebie(f.id, { name })}
               onUpdateHeaderImageUrl={(headerImageUrl) => updateFreebie(f.id, { headerImageUrl })}
               onUpdateDescription={(description) => updateFreebie(f.id, { description })}
+              onUpdateCategory={(category) => updateFreebie(f.id, { category })}
               onAddLink={(label, url) => addLink(f.id, label, url)}
               onRemoveLink={(linkId) => removeLink(f.id, linkId)}
               onUpdateLink={(linkId, patch) => updateLink(f.id, linkId, patch)}
@@ -215,12 +218,13 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
 }
 
 function FreebieCard({
-  freebie, shareUrl, copied, onCopy,
-  onDelete, onUpdateName, onUpdateHeaderImageUrl, onUpdateDescription,
+  freebie, type, shareUrl, copied, onCopy,
+  onDelete, onUpdateName, onUpdateHeaderImageUrl, onUpdateDescription, onUpdateCategory,
   onAddLink, onRemoveLink, onUpdateLink,
   onAddAsset, onRemoveAsset, onUpdateAsset,
 }: {
   freebie: FreebieItem;
+  type: "freebie" | "skool";
   shareUrl: string;
   copied: string | null;
   onCopy: (text: string, key: string) => void;
@@ -228,6 +232,7 @@ function FreebieCard({
   onUpdateName: (name: string) => void;
   onUpdateHeaderImageUrl: (url: string) => void;
   onUpdateDescription: (desc: string) => void;
+  onUpdateCategory: (category: string) => void;
   onAddLink: (label: string, url: string) => void;
   onRemoveLink: (id: string) => void;
   onUpdateLink: (id: string, patch: { label?: string; url?: string }) => void;
@@ -238,6 +243,7 @@ function FreebieCard({
   const [name, setName] = useState(freebie.name);
   const [headerImageUrl, setHeaderImageUrl] = useState(freebie.headerImageUrl ?? "");
   const [description, setDescription] = useState(freebie.description ?? "");
+  const [category, setCategory] = useState(freebie.category ?? "");
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newAssetLabel, setNewAssetLabel] = useState("");
@@ -391,6 +397,22 @@ function FreebieCard({
           rows={3}
         />
       </div>
+
+      {/* Category — skool only */}
+      {type === "skool" && (
+        <div className="mb-5">
+          <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+            Category <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(groups resources on the member portal)</span>
+          </label>
+          <input
+            style={inputStyle}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            onBlur={() => category !== (freebie.category ?? "") && onUpdateCategory(category)}
+            placeholder="e.g. Onboarding, Content Creation, Tools…"
+          />
+        </div>
+      )}
 
       {/* Links */}
       <div className="mb-5">

@@ -38,6 +38,7 @@ export default async function SkoolPage() {
 
   const serialized = freebies.map((f) => ({
     ...f,
+    category: f.category ?? null,
     createdAt: f.createdAt.toISOString(),
     updatedAt: f.updatedAt.toISOString(),
   }));

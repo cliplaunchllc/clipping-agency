@@ -17,12 +17,29 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
     prisma.freebie.findMany({
       where: { type: "skool" },
       include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
-      orderBy: { order: "asc" },
+      orderBy: [{ category: "asc" }, { order: "asc" }],
     }),
   ]);
 
   const communityName = nameSetting?.value ?? "Member Resources";
   const logoUrl = logoSetting?.value ?? null;
+
+  // Group by category; uncategorised resources go last under null key
+  const grouped = freebies.reduce<Record<string, typeof freebies>>((acc, f) => {
+    const key = f.category?.trim() || "";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(f);
+    return acc;
+  }, {});
+
+  // Sort: named categories first (alphabetical), uncategorised last
+  const categoryKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === "" && b !== "") return 1;
+    if (a !== "" && b === "") return -1;
+    return a.localeCompare(b);
+  });
+
+  const hasCategories = categoryKeys.some((k) => k !== "");
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
@@ -40,9 +57,25 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
             <p style={{ color: "var(--text-secondary)" }}>No resources available yet.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {freebies.map((f) => (
-              <SkoolCard key={f.id} freebie={f} />
+          <div className="space-y-10">
+            {categoryKeys.map((catKey) => (
+              <div key={catKey}>
+                {hasCategories && catKey !== "" && (
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-tertiary)" }}>
+                    {catKey}
+                  </h2>
+                )}
+                {hasCategories && catKey === "" && categoryKeys.length > 1 && (
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-tertiary)" }}>
+                    Other
+                  </h2>
+                )}
+                <div className="space-y-4">
+                  {grouped[catKey].map((f) => (
+                    <SkoolCard key={f.id} freebie={f} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -53,7 +86,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
 
 function SkoolCard({ freebie }: {
   freebie: {
-    id: string; name: string; description: string | null;
+    id: string; name: string; description: string | null; category: string | null;
     links: { id: string; label: string; url: string }[];
     assets: { id: string; label: string; url: string }[];
   };

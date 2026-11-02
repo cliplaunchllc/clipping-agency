@@ -23,6 +23,7 @@ export default async function FreebiesPage() {
 
   const serialized = freebies.map((f) => ({
     ...f,
+    category: f.category ?? null,
     createdAt: f.createdAt.toISOString(),
     updatedAt: f.updatedAt.toISOString(),
   }));
