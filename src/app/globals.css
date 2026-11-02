@@ -195,8 +195,8 @@
     font-weight: 400;
     /* Ambient glow — static red light fixed to viewport (brand #C20000) */
     background-image:
-      radial-gradient(ellipse 90% 55% at 15% 0%, rgba(194,0,0,0.38), transparent 65%),
-      radial-gradient(ellipse 55% 40% at 85% 5%, rgba(194,0,0,0.18), transparent 60%);
+      radial-gradient(ellipse 90% 55% at 15% 0%, rgba(194,0,0,0.16), transparent 65%),
+      radial-gradient(ellipse 55% 40% at 85% 5%, rgba(194,0,0,0.08), transparent 60%);
     background-attachment: fixed;
   }
 
