@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Plus, Trash2, Link2, FileBox, Copy, Check, ExternalLink, Upload, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, FileBox, Copy, Check, ExternalLink, Upload, X, ChevronDown, ChevronRight } from "lucide-react";
 
 function normalizeUrl(url: string): string {
   const t = url.trim();
@@ -23,6 +23,7 @@ interface Props {
   initialFreebies: FreebieItem[];
   type: "freebie" | "skool";
   baseUrl: string;
+  categories?: string[];
 }
 
 function useCopy() {
@@ -62,7 +63,7 @@ const btnStyle = (color = "var(--accent)"): React.CSSProperties => ({
   color, cursor: "pointer",
 });
 
-export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Props) {
+export default function FreebiesDashboard({ initialFreebies, type, baseUrl, categories }: Props) {
   const [freebies, setFreebies] = useState<FreebieItem[]>(initialFreebies);
   const [creating, setCreating] = useState(false);
   const { copied, copy } = useCopy();
@@ -195,6 +196,7 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
               key={f.id}
               freebie={f}
               type={type}
+              categories={categories}
               shareUrl={`${shareBase}/${f.shareToken}`}
               copied={copied}
               onCopy={copy}
@@ -218,13 +220,14 @@ export default function FreebiesDashboard({ initialFreebies, type, baseUrl }: Pr
 }
 
 function FreebieCard({
-  freebie, type, shareUrl, copied, onCopy,
+  freebie, type, categories, shareUrl, copied, onCopy,
   onDelete, onUpdateName, onUpdateHeaderImageUrl, onUpdateDescription, onUpdateCategory,
   onAddLink, onRemoveLink, onUpdateLink,
   onAddAsset, onRemoveAsset, onUpdateAsset,
 }: {
   freebie: FreebieItem;
   type: "freebie" | "skool";
+  categories?: string[];
   shareUrl: string;
   copied: string | null;
   onCopy: (text: string, key: string) => void;
@@ -265,6 +268,13 @@ function FreebieCard({
     reader.readAsDataURL(file);
   }
 
+  const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+    appearance: "none",
+    WebkitAppearance: "none",
+    cursor: "pointer",
+  };
+
   return (
     <div style={card}>
       {/* Top action row */}
@@ -297,8 +307,8 @@ function FreebieCard({
 
       {collapsed ? null : (<>
 
-      {/* Page title — what viewers see as the H1 */}
-      <div className="mb-4">
+      {/* Page title */}
+      <div className="mb-4 mt-4">
         <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
           Page Title <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown as the heading on the public page)</span>
         </label>
@@ -317,72 +327,74 @@ function FreebieCard({
         {shareUrl}
       </div>
 
-      {/* Header image */}
-      <div className="mb-4">
-        <label className="text-xs font-medium mb-2 block" style={{ color: "var(--text-secondary)" }}>
-          Header Image <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at top of public page)</span>
-        </label>
-        {headerImageUrl ? (
-          <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-default)" }}>
-            <img
-              src={headerImageUrl}
-              alt="Header"
-              style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6 }}>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{ ...btnStyle("var(--text-primary)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(6px)" }}
-                title="Replace image"
-              >
-                <Upload size={11} />
-                Replace
-              </button>
-              <button
-                onClick={() => { setHeaderImageUrl(""); onUpdateHeaderImageUrl(""); }}
-                style={{ ...btnStyle("var(--danger)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,59,59,0.25)", backdropFilter: "blur(6px)" }}
-                title="Remove image"
-              >
-                <X size={11} />
-              </button>
+      {/* Header image — freebie only */}
+      {type === "freebie" && (
+        <div className="mb-4">
+          <label className="text-xs font-medium mb-2 block" style={{ color: "var(--text-secondary)" }}>
+            Header Image <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at top of public page)</span>
+          </label>
+          {headerImageUrl ? (
+            <div style={{ position: "relative", borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-default)" }}>
+              <img
+                src={headerImageUrl}
+                alt="Header"
+                style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ ...btnStyle("var(--text-primary)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(6px)" }}
+                  title="Replace image"
+                >
+                  <Upload size={11} />
+                  Replace
+                </button>
+                <button
+                  onClick={() => { setHeaderImageUrl(""); onUpdateHeaderImageUrl(""); }}
+                  style={{ ...btnStyle("var(--danger)"), background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,59,59,0.25)", backdropFilter: "blur(6px)" }}
+                  title="Remove image"
+                >
+                  <X size={11} />
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImageFile(f); }}
-            style={{
-              border: "1px dashed var(--border-default)",
-              borderRadius: "var(--radius-md)",
-              padding: "24px 16px",
-              textAlign: "center",
-              cursor: "pointer",
-              transition: "border-color 120ms ease, background 120ms ease",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLDivElement).style.background = "var(--bg-hover)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-          >
-            {uploading ? (
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Uploading…</p>
-            ) : (
-              <>
-                <Upload size={18} style={{ color: "var(--text-tertiary)", margin: "0 auto 8px" }} />
-                <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Click or drag to upload</p>
-                <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>PNG, JPG, GIF, WebP</p>
-              </>
-            )}
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = ""; }}
-        />
-      </div>
+          ) : (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleImageFile(f); }}
+              style={{
+                border: "1px dashed var(--border-default)",
+                borderRadius: "var(--radius-md)",
+                padding: "24px 16px",
+                textAlign: "center",
+                cursor: "pointer",
+                transition: "border-color 120ms ease, background 120ms ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLDivElement).style.background = "var(--bg-hover)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              {uploading ? (
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Uploading…</p>
+              ) : (
+                <>
+                  <Upload size={18} style={{ color: "var(--text-tertiary)", margin: "0 auto 8px" }} />
+                  <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Click or drag to upload</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>PNG, JPG, GIF, WebP</p>
+                </>
+              )}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.target.value = ""; }}
+          />
+        </div>
+      )}
 
       {/* Description */}
       <div className="mb-5">
@@ -393,7 +405,7 @@ function FreebieCard({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() => description !== (freebie.description ?? "") && onUpdateDescription(description)}
-          placeholder="Describe what's included in this lead magnet…"
+          placeholder={type === "skool" ? "Describe what's in this resource…" : "Describe what's included in this lead magnet…"}
           rows={3}
         />
       </div>
@@ -404,44 +416,61 @@ function FreebieCard({
           <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
             Category <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(groups resources on the member portal)</span>
           </label>
-          <input
-            style={inputStyle}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            onBlur={() => category !== (freebie.category ?? "") && onUpdateCategory(category)}
-            placeholder="e.g. Onboarding, Content Creation, Tools…"
-          />
+          {categories && categories.length > 0 ? (
+            <select
+              style={selectStyle}
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                onUpdateCategory(e.target.value);
+              }}
+            >
+              <option value="">— Uncategorized —</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              style={inputStyle}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              onBlur={() => category !== (freebie.category ?? "") && onUpdateCategory(category)}
+              placeholder="Add categories above to organize resources…"
+            />
+          )}
         </div>
       )}
 
-      {/* Links */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <Link2 size={13} style={{ color: "var(--text-secondary)" }} />
-          <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Links</span>
+      {/* Links — freebie only */}
+      {type === "freebie" && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Links</span>
+          </div>
+          <div className="space-y-2 mb-2">
+            {freebie.links.map((link) => (
+              <LinkRow
+                key={link.id}
+                label={link.label}
+                url={link.url}
+                onUpdate={(patch) => onUpdateLink(link.id, patch)}
+                onRemove={() => onRemoveLink(link.id)}
+              />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input style={{ ...inputStyle, flex: 1 }} placeholder="Label" value={newLinkLabel} onChange={(e) => setNewLinkLabel(e.target.value)} />
+            <input style={{ ...inputStyle, flex: 2 }} placeholder="URL" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} />
+            <button
+              onClick={() => { if (newLinkLabel && newLinkUrl) { onAddLink(newLinkLabel, normalizeUrl(newLinkUrl)); setNewLinkLabel(""); setNewLinkUrl(""); } }}
+              style={btnStyle()}
+            >
+              Add
+            </button>
+          </div>
         </div>
-        <div className="space-y-2 mb-2">
-          {freebie.links.map((link) => (
-            <LinkRow
-              key={link.id}
-              label={link.label}
-              url={link.url}
-              onUpdate={(patch) => onUpdateLink(link.id, patch)}
-              onRemove={() => onRemoveLink(link.id)}
-            />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input style={{ ...inputStyle, flex: 1 }} placeholder="Label" value={newLinkLabel} onChange={(e) => setNewLinkLabel(e.target.value)} />
-          <input style={{ ...inputStyle, flex: 2 }} placeholder="URL" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} />
-          <button
-            onClick={() => { if (newLinkLabel && newLinkUrl) { onAddLink(newLinkLabel, normalizeUrl(newLinkUrl)); setNewLinkLabel(""); setNewLinkUrl(""); } }}
-            style={btnStyle()}
-          >
-            Add
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Assets */}
       <div>

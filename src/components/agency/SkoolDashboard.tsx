@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Copy, Check, RefreshCw, ExternalLink } from "lucide-react";
+import { Copy, Check, RefreshCw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import FreebiesDashboard, { FreebieItem } from "./FreebiesDashboard";
 
 interface Props {
   initialFreebies: FreebieItem[];
   initialCommunityName: string;
   initialPortalToken: string;
+  initialCategories: string[];
   baseUrl: string;
 }
 
@@ -29,13 +30,16 @@ const btnStyle = (color = "var(--accent)"): React.CSSProperties => ({
   color, cursor: "pointer",
 });
 
-export default function SkoolDashboard({ initialFreebies, initialCommunityName, initialPortalToken, baseUrl }: Props) {
+export default function SkoolDashboard({ initialFreebies, initialCommunityName, initialPortalToken, initialCategories, baseUrl }: Props) {
   const [communityName, setCommunityName] = useState(initialCommunityName);
   const [savedName, setSavedName] = useState(initialCommunityName);
   const [portalToken, setPortalToken] = useState(initialPortalToken);
   const [regenerating, setRegenerating] = useState(false);
-
   const [copied, setCopied] = useState(false);
+
+  const [categories, setCategories] = useState<string[]>(initialCategories);
+  const [newCat, setNewCat] = useState("");
+
   const portalUrl = `${baseUrl}/skool/${portalToken}`;
 
   const copyPortalUrl = useCallback(() => {
@@ -68,13 +72,45 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
     setRegenerating(false);
   }
 
+  async function persistCategories(cats: string[]) {
+    await fetch("/api/agency/skool-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categories: cats }),
+    });
+  }
+
+  function addCategory() {
+    const trimmed = newCat.trim();
+    if (!trimmed || categories.includes(trimmed)) return;
+    const updated = [...categories, trimmed];
+    setCategories(updated);
+    persistCategories(updated);
+    setNewCat("");
+  }
+
+  function moveCategory(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= categories.length) return;
+    const updated = [...categories];
+    [updated[index], updated[target]] = [updated[target], updated[index]];
+    setCategories(updated);
+    persistCategories(updated);
+  }
+
+  function removeCategory(index: number) {
+    const updated = categories.filter((_, i) => i !== index);
+    setCategories(updated);
+    persistCategories(updated);
+  }
+
   return (
     <div>
       {/* Portal settings banner */}
       <div className="px-8 pt-8 max-w-4xl mx-auto">
         <div className="rounded-xl p-4 mb-2" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
           <p className="text-xs font-medium mb-3" style={{ color: "var(--text-secondary)" }}>PORTAL SETTINGS</p>
-          <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-wrap gap-4 items-end mb-4">
             {/* Community name */}
             <div className="flex-1 min-w-48">
               <label className="text-xs mb-1 block" style={{ color: "var(--text-tertiary)" }}>Community name (shown to members)</label>
@@ -108,11 +144,71 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
               </div>
             </div>
           </div>
+
+          {/* Category management */}
+          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14 }}>
+            <p className="text-xs font-medium mb-2" style={{ color: "var(--text-secondary)" }}>CATEGORIES</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
+              Categories group resources on the portal. Order here controls the order members see them.
+            </p>
+
+            {categories.length > 0 && (
+              <div className="space-y-1.5 mb-3">
+                {categories.map((cat, i) => (
+                  <div key={cat} className="flex items-center gap-2">
+                    <div className="flex flex-col" style={{ gap: 1 }}>
+                      <button
+                        onClick={() => moveCategory(i, -1)}
+                        disabled={i === 0}
+                        style={{ ...btnStyle("var(--text-tertiary)"), padding: "2px 5px", opacity: i === 0 ? 0.3 : 1 }}
+                        title="Move up"
+                      >
+                        <ChevronUp size={11} />
+                      </button>
+                      <button
+                        onClick={() => moveCategory(i, 1)}
+                        disabled={i === categories.length - 1}
+                        style={{ ...btnStyle("var(--text-tertiary)"), padding: "2px 5px", opacity: i === categories.length - 1 ? 0.3 : 1 }}
+                        title="Move down"
+                      >
+                        <ChevronDown size={11} />
+                      </button>
+                    </div>
+                    <span className="flex-1 text-sm px-3 py-1.5 rounded-md"
+                      style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>
+                      {cat}
+                    </span>
+                    <button
+                      onClick={() => removeCategory(i)}
+                      style={{ ...btnStyle("var(--danger)"), padding: "5px 8px" }}
+                      title="Remove category"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                style={{ ...inputStyle, flex: 1 }}
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addCategory(); }}
+                placeholder="New category name…"
+              />
+              <button onClick={addCategory} style={btnStyle()}>
+                <Plus size={12} />
+                Add
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Reuse FreebiesDashboard for the items */}
-      <FreebiesDashboard initialFreebies={initialFreebies} type="skool" baseUrl={baseUrl} />
+      {/* Resources */}
+      <FreebiesDashboard initialFreebies={initialFreebies} type="skool" baseUrl={baseUrl} categories={categories} />
     </div>
   );
 }
