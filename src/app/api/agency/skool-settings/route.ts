@@ -6,10 +6,11 @@ export async function GET() {
   const session = await auth();
   if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [nameSetting, tokenSetting, categoriesSetting] = await Promise.all([
+  const [nameSetting, tokenSetting, categoriesSetting, descSetting] = await Promise.all([
     prisma.siteSetting.findUnique({ where: { key: "skool_community_name" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_portal_token" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_categories" } }),
+    prisma.siteSetting.findUnique({ where: { key: "skool_portal_description" } }),
   ]);
 
   // Auto-create portal token if missing
@@ -27,6 +28,7 @@ export async function GET() {
     communityName: nameSetting?.value ?? "Member Resources",
     portalToken: token,
     categories: categoriesSetting?.value ? JSON.parse(categoriesSetting.value) : [],
+    portalDescription: descSetting?.value ?? "",
   });
 }
 
@@ -35,6 +37,14 @@ export async function PATCH(req: NextRequest) {
   if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+
+  if (body.portalDescription !== undefined) {
+    await prisma.siteSetting.upsert({
+      where: { key: "skool_portal_description" },
+      update: { value: body.portalDescription },
+      create: { key: "skool_portal_description", value: body.portalDescription },
+    });
+  }
 
   if (body.categories !== undefined) {
     await prisma.siteSetting.upsert({

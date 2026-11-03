@@ -254,6 +254,15 @@ function FreebieCard({
   const [uploading, setUploading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const assetLabelRef = useRef<HTMLInputElement>(null);
+
+  function submitAsset() {
+    if (!newAssetLabel || !newAssetUrl) return;
+    onAddAsset(newAssetLabel, normalizeUrl(newAssetUrl));
+    setNewAssetLabel("");
+    setNewAssetUrl("");
+    setTimeout(() => assetLabelRef.current?.focus(), 0);
+  }
 
   function handleImageFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -490,12 +499,22 @@ function FreebieCard({
           ))}
         </div>
         <div className="flex gap-2">
-          <input style={{ ...inputStyle, flex: 1 }} placeholder="Label" value={newAssetLabel} onChange={(e) => setNewAssetLabel(e.target.value)} />
-          <input style={{ ...inputStyle, flex: 2 }} placeholder="URL" value={newAssetUrl} onChange={(e) => setNewAssetUrl(e.target.value)} />
-          <button
-            onClick={() => { if (newAssetLabel && newAssetUrl) { onAddAsset(newAssetLabel, normalizeUrl(newAssetUrl)); setNewAssetLabel(""); setNewAssetUrl(""); } }}
-            style={btnStyle()}
-          >
+          <input
+            ref={assetLabelRef}
+            style={{ ...inputStyle, flex: 1 }}
+            placeholder="Label"
+            value={newAssetLabel}
+            onChange={(e) => setNewAssetLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitAsset(); }}
+          />
+          <input
+            style={{ ...inputStyle, flex: 2 }}
+            placeholder="URL"
+            value={newAssetUrl}
+            onChange={(e) => setNewAssetUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitAsset(); }}
+          />
+          <button onClick={submitAsset} style={btnStyle()}>
             Add
           </button>
         </div>

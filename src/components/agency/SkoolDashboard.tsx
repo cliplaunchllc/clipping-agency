@@ -9,6 +9,7 @@ interface Props {
   initialCommunityName: string;
   initialPortalToken: string;
   initialCategories: string[];
+  initialPortalDescription: string;
   baseUrl: string;
 }
 
@@ -30,12 +31,15 @@ const btnStyle = (color = "var(--accent)"): React.CSSProperties => ({
   color, cursor: "pointer",
 });
 
-export default function SkoolDashboard({ initialFreebies, initialCommunityName, initialPortalToken, initialCategories, baseUrl }: Props) {
+export default function SkoolDashboard({ initialFreebies, initialCommunityName, initialPortalToken, initialCategories, initialPortalDescription, baseUrl }: Props) {
   const [communityName, setCommunityName] = useState(initialCommunityName);
   const [savedName, setSavedName] = useState(initialCommunityName);
   const [portalToken, setPortalToken] = useState(initialPortalToken);
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [portalDescription, setPortalDescription] = useState(initialPortalDescription);
+  const [savedDescription, setSavedDescription] = useState(initialPortalDescription);
 
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [newCat, setNewCat] = useState("");
@@ -70,6 +74,16 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
     const data = await res.json();
     setPortalToken(data.portalToken);
     setRegenerating(false);
+  }
+
+  async function savePortalDescription() {
+    if (portalDescription === savedDescription) return;
+    await fetch("/api/agency/skool-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portalDescription }),
+    });
+    setSavedDescription(portalDescription);
   }
 
   async function persistCategories(cats: string[]) {
@@ -143,6 +157,22 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Portal description */}
+          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14, marginTop: 4 }}>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+              Portal Description <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at the top of the member portal page)</span>
+            </label>
+            <textarea
+              className="w-full resize-none text-sm"
+              style={{ ...inputStyle, minHeight: 64 }}
+              value={portalDescription}
+              onChange={(e) => setPortalDescription(e.target.value)}
+              onBlur={savePortalDescription}
+              placeholder="A short intro or welcome message for your Skool members…"
+              rows={2}
+            />
           </div>
 
           {/* Category management */}

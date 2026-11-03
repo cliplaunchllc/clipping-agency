@@ -11,10 +11,11 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   const tokenSetting = await prisma.siteSetting.findUnique({ where: { key: "skool_portal_token" } });
   if (!tokenSetting || tokenSetting.value !== token) notFound();
 
-  const [nameSetting, logoSetting, categoriesSetting, freebies] = await Promise.all([
+  const [nameSetting, logoSetting, categoriesSetting, descSetting, freebies] = await Promise.all([
     prisma.siteSetting.findUnique({ where: { key: "skool_community_name" } }),
     prisma.siteSetting.findUnique({ where: { key: "agency_logo" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_categories" } }),
+    prisma.siteSetting.findUnique({ where: { key: "skool_portal_description" } }),
     prisma.freebie.findMany({
       where: { type: "skool" },
       include: { assets: { orderBy: { order: "asc" } } },
@@ -24,6 +25,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
 
   const communityName = nameSetting?.value ?? "Member Resources";
   const logoUrl = logoSetting?.value ?? null;
+  const portalDescription = descSetting?.value ?? "";
   const managedCategories: string[] = categoriesSetting?.value
     ? JSON.parse(categoriesSetting.value)
     : [];
@@ -52,9 +54,17 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   const hasCategories = categoryKeys.some((k) => k !== "");
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+    <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
       {/* Header */}
-      <div style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-subtle)" }}>
+      <div style={{
+        borderBottom: "1px solid var(--border-subtle)",
+        background: "rgba(14,16,19,0.85)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}>
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center gap-3">
           <ClipLaunchLogo logoUrl={logoUrl} compact />
           <h1 className="font-semibold text-base">{communityName}</h1>
@@ -62,6 +72,13 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-10">
+        {/* Portal description */}
+        {portalDescription && (
+          <p className="text-sm mb-10 leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: "56ch" }}>
+            {portalDescription}
+          </p>
+        )}
+
         {freebies.length === 0 ? (
           <div className="py-20 text-center">
             <p style={{ color: "var(--text-secondary)" }}>No resources available yet.</p>
@@ -80,7 +97,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
                     Other
                   </h2>
                 )}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {grouped[catKey].map((f) => (
                     <SkoolCard key={f.id} freebie={f} />
                   ))}
@@ -103,8 +120,19 @@ function SkoolCard({ freebie }: {
   const hasContent = freebie.assets.length > 0;
 
   return (
-    <details className="group" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-lg)" }}>
-      <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none">
+    <details
+      className="group"
+      style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "var(--radius-lg)",
+        transition: "border-color 160ms ease",
+      }}
+    >
+      <summary
+        className="flex items-center justify-between px-5 py-4 cursor-pointer list-none"
+        style={{ borderRadius: "var(--radius-lg)" }}
+      >
         <div className="min-w-0">
           <p className="font-semibold text-sm">{freebie.name}</p>
           {freebie.description && (
@@ -123,10 +151,21 @@ function SkoolCard({ freebie }: {
           )}
           <div className="space-y-1.5 pt-4">
             {freebie.assets.map((a) => (
-              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors"
-                style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
-                <FileBox size={13} style={{ color: "var(--accent)" }} />
+              <a
+                key={a.id}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm"
+                style={{
+                  background: "var(--bg-base)",
+                  border: "1px solid var(--border-subtle)",
+                  transition: "border-color 120ms ease",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--accent-border)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-subtle)"; }}
+              >
+                <FileBox size={13} style={{ color: "var(--accent)", flexShrink: 0 }} />
                 {a.label}
               </a>
             ))}

@@ -10,7 +10,7 @@ export default async function SkoolPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "agency") redirect("/login");
 
-  const [freebies, nameSetting, tokenSetting, categoriesSetting] = await Promise.all([
+  const [freebies, nameSetting, tokenSetting, categoriesSetting, descSetting] = await Promise.all([
     prisma.freebie.findMany({
       where: { type: "skool" },
       include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
@@ -19,6 +19,7 @@ export default async function SkoolPage() {
     prisma.siteSetting.findUnique({ where: { key: "skool_community_name" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_portal_token" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_categories" } }),
+    prisma.siteSetting.findUnique({ where: { key: "skool_portal_description" } }),
   ]);
 
   // Auto-create portal token if missing
@@ -54,6 +55,7 @@ export default async function SkoolPage() {
       initialCommunityName={nameSetting?.value ?? "Member Resources"}
       initialPortalToken={portalToken}
       initialCategories={initialCategories}
+      initialPortalDescription={descSetting?.value ?? ""}
       baseUrl={baseUrl}
     />
   );
