@@ -160,6 +160,7 @@ export default function SkoolDashboard({
                 </button>
                 <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={btnStyle("var(--text-secondary)")}>
                   <ExternalLink size={12} />
+                  Open
                 </a>
                 <button onClick={regenerateToken} disabled={regenerating} style={btnStyle("var(--warning)")}>
                   <RefreshCw size={12} className={regenerating ? "animate-spin" : ""} />
