@@ -3,8 +3,24 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import SkoolDashboard from "@/components/agency/SkoolDashboard";
+import type { SkoolCategory, SkoolAssetItem } from "@/components/agency/SkoolResourcesDashboard";
 
 export const dynamic = "force-dynamic";
+
+function parseCategories(value: string | null): SkoolCategory[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+    // Backward-compatible: old format was string[]
+    if (typeof parsed[0] === "string") {
+      return parsed.map((name: string) => ({ name, description: "" }));
+    }
+    return parsed as SkoolCategory[];
+  } catch {
+    return [];
+  }
+}
 
 export default async function SkoolPage() {
   const session = await auth();
@@ -13,7 +29,7 @@ export default async function SkoolPage() {
   const [freebies, nameSetting, tokenSetting, categoriesSetting, descSetting] = await Promise.all([
     prisma.freebie.findMany({
       where: { type: "skool" },
-      include: { links: { orderBy: { order: "asc" } }, assets: { orderBy: { order: "asc" } } },
+      include: { assets: { orderBy: { order: "asc" } } },
       orderBy: { order: "asc" },
     }),
     prisma.siteSetting.findUnique({ where: { key: "skool_community_name" } }),
@@ -38,20 +54,20 @@ export default async function SkoolPage() {
   const proto = host.includes("localhost") ? "http" : "https";
   const baseUrl = `${proto}://${host}`;
 
-  const serialized = freebies.map((f) => ({
-    ...f,
-    category: f.category ?? null,
-    createdAt: f.createdAt.toISOString(),
-    updatedAt: f.updatedAt.toISOString(),
+  const initialItems: SkoolAssetItem[] = freebies.map((f) => ({
+    id: f.id,
+    name: f.name,
+    description: f.description ?? "",
+    category: f.category ?? "",
+    url: f.assets[0]?.url ?? "",
+    assetId: f.assets[0]?.id ?? null,
   }));
 
-  const initialCategories: string[] = categoriesSetting?.value
-    ? JSON.parse(categoriesSetting.value)
-    : [];
+  const initialCategories = parseCategories(categoriesSetting?.value ?? null);
 
   return (
     <SkoolDashboard
-      initialFreebies={serialized}
+      initialItems={initialItems}
       initialCommunityName={nameSetting?.value ?? "Member Resources"}
       initialPortalToken={portalToken}
       initialCategories={initialCategories}

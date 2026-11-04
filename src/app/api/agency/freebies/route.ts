@@ -19,10 +19,27 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (session?.user?.role !== "agency") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, type } = await req.json();
-  const count = await prisma.freebie.count({ where: { type: type ?? "freebie" } });
+  const { name, type, category } = await req.json();
+  const resolvedType = type ?? "freebie";
+  const count = await prisma.freebie.count({ where: { type: resolvedType } });
+
+  // Skool flat assets: pre-create a URL slot so the UI always has an assetId
+  if (resolvedType === "skool") {
+    const freebie = await prisma.freebie.create({
+      data: {
+        name: name ?? "New Asset",
+        type: "skool",
+        category: category ?? null,
+        order: count,
+        assets: { create: [{ label: "", url: "", order: 0 }] },
+      },
+      include: { links: true, assets: true },
+    });
+    return NextResponse.json(freebie, { status: 201 });
+  }
+
   const freebie = await prisma.freebie.create({
-    data: { name: name ?? "New Lead Magnet", type: type ?? "freebie", order: count },
+    data: { name: name ?? "New Lead Magnet", type: resolvedType, order: count },
     include: { links: true, assets: true },
   });
   return NextResponse.json(freebie, { status: 201 });

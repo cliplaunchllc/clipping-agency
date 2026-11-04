@@ -1,9 +1,25 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { FileBox, ChevronDown } from "lucide-react";
+import { FileBox } from "lucide-react";
 import ClipLaunchLogo from "@/components/shared/ClipLaunchLogo";
 
 export const dynamic = "force-dynamic";
+
+interface PortalCategory { name: string; description: string; }
+
+function parseCategories(value: string | null): PortalCategory[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+    if (typeof parsed[0] === "string") {
+      return parsed.map((name: string) => ({ name, description: "" }));
+    }
+    return parsed as PortalCategory[];
+  } catch {
+    return [];
+  }
+}
 
 export default async function SkoolPortalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -26,36 +42,27 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   const communityName = nameSetting?.value ?? "Member Resources";
   const logoUrl = logoSetting?.value ?? null;
   const portalDescription = descSetting?.value ?? "";
-  const managedCategories: string[] = categoriesSetting?.value
-    ? JSON.parse(categoriesSetting.value)
-    : [];
+  const categories = parseCategories(categoriesSetting?.value ?? null);
+  const categoryNames = categories.map((c) => c.name);
 
-  // Group by category; uncategorised resources go last under empty string key
-  const grouped = freebies.reduce<Record<string, typeof freebies>>((acc, f) => {
-    const key = f.category?.trim() || "";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(f);
-    return acc;
-  }, {});
+  // Flatten into asset entries grouped by category
+  interface FlatAsset { id: string; name: string; description: string | null; url: string; }
+  const grouped: Record<string, FlatAsset[]> = {};
+  for (const cat of categoryNames) grouped[cat] = [];
+  grouped[""] = [];
 
-  // Sort by managed category order; categories not in the list come after; uncategorised last
-  const allKeys = Object.keys(grouped);
-  const categoryKeys = allKeys.sort((a, b) => {
-    if (a === "" && b !== "") return 1;
-    if (a !== "" && b === "") return -1;
-    const ai = managedCategories.indexOf(a);
-    const bi = managedCategories.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+  for (const f of freebies) {
+    const url = f.assets[0]?.url ?? "";
+    if (!url) continue; // skip items with no URL set
+    const key = f.category && categoryNames.includes(f.category) ? f.category : "";
+    grouped[key].push({ id: f.id, name: f.name, description: f.description, url });
+  }
 
-  const hasCategories = categoryKeys.some((k) => k !== "");
+  const hasUncategorized = grouped[""].length > 0;
 
   return (
     <div className="min-h-screen" style={{ color: "var(--text-primary)" }}>
-      {/* Header */}
+      {/* Sticky header */}
       <div style={{
         borderBottom: "1px solid var(--border-subtle)",
         background: "rgba(14,16,19,0.85)",
@@ -85,25 +92,39 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
           </div>
         ) : (
           <div className="space-y-10">
-            {categoryKeys.map((catKey) => (
-              <div key={catKey}>
-                {hasCategories && catKey !== "" && (
-                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-tertiary)" }}>
-                    {catKey}
+            {categories.map((cat) => {
+              const items = grouped[cat.name] ?? [];
+              if (items.length === 0 && !cat.description) return null;
+              return (
+                <div key={cat.name}>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>
+                    {cat.name}
                   </h2>
+                  {cat.description && (
+                    <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>{cat.description}</p>
+                  )}
+                  {!cat.description && <div className="mb-4" />}
+                  <div className="space-y-2">
+                    {items.map((asset) => (
+                      <AssetLink key={asset.id} asset={asset} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {hasUncategorized && (
+              <div>
+                {categoryNames.length > 0 && (
+                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-tertiary)" }}>Other</h2>
                 )}
-                {hasCategories && catKey === "" && categoryKeys.length > 1 && (
-                  <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "var(--text-tertiary)" }}>
-                    Other
-                  </h2>
-                )}
-                <div className="space-y-3">
-                  {grouped[catKey].map((f) => (
-                    <SkoolCard key={f.id} freebie={f} />
+                <div className="space-y-2">
+                  {grouped[""].map((asset) => (
+                    <AssetLink key={asset.id} asset={asset} />
                   ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -111,67 +132,29 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   );
 }
 
-function SkoolCard({ freebie }: {
-  freebie: {
-    id: string; name: string; description: string | null; category: string | null;
-    assets: { id: string; label: string; url: string }[];
-  };
-}) {
-  const hasContent = freebie.assets.length > 0;
-
+function AssetLink({ asset }: { asset: { id: string; name: string; description: string | null; url: string } }) {
   return (
-    <details
-      className="group"
+    <a
+      href={asset.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-start gap-3 px-4 py-3 rounded-xl group"
       style={{
         background: "var(--bg-surface)",
         border: "1px solid var(--border-default)",
-        borderRadius: "var(--radius-lg)",
-        transition: "border-color 160ms ease",
+        transition: "border-color 120ms ease",
+        textDecoration: "none",
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--accent-border)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-default)"; }}
     >
-      <summary
-        className="flex items-center justify-between px-5 py-4 cursor-pointer list-none"
-        style={{ borderRadius: "var(--radius-lg)" }}
-      >
-        <div className="min-w-0">
-          <p className="font-semibold text-sm">{freebie.name}</p>
-          {freebie.description && (
-            <p className="text-xs mt-0.5 line-clamp-1" style={{ color: "var(--text-secondary)" }}>{freebie.description}</p>
-          )}
-        </div>
-        {hasContent && (
-          <ChevronDown size={15} className="flex-shrink-0 ml-3 transition-transform group-open:rotate-180" style={{ color: "var(--text-tertiary)" }} />
+      <FileBox size={15} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-snug">{asset.name}</p>
+        {asset.description && (
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{asset.description}</p>
         )}
-      </summary>
-
-      {hasContent && (
-        <div className="px-5 pb-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-          {freebie.description && (
-            <p className="text-sm pt-4 mb-3" style={{ color: "var(--text-secondary)" }}>{freebie.description}</p>
-          )}
-          <div className="space-y-1.5 pt-4">
-            {freebie.assets.map((a) => (
-              <a
-                key={a.id}
-                href={a.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm"
-                style={{
-                  background: "var(--bg-base)",
-                  border: "1px solid var(--border-subtle)",
-                  transition: "border-color 120ms ease",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--accent-border)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-subtle)"; }}
-              >
-                <FileBox size={13} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                {a.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </details>
+      </div>
+    </a>
   );
 }

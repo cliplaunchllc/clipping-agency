@@ -2,13 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { Copy, Check, RefreshCw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
-import FreebiesDashboard, { FreebieItem } from "./FreebiesDashboard";
+import SkoolResourcesDashboard, { SkoolAssetItem, SkoolCategory } from "./SkoolResourcesDashboard";
 
 interface Props {
-  initialFreebies: FreebieItem[];
+  initialItems: SkoolAssetItem[];
   initialCommunityName: string;
   initialPortalToken: string;
-  initialCategories: string[];
+  initialCategories: SkoolCategory[];
   initialPortalDescription: string;
   baseUrl: string;
 }
@@ -31,7 +31,10 @@ const btnStyle = (color = "var(--accent)"): React.CSSProperties => ({
   color, cursor: "pointer",
 });
 
-export default function SkoolDashboard({ initialFreebies, initialCommunityName, initialPortalToken, initialCategories, initialPortalDescription, baseUrl }: Props) {
+export default function SkoolDashboard({
+  initialItems, initialCommunityName, initialPortalToken,
+  initialCategories, initialPortalDescription, baseUrl,
+}: Props) {
   const [communityName, setCommunityName] = useState(initialCommunityName);
   const [savedName, setSavedName] = useState(initialCommunityName);
   const [portalToken, setPortalToken] = useState(initialPortalToken);
@@ -41,7 +44,7 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
   const [portalDescription, setPortalDescription] = useState(initialPortalDescription);
   const [savedDescription, setSavedDescription] = useState(initialPortalDescription);
 
-  const [categories, setCategories] = useState<string[]>(initialCategories);
+  const [categories, setCategories] = useState<SkoolCategory[]>(initialCategories);
   const [newCat, setNewCat] = useState("");
 
   const portalUrl = `${baseUrl}/skool/${portalToken}`;
@@ -86,7 +89,7 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
     setSavedDescription(portalDescription);
   }
 
-  async function persistCategories(cats: string[]) {
+  async function persistCategories(cats: SkoolCategory[]) {
     await fetch("/api/agency/skool-settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -96,8 +99,8 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
 
   function addCategory() {
     const trimmed = newCat.trim();
-    if (!trimmed || categories.includes(trimmed)) return;
-    const updated = [...categories, trimmed];
+    if (!trimmed || categories.some((c) => c.name === trimmed)) return;
+    const updated = [...categories, { name: trimmed, description: "" }];
     setCategories(updated);
     persistCategories(updated);
     setNewCat("");
@@ -117,6 +120,13 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
     setCategories(updated);
     persistCategories(updated);
   }
+
+  const handleUpdateCategoryDescription = useCallback((name: string, description: string) => {
+    const updated = categories.map((c) => c.name === name ? { ...c, description } : c);
+    setCategories(updated);
+    persistCategories(updated);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
 
   return (
     <div>
@@ -162,11 +172,11 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
           {/* Portal description */}
           <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14, marginTop: 4 }}>
             <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
-              Portal Description <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at the top of the member portal page)</span>
+              Portal Description <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(shown at the top of the member portal)</span>
             </label>
             <textarea
               className="w-full resize-none text-sm"
-              style={{ ...inputStyle, minHeight: 64 }}
+              style={{ ...inputStyle, minHeight: 56, width: "100%" }}
               value={portalDescription}
               onChange={(e) => setPortalDescription(e.target.value)}
               onBlur={savePortalDescription}
@@ -176,22 +186,21 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
           </div>
 
           {/* Category management */}
-          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14 }}>
-            <p className="text-xs font-medium mb-2" style={{ color: "var(--text-secondary)" }}>CATEGORIES</p>
+          <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14, marginTop: 14 }}>
+            <p className="text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>CATEGORIES</p>
             <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
-              Categories group resources on the portal. Order here controls the order members see them.
+              Order here controls the order members see them. Category descriptions are editable inline below.
             </p>
 
             {categories.length > 0 && (
               <div className="space-y-1.5 mb-3">
                 {categories.map((cat, i) => (
-                  <div key={cat} className="flex items-center gap-2">
+                  <div key={cat.name} className="flex items-center gap-2">
                     <div className="flex flex-col" style={{ gap: 1 }}>
                       <button
                         onClick={() => moveCategory(i, -1)}
                         disabled={i === 0}
                         style={{ ...btnStyle("var(--text-tertiary)"), padding: "2px 5px", opacity: i === 0 ? 0.3 : 1 }}
-                        title="Move up"
                       >
                         <ChevronUp size={11} />
                       </button>
@@ -199,19 +208,17 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
                         onClick={() => moveCategory(i, 1)}
                         disabled={i === categories.length - 1}
                         style={{ ...btnStyle("var(--text-tertiary)"), padding: "2px 5px", opacity: i === categories.length - 1 ? 0.3 : 1 }}
-                        title="Move down"
                       >
                         <ChevronDown size={11} />
                       </button>
                     </div>
                     <span className="flex-1 text-sm px-3 py-1.5 rounded-md"
                       style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>
-                      {cat}
+                      {cat.name}
                     </span>
                     <button
                       onClick={() => removeCategory(i)}
                       style={{ ...btnStyle("var(--danger)"), padding: "5px 8px" }}
-                      title="Remove category"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -237,8 +244,12 @@ export default function SkoolDashboard({ initialFreebies, initialCommunityName, 
         </div>
       </div>
 
-      {/* Resources */}
-      <FreebiesDashboard initialFreebies={initialFreebies} type="skool" baseUrl={baseUrl} categories={categories} />
+      {/* Flat resources */}
+      <SkoolResourcesDashboard
+        initialItems={initialItems}
+        categories={categories}
+        onUpdateCategoryDescription={handleUpdateCategoryDescription}
+      />
     </div>
   );
 }
