@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { FileBox } from "lucide-react";
 import ClipLaunchLogo from "@/components/shared/ClipLaunchLogo";
+import AssetLink from "./AssetLink";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
     prisma.siteSetting.findUnique({ where: { key: "skool_categories" } }),
     prisma.siteSetting.findUnique({ where: { key: "skool_portal_description" } }),
     prisma.freebie.findMany({
-      where: { type: "skool" },
+      where: { type: "skool", published: true },
       include: { assets: { orderBy: { order: "asc" } } },
       orderBy: { order: "asc" },
     }),
@@ -106,7 +106,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
                   {!cat.description && <div className="mb-4" />}
                   <div className="space-y-2">
                     {items.map((asset) => (
-                      <AssetLink key={asset.id} asset={asset} />
+                      <AssetLink key={asset.id} name={asset.name} url={asset.url} description={asset.description} />
                     ))}
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
                 )}
                 <div className="space-y-2">
                   {grouped[""].map((asset) => (
-                    <AssetLink key={asset.id} asset={asset} />
+                    <AssetLink key={asset.id} name={asset.name} url={asset.url} description={asset.description} />
                   ))}
                 </div>
               </div>
@@ -132,29 +132,3 @@ export default async function SkoolPortalPage({ params }: { params: Promise<{ to
   );
 }
 
-function AssetLink({ asset }: { asset: { id: string; name: string; description: string | null; url: string } }) {
-  return (
-    <a
-      href={asset.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-start gap-3 px-4 py-3 rounded-xl group"
-      style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-default)",
-        transition: "border-color 120ms ease",
-        textDecoration: "none",
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--accent-border)"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-default)"; }}
-    >
-      <FileBox size={15} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
-      <div className="min-w-0">
-        <p className="text-sm font-medium leading-snug">{asset.name}</p>
-        {asset.description && (
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{asset.description}</p>
-        )}
-      </div>
-    </a>
-  );
-}

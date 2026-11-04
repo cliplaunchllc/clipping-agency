@@ -23,13 +23,14 @@ export async function POST(req: NextRequest) {
   const resolvedType = type ?? "freebie";
   const count = await prisma.freebie.count({ where: { type: resolvedType } });
 
-  // Skool flat assets: pre-create a URL slot so the UI always has an assetId
+  // Skool flat assets: unpublished by default, pre-create a URL slot
   if (resolvedType === "skool") {
     const freebie = await prisma.freebie.create({
       data: {
         name: name ?? "New Asset",
         type: "skool",
         category: category ?? null,
+        published: false,
         order: count,
         assets: { create: [{ label: "", url: "", order: 0 }] },
       },

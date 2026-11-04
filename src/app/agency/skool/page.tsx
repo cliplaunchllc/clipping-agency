@@ -61,6 +61,7 @@ export default async function SkoolPage() {
     category: f.category ?? "",
     url: f.assets[0]?.url ?? "",
     assetId: f.assets[0]?.id ?? null,
+    published: f.published,
   }));
 
   const initialCategories = parseCategories(categoriesSetting?.value ?? null);

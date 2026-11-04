@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, Trash2, Link2 } from "lucide-react";
+import { Plus, Trash2, Link2, Globe, EyeOff } from "lucide-react";
 
 function normalizeUrl(url: string): string {
   const t = url.trim();
@@ -17,6 +17,7 @@ export interface SkoolAssetItem {
   category: string;
   url: string;
   assetId: string | null;
+  published: boolean;
 }
 
 export interface SkoolCategory {
@@ -51,7 +52,7 @@ const btnStyle = (color = "var(--accent)"): React.CSSProperties => ({
 
 export default function SkoolResourcesDashboard({ initialItems, categories, onUpdateCategoryDescription }: Props) {
   const [items, setItems] = useState<SkoolAssetItem[]>(initialItems);
-  const [adding, setAdding] = useState<string | null>(null); // category name being added to
+  const [adding, setAdding] = useState<string | null>(null);
 
   async function addAsset(categoryName: string) {
     setAdding(categoryName);
@@ -68,6 +69,7 @@ export default function SkoolResourcesDashboard({ initialItems, categories, onUp
       category: data.category ?? "",
       url: data.assets?.[0]?.url ?? "",
       assetId: data.assets?.[0]?.id ?? null,
+      published: data.published ?? false,
     };
     setItems((prev) => [...prev, item]);
     setAdding(null);
@@ -125,6 +127,16 @@ export default function SkoolResourcesDashboard({ initialItems, categories, onUp
     updateItem(item.id, { url });
   }
 
+  async function togglePublished(item: SkoolAssetItem) {
+    const published = !item.published;
+    await fetch(`/api/agency/freebies/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ published }),
+    });
+    updateItem(item.id, { published });
+  }
+
   // Group items by category; use managed order; uncategorized last
   const categoryNames = categories.map((c) => c.name);
   const grouped: Record<string, SkoolAssetItem[]> = {};
@@ -150,6 +162,7 @@ export default function SkoolResourcesDashboard({ initialItems, categories, onUp
           onSaveName={saveName}
           onSaveDescription={saveDescription}
           onSaveUrl={saveUrl}
+          onTogglePublished={togglePublished}
           onUpdateCategoryDescription={onUpdateCategoryDescription}
         />
       ))}
@@ -165,6 +178,7 @@ export default function SkoolResourcesDashboard({ initialItems, categories, onUp
           onSaveName={saveName}
           onSaveDescription={saveDescription}
           onSaveUrl={saveUrl}
+          onTogglePublished={togglePublished}
           onUpdateCategoryDescription={() => {}}
           isUncategorized
         />
@@ -181,7 +195,7 @@ export default function SkoolResourcesDashboard({ initialItems, categories, onUp
 
 function CategorySection({
   category, items, adding, onAdd, onDelete,
-  onSaveName, onSaveDescription, onSaveUrl,
+  onSaveName, onSaveDescription, onSaveUrl, onTogglePublished,
   onUpdateCategoryDescription, isUncategorized,
 }: {
   category: SkoolCategory;
@@ -192,6 +206,7 @@ function CategorySection({
   onSaveName: (item: SkoolAssetItem, name: string) => void;
   onSaveDescription: (item: SkoolAssetItem, description: string) => void;
   onSaveUrl: (item: SkoolAssetItem, url: string) => void;
+  onTogglePublished: (item: SkoolAssetItem) => void;
   onUpdateCategoryDescription: (name: string, description: string) => void;
   isUncategorized?: boolean;
 }) {
@@ -199,26 +214,20 @@ function CategorySection({
 
   return (
     <div>
-      {/* Category header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
           {isUncategorized ? "Uncategorized" : category.name}
         </h2>
-        <button
-          onClick={onAdd}
-          disabled={adding}
-          style={btnStyle()}
-        >
+        <button onClick={onAdd} disabled={adding} style={btnStyle()}>
           <Plus size={12} />
           {adding ? "Adding…" : "Add Asset"}
         </button>
       </div>
 
-      {/* Category description — editable inline */}
       {!isUncategorized && (
         <textarea
           className="w-full resize-none text-sm mb-4"
-          style={{ ...inputStyle, minHeight: 40, color: catDesc ? "var(--text-secondary)" : undefined }}
+          style={{ ...inputStyle, minHeight: 40 }}
           value={catDesc}
           onChange={(e) => setCatDesc(e.target.value)}
           onBlur={() => onUpdateCategoryDescription(category.name, catDesc)}
@@ -227,7 +236,6 @@ function CategorySection({
         />
       )}
 
-      {/* Asset rows */}
       {items.length > 0 ? (
         <div className="space-y-2">
           {items.map((item) => (
@@ -238,6 +246,7 @@ function CategorySection({
               onSaveName={(name) => onSaveName(item, name)}
               onSaveDescription={(desc) => onSaveDescription(item, desc)}
               onSaveUrl={(url) => onSaveUrl(item, url)}
+              onTogglePublished={() => onTogglePublished(item)}
             />
           ))}
         </div>
@@ -249,22 +258,32 @@ function CategorySection({
 }
 
 function AssetRow({
-  item, onDelete, onSaveName, onSaveDescription, onSaveUrl,
+  item, onDelete, onSaveName, onSaveDescription, onSaveUrl, onTogglePublished,
 }: {
   item: SkoolAssetItem;
   onDelete: () => void;
   onSaveName: (name: string) => void;
   onSaveDescription: (desc: string) => void;
   onSaveUrl: (url: string) => void;
+  onTogglePublished: () => void;
 }) {
   const [name, setName] = useState(item.name);
   const [url, setUrl] = useState(item.url);
   const [desc, setDesc] = useState(item.description);
+  const [publishing, setPublishing] = useState(false);
+
+  async function handleToggle() {
+    setPublishing(true);
+    await onTogglePublished();
+    setPublishing(false);
+  }
+
+  const isDraft = !item.published;
 
   return (
     <div style={{
       background: "var(--bg-surface)",
-      border: "1px solid var(--border-default)",
+      border: `1px solid ${isDraft ? "var(--border-default)" : "color-mix(in srgb, var(--accent) 20%, var(--border-default))"}`,
       borderRadius: "var(--radius-md)",
       padding: "10px 12px",
     }}>
@@ -276,6 +295,23 @@ function AssetRow({
           onChange={(e) => setName(e.target.value)}
           onBlur={() => onSaveName(name.trim())}
         />
+        {/* Publish toggle */}
+        <button
+          onClick={handleToggle}
+          disabled={publishing}
+          title={isDraft ? "Save to portal" : "Remove from portal"}
+          style={{
+            ...btnStyle(isDraft ? "var(--accent)" : "var(--success)"),
+            flexShrink: 0,
+            fontWeight: 600,
+          }}
+        >
+          {isDraft ? (
+            <><Globe size={12} />Save to portal</>
+          ) : (
+            <><EyeOff size={12} />On portal</>
+          )}
+        </button>
         <button onClick={onDelete} style={{ ...btnStyle("var(--danger)"), padding: "5px 8px", flexShrink: 0 }}>
           <Trash2 size={12} />
         </button>

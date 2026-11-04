@@ -347,16 +347,17 @@ model TeamPaymentMember {
 // ─── Freebies / Skool ────────────────────────────────────────────────────────
 
 model Freebie {
-  id          String   @id @default(cuid())
+  id             String   @id @default(cuid())
   name           String
   headerImageUrl String?
   description    String?  @db.Text
   category       String?
   type           String   @default("freebie") // freebie | skool
-  shareToken  String   @unique @default(cuid())
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  published      Boolean  @default(true)       // skool assets default false until saved
+  shareToken     String   @unique @default(cuid())
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   links  FreebieLink[]
   assets FreebieAsset[]
