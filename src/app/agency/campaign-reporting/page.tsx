@@ -83,6 +83,8 @@ export default async function CampaignReportingPage() {
     campaignId: r.campaignId ?? null,
     amountSpent: r.amountSpent ?? null,
     effectiveCpm: r.effectiveCpm ?? null,
+    platformViews: (r.platformViews as Record<string, number> | null) ?? null,
+    topClips: (r.topClips as Record<string, unknown>[] | null) ?? null,
     campaign: r.campaign ? { id: r.campaign.id, name: r.campaign.name, totalBudget: r.campaign.totalBudget } : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),

@@ -110,6 +110,7 @@ interface OngoingReport {
   totalSubmissions: number;
   pending: number;
   approved: number;
+  rejected: number;
   mainTrend: string | null;
   clipperFeedback: string | null;
   mainOptimization: string | null;
@@ -119,6 +120,8 @@ interface OngoingReport {
   campaignId: string | null;
   amountSpent: number | null;
   effectiveCpm: number | null;
+  platformViews: Record<string, number> | null;
+  topClips: Record<string, unknown>[] | null;
   campaign: ClientCampaign | null;
   createdAt: string;
   updatedAt: string;
@@ -128,46 +131,18 @@ interface FormState {
   clientId: string;
   weekStartDate: string;
   weekEndDate: string;
-  totalViews: string;
-  tiktokViews: string;
-  instagramViews: string;
-  youtubeViews: string;
-  twitterViews: string;
-  paidOut: string;
-  effectiveCpm: string;
-  clipsSubmitted: string;
-  clipsApproved: string;
-  // All-time cumulative totals (manually entered)
-  cumViews: string;
-  cumTiktokViews: string;
-  cumInstagramViews: string;
-  cumYoutubeViews: string;
-  cumTwitterViews: string;
-  cumPaidOut: string;
-  cumClipsSubmitted: string;
-  cumClipsApproved: string;
-  cumEffectiveCpm: string;
   weeklySummary: string;
   whatsWorking: string;
   whatsNotWorking: string;
   nextWeekFocus: string;
   campaignLink: string;
   campaignId: string;
-  amountSpent: string;
 }
 
 interface OngoingFormState {
   clientId: string;
   date: string;
-  campaignName: string;
-  totalSubmissions: string;
-  pending: string;
-  approved: string;
   campaignId: string;
-  amountSpent: string;
-  effectiveCpm: string;
-  viewsTotal: string;
-  viewsToday: string;
   mainTrend: string;
   clipperFeedback: string;
   mainOptimization: string;
@@ -800,12 +775,8 @@ function OngoingReportDetail({ report, prev }: { report: OngoingReport; prev: On
 
 const EMPTY_FORM: FormState = {
   clientId: "", weekStartDate: "", weekEndDate: "",
-  totalViews: "", tiktokViews: "", instagramViews: "", youtubeViews: "", twitterViews: "",
-  paidOut: "", effectiveCpm: "", clipsSubmitted: "", clipsApproved: "",
-  cumViews: "", cumTiktokViews: "", cumInstagramViews: "", cumYoutubeViews: "", cumTwitterViews: "",
-  cumPaidOut: "", cumClipsSubmitted: "", cumClipsApproved: "", cumEffectiveCpm: "",
   weeklySummary: "", whatsWorking: "", whatsNotWorking: "", nextWeekFocus: "", campaignLink: "",
-  campaignId: "", amountSpent: "",
+  campaignId: "",
 };
 
 function WeeklyReportForm({
@@ -953,84 +924,61 @@ function WeeklyReportForm({
         </div>
       </div>
 
-      {/* Views */}
-      <div>
-        <label style={labelStyle}>Views this week</label>
-        <input type="number" min={0} value={form.totalViews} onChange={(e) => set("totalViews", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-      </div>
-
-      {/* Platform views */}
-      <div>
-        <p style={{ ...labelStyle, marginBottom: "8px" }}>Platform views this week</p>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { key: "tiktokViews" as const, label: "TikTok views" },
-            { key: "instagramViews" as const, label: "Instagram views" },
-            { key: "youtubeViews" as const, label: "YouTube Shorts views" },
-            { key: "twitterViews" as const, label: "X views" },
-          ].map(({ key, label }) => (
-            <div key={key}>
-              <label style={labelStyle}>{label}</label>
-              <input type="number" min={0} value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+      {/* Auto-populated stats from Grok ongoing reports */}
+      {(() => {
+        const sorted = [...weekOngoing].sort((a, b) => b.date.localeCompare(a.date));
+        const latest = sorted[0];
+        if (!latest) return (
+          <div className="rounded-lg px-4 py-3 flex items-center gap-2" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+            <Activity size={13} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Numbers will auto-populate once Grok pushes data for this week.</p>
+          </div>
+        );
+        const totalViews = weekOngoing.reduce((s, r) => s + r.viewsToday, 0);
+        const platformTotals: Record<string, number> = {};
+        for (const r of weekOngoing) {
+          if (r.platformViews) {
+            for (const [k, v] of Object.entries(r.platformViews as Record<string, number>)) {
+              platformTotals[k] = (platformTotals[k] ?? 0) + Number(v);
+            }
+          }
+        }
+        const platforms = Object.entries(platformTotals).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
+        const rows = [
+          { label: "Views This Week", value: fmt(totalViews) },
+          { label: "Total Submissions", value: latest.totalSubmissions.toString() },
+          { label: "Approved", value: latest.approved.toString() },
+          ...(latest.amountSpent != null ? [{ label: "Amount Spent", value: fmtCurrency(latest.amountSpent) }] : []),
+          ...(latest.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(latest.effectiveCpm) }] : []),
+          { label: "Total Views (running)", value: fmt(latest.viewsTotal) },
+        ];
+        return (
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--accent-border)", background: "var(--accent-muted)" }}>
+            <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid var(--accent-border)" }}>
+              <BarChart2 size={12} color={WEEKLY_COLOR} />
+              <span className="label-mono" style={{ color: WEEKLY_COLOR }}>Auto-populated from Grok · {weekOngoing.length} report{weekOngoing.length !== 1 ? "s" : ""}</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Financial */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Paid out ($) <span style={{ color: "var(--text-tertiary)", fontSize: "0.7rem" }}>this week</span></label>
-          <input type="number" min={0} step="0.01" value={form.paidOut} onChange={(e) => set("paidOut", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Effective CPM ($)</label>
-          <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="—" className={inputCls} style={inputStyle} />
-        </div>
-      </div>
-
-      {/* Clips */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Clips submitted</label>
-          <input type="number" min={0} value={form.clipsSubmitted} onChange={(e) => set("clipsSubmitted", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Clips approved</label>
-          <input type="number" min={0} value={form.clipsApproved} onChange={(e) => set("clipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-      </div>
-
-      {/* ── ALL TIME TOTALS divider ── */}
-      <div className="flex items-center gap-2">
-        <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.25)" }} />
-        <span className="px-2 py-0.5 rounded-md text-xs font-bold tracking-widest" style={{ background: "rgba(138,147,166,0.1)", color: "var(--text-secondary)", border: "1px solid rgba(138,147,166,0.2)" }}>ALL TIME TOTALS</span>
-        <span className="h-px flex-1" style={{ background: "rgba(138,147,166,0.25)" }} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Total views (cumulative)</label>
-          <input type="number" min={0} value={form.cumViews} onChange={(e) => set("cumViews", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Total paid out ($)</label>
-          <input type="number" min={0} step="0.01" value={form.cumPaidOut} onChange={(e) => set("cumPaidOut", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Total clips submitted</label>
-          <input type="number" min={0} value={form.cumClipsSubmitted} onChange={(e) => set("cumClipsSubmitted", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Total clips approved</label>
-          <input type="number" min={0} value={form.cumClipsApproved} onChange={(e) => set("cumClipsApproved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-        </div>
-        <div className="col-span-2">
-          <label style={labelStyle}>Effective CPM ($)</label>
-          <input type="number" min={0} step="0.01" value={form.cumEffectiveCpm} onChange={(e) => set("cumEffectiveCpm", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-      </div>
-      <p className="text-xs -mt-2" style={{ color: "var(--text-tertiary)" }}>Platform views and budget remaining are calculated automatically. Budget remaining = campaign budget − (cumulative views ÷ 1000 × CPM).</p>
+            <div className="grid grid-cols-3 gap-px p-px" style={{ background: "var(--accent-border)" }}>
+              {rows.map(({ label, value }) => (
+                <div key={label} className="px-3 py-2.5" style={{ background: "var(--bg-base)" }}>
+                  <p className="label-mono mb-0.5">{label}</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{value}</p>
+                </div>
+              ))}
+            </div>
+            {platforms.length > 0 && (
+              <div className="px-4 py-2.5" style={{ borderTop: "1px solid var(--accent-border)" }}>
+                <p className="label-mono mb-2">Platform breakdown</p>
+                <div className="flex flex-wrap gap-2">
+                  {platforms.map(([k, v]) => (
+                    <span key={k} className="label-mono px-2 py-0.5 rounded-md capitalize" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>{k}: {fmt(v)}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Notes */}
       <div className="space-y-3">
@@ -1060,15 +1008,13 @@ function WeeklyReportForm({
 // ─── Ongoing Report Form ──────────────────────────────────────────────────────
 
 const EMPTY_ONGOING: OngoingFormState = {
-  clientId: "", date: "", campaignName: "",
-  totalSubmissions: "", pending: "", approved: "",
-  viewsTotal: "", viewsToday: "",
+  clientId: "", date: "",
   mainTrend: "", clipperFeedback: "", mainOptimization: "", status: "",
-  campaignId: "", amountSpent: "", effectiveCpm: "",
+  campaignId: "",
 };
 
 function OngoingReportForm({
-  clients, initial, onSave, onCancel, saving, campaigns,
+  clients, initial, onSave, onCancel, saving, campaigns, existingReport,
 }: {
   clients: ClientOption[];
   initial: OngoingFormState;
@@ -1076,6 +1022,7 @@ function OngoingReportForm({
   onCancel: () => void;
   saving: boolean;
   campaigns: ClientCampaign[];
+  existingReport?: OngoingReport;
 }) {
   const [form, setForm] = useState<OngoingFormState>(initial);
 
@@ -1151,40 +1098,55 @@ function OngoingReportForm({
         )}
       </div>
 
-      {/* Submission numbers */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Total Submissions <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
-          <input type="number" min={0} value={form.totalSubmissions} onChange={(e) => set("totalSubmissions", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+      {/* Auto-populated stats from Grok */}
+      {existingReport ? (
+        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${ONGOING_COLOR}33`, background: "var(--accent-muted)" }}>
+          <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: `1px solid ${ONGOING_COLOR}33` }}>
+            <Activity size={12} color={ONGOING_COLOR} />
+            <span className="label-mono" style={{ color: ONGOING_COLOR }}>Grok data · {fmtDate(existingReport.date)}</span>
+            <StatusBadge status={existingReport.status as "Strong" | "Normal" | "NeedsAttention"} size="xs" />
+          </div>
+          <div className="grid grid-cols-3 gap-px p-px" style={{ background: `${ONGOING_COLOR}22` }}>
+            {[
+              { label: "Views Today", value: fmt(existingReport.viewsToday) },
+              { label: "Views Total", value: fmt(existingReport.viewsTotal) },
+              { label: "Approved", value: existingReport.approved.toString() },
+              { label: "Submissions", value: existingReport.totalSubmissions.toString() },
+              { label: "Pending", value: existingReport.pending.toString() },
+              { label: "Rejected", value: existingReport.rejected.toString() },
+              ...(existingReport.amountSpent != null ? [{ label: "Amount Spent", value: fmtCurrency(existingReport.amountSpent) }] : []),
+              ...(existingReport.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(existingReport.effectiveCpm) }] : []),
+            ].map(({ label, value }) => (
+              <div key={label} className="px-3 py-2" style={{ background: "var(--bg-base)" }}>
+                <p className="label-mono mb-0.5">{label}</p>
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{value}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div>
-          <label style={labelStyle}>Approved <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
-          <input type="number" min={0} value={form.approved} onChange={(e) => set("approved", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
+      ) : (
+        <div className="rounded-lg px-4 py-3 flex items-center gap-2" style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+          <Activity size={13} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Numbers will auto-populate once Grok pushes data for this date.</p>
         </div>
-      </div>
-
-      {/* Views numbers */}
-      <div>
-        <label style={labelStyle}>Views Total <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>cumulative</span></label>
-        <input type="number" min={0} value={form.viewsTotal} onChange={(e) => set("viewsTotal", e.target.value)} placeholder="0" className={inputCls} style={inputStyle} />
-      </div>
-
-      {/* Amount Paid Out + Effective CPM */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={labelStyle}>Amount Paid Out — Total to Date ($) <span style={{ color: ONGOING_COLOR, fontSize: "0.7rem" }}>running total</span></label>
-          <input type="number" min={0} step="0.01" value={form.amountSpent} onChange={(e) => set("amountSpent", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label style={labelStyle}>Effective CPM ($)</label>
-          <input type="number" min={0} step="0.01" value={form.effectiveCpm} onChange={(e) => set("effectiveCpm", e.target.value)} placeholder="0.00" className={inputCls} style={inputStyle} />
-        </div>
-      </div>
+      )}
 
       {/* Notes */}
       <div>
         <label style={labelStyle}>Notes</label>
         <textarea rows={3} value={form.mainTrend} onChange={(e) => set("mainTrend", e.target.value)} placeholder={"e.g. Hook-first clips trending up mid-week. Pushing more 15s formats to capitalize. One clipper flagged brief confusion — clarified."} className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+
+      {/* Clipper feedback */}
+      <div>
+        <label style={labelStyle}>Clipper Feedback</label>
+        <textarea rows={2} value={form.clipperFeedback} onChange={(e) => set("clipperFeedback", e.target.value)} placeholder={"e.g. Clippers are performing well. One flagged brief confusion on the latest brief — clarified in group chat."} className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+
+      {/* Optimization */}
+      <div>
+        <label style={labelStyle}>Optimization Focus</label>
+        <textarea rows={2} value={form.mainOptimization} onChange={(e) => set("mainOptimization", e.target.value)} placeholder={"e.g. Prioritizing hook-first 15s formats this week based on engagement data."} className={inputCls} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
       {/* Status */}
@@ -1298,36 +1260,85 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   // ── Weekly report CRUD ──────────────────────────────────────────────────────
 
-  function formToPayload(form: FormState) {
+  function computeWeeklyNumbers(refOngoing: OngoingReport[], existingReport?: Report) {
+    if (refOngoing.length > 0) {
+      const sorted = [...refOngoing].sort((a, b) => b.date.localeCompare(a.date));
+      const latest = sorted[0];
+      const totalViews = refOngoing.reduce((s, r) => s + r.viewsToday, 0);
+      const platformTotals: Record<string, number> = {};
+      for (const r of refOngoing) {
+        if (r.platformViews) {
+          for (const [k, v] of Object.entries(r.platformViews as Record<string, number>)) {
+            platformTotals[k] = (platformTotals[k] ?? 0) + Number(v);
+          }
+        }
+      }
+      return {
+        totalViews,
+        tiktokViews: Math.round(platformTotals.tiktok ?? 0),
+        instagramViews: Math.round(platformTotals.instagram ?? 0),
+        youtubeViews: Math.round(platformTotals.youtube ?? 0),
+        twitterViews: Math.round((platformTotals.twitter ?? 0) + (platformTotals.x ?? 0)),
+        paidOut: latest.amountSpent ?? 0,
+        effectiveCpm: latest.effectiveCpm ?? null,
+        clipsSubmitted: latest.totalSubmissions,
+        clipsApproved: latest.approved,
+        cumViews: latest.viewsTotal,
+        cumTiktokViews: Math.round(platformTotals.tiktok ?? 0),
+        cumInstagramViews: Math.round(platformTotals.instagram ?? 0),
+        cumYoutubeViews: Math.round(platformTotals.youtube ?? 0),
+        cumTwitterViews: Math.round((platformTotals.twitter ?? 0) + (platformTotals.x ?? 0)),
+        cumPaidOut: latest.amountSpent ?? 0,
+        cumClipsSubmitted: latest.totalSubmissions,
+        cumClipsApproved: latest.approved,
+        cumEffectiveCpm: latest.effectiveCpm ?? null,
+        amountSpent: latest.amountSpent ?? null,
+      };
+    } else if (existingReport) {
+      return {
+        totalViews: existingReport.totalViews,
+        tiktokViews: existingReport.tiktokViews,
+        instagramViews: existingReport.instagramViews,
+        youtubeViews: existingReport.youtubeViews,
+        twitterViews: existingReport.twitterViews,
+        paidOut: existingReport.paidOut,
+        effectiveCpm: existingReport.effectiveCpm ?? null,
+        clipsSubmitted: existingReport.clipsSubmitted,
+        clipsApproved: existingReport.clipsApproved,
+        cumViews: existingReport.cumViews ?? 0,
+        cumTiktokViews: existingReport.cumTiktokViews ?? 0,
+        cumInstagramViews: existingReport.cumInstagramViews ?? 0,
+        cumYoutubeViews: existingReport.cumYoutubeViews ?? 0,
+        cumTwitterViews: existingReport.cumTwitterViews ?? 0,
+        cumPaidOut: existingReport.cumPaidOut ?? 0,
+        cumClipsSubmitted: existingReport.cumClipsSubmitted ?? 0,
+        cumClipsApproved: existingReport.cumClipsApproved ?? 0,
+        cumEffectiveCpm: existingReport.cumEffectiveCpm ?? null,
+        amountSpent: existingReport.amountSpent ?? null,
+      };
+    } else {
+      return {
+        totalViews: 0, tiktokViews: 0, instagramViews: 0, youtubeViews: 0, twitterViews: 0,
+        paidOut: 0, effectiveCpm: null, clipsSubmitted: 0, clipsApproved: 0,
+        cumViews: 0, cumTiktokViews: 0, cumInstagramViews: 0, cumYoutubeViews: 0, cumTwitterViews: 0,
+        cumPaidOut: 0, cumClipsSubmitted: 0, cumClipsApproved: 0, cumEffectiveCpm: null, amountSpent: null,
+      };
+    }
+  }
+
+  function formToPayload(form: FormState, refOngoing: OngoingReport[], existingReport?: Report) {
+    const nums = computeWeeklyNumbers(refOngoing, existingReport);
     return {
       clientId: form.clientId,
       weekStartDate: form.weekStartDate,
       weekEndDate: form.weekEndDate,
-      totalViews: parseInt(form.totalViews || "0", 10),
-      tiktokViews: parseInt(form.tiktokViews || "0", 10),
-      instagramViews: parseInt(form.instagramViews || "0", 10),
-      youtubeViews: parseInt(form.youtubeViews || "0", 10),
-      twitterViews: parseInt(form.twitterViews || "0", 10),
-      paidOut: parseFloat(form.paidOut || "0"),
-      effectiveCpm: form.effectiveCpm ? parseFloat(form.effectiveCpm) : null,
-      clipsSubmitted: parseInt(form.clipsSubmitted || "0", 10),
-      clipsApproved: parseInt(form.clipsApproved || "0", 10),
-      cumViews: parseInt(form.cumViews || "0", 10),
-      cumTiktokViews: parseInt(form.cumTiktokViews || "0", 10),
-      cumInstagramViews: parseInt(form.cumInstagramViews || "0", 10),
-      cumYoutubeViews: parseInt(form.cumYoutubeViews || "0", 10),
-      cumTwitterViews: parseInt(form.cumTwitterViews || "0", 10),
-      cumPaidOut: parseFloat(form.cumPaidOut || "0"),
-      cumClipsSubmitted: parseInt(form.cumClipsSubmitted || "0", 10),
-      cumClipsApproved: parseInt(form.cumClipsApproved || "0", 10),
-      cumEffectiveCpm: form.cumEffectiveCpm ? parseFloat(form.cumEffectiveCpm) : null,
+      ...nums,
       weeklySummary: form.weeklySummary || null,
       whatsWorking: form.whatsWorking || null,
       whatsNotWorking: form.whatsNotWorking || null,
       nextWeekFocus: form.nextWeekFocus || null,
       campaignLink: form.campaignLink || null,
       campaignId: form.campaignId || null,
-      amountSpent: form.amountSpent ? parseFloat(form.amountSpent) : null,
     };
   }
 
@@ -1336,31 +1347,12 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       clientId: r.clientId,
       weekStartDate: r.weekStartDate.slice(0, 10),
       weekEndDate: r.weekEndDate.slice(0, 10),
-      totalViews: r.totalViews.toString(),
-      tiktokViews: r.tiktokViews.toString(),
-      instagramViews: r.instagramViews.toString(),
-      youtubeViews: r.youtubeViews.toString(),
-      twitterViews: r.twitterViews.toString(),
-      paidOut: r.paidOut.toString(),
-      effectiveCpm: r.effectiveCpm?.toString() ?? "",
-      clipsSubmitted: r.clipsSubmitted.toString(),
-      clipsApproved: r.clipsApproved.toString(),
-      cumViews: (r.cumViews ?? 0) > 0 ? r.cumViews.toString() : "",
-      cumTiktokViews: (r.cumTiktokViews ?? 0) > 0 ? r.cumTiktokViews.toString() : "",
-      cumInstagramViews: (r.cumInstagramViews ?? 0) > 0 ? r.cumInstagramViews.toString() : "",
-      cumYoutubeViews: (r.cumYoutubeViews ?? 0) > 0 ? r.cumYoutubeViews.toString() : "",
-      cumTwitterViews: (r.cumTwitterViews ?? 0) > 0 ? r.cumTwitterViews.toString() : "",
-      cumPaidOut: (r.cumPaidOut ?? 0) > 0 ? r.cumPaidOut.toString() : "",
-      cumClipsSubmitted: (r.cumClipsSubmitted ?? 0) > 0 ? r.cumClipsSubmitted.toString() : "",
-      cumClipsApproved: (r.cumClipsApproved ?? 0) > 0 ? r.cumClipsApproved.toString() : "",
-      cumEffectiveCpm: r.cumEffectiveCpm != null ? r.cumEffectiveCpm.toString() : "",
       weeklySummary: r.weeklySummary ?? "",
       whatsWorking: r.whatsWorking ?? "",
       whatsNotWorking: r.whatsNotWorking ?? "",
       nextWeekFocus: r.nextWeekFocus ?? "",
       campaignLink: r.campaignLink ?? "",
       campaignId: r.campaignId ?? "",
-      amountSpent: r.amountSpent?.toString() ?? "",
     };
   }
 
@@ -1372,10 +1364,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
 
   async function handleWeeklyCreate(form: FormState) {
     setSaving(true);
+    const refData = getRefOngoing(form.clientId, form.weekStartDate, form.weekEndDate);
     const res = await fetch("/api/agency/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formToPayload(form)),
+      body: JSON.stringify(formToPayload(form, refData, undefined)),
     });
     if (res.ok) {
       const created = await res.json();
@@ -1388,10 +1381,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
   async function handleWeeklyEdit(form: FormState) {
     if (!editingReport) return;
     setSaving(true);
+    const refData = getRefOngoing(form.clientId, form.weekStartDate, form.weekEndDate);
     const res = await fetch(`/api/agency/reports/${editingReport.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formToPayload(form)),
+      body: JSON.stringify(formToPayload(form, refData, editingReport)),
     });
     if (res.ok) {
       const updated = await res.json();
@@ -1425,28 +1419,17 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
     return {
       clientId: r.clientId,
       date: r.date.slice(0, 10),
-      campaignName: r.campaignName,
-      totalSubmissions: r.totalSubmissions.toString(),
-      pending: r.pending.toString(),
-      approved: r.approved.toString(),
-      viewsTotal: r.viewsTotal.toString(),
-      viewsToday: r.viewsToday.toString(),
       mainTrend: r.mainTrend ?? "",
       clipperFeedback: r.clipperFeedback ?? "",
       mainOptimization: r.mainOptimization ?? "",
-      status: r.status,
+      status: r.status as "Strong" | "Normal" | "NeedsAttention",
       campaignId: r.campaignId ?? "",
-      amountSpent: r.amountSpent?.toString() ?? "",
-      effectiveCpm: r.effectiveCpm?.toString() ?? "",
     };
   }
 
   function getOngoingFormInitial(): OngoingFormState {
     if (editingOngoing) return ongoingToForm(editingOngoing);
     const clientId = selectedClientId === "all" ? "" : selectedClientId;
-    const lastOngoing = ongoingReports
-      .filter((r) => r.clientId === clientId)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
     return { ...EMPTY_ONGOING, clientId, date: isoDate(new Date()) };
   }
 
@@ -1455,18 +1438,11 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
       clientId: form.clientId,
       date: form.date,
       campaignName: clients.find((c) => c.id === form.clientId)?.name ?? "",
-      totalSubmissions: parseInt(form.totalSubmissions || "0", 10),
-      pending: parseInt(form.pending || "0", 10),
-      approved: parseInt(form.approved || "0", 10),
-      viewsTotal: parseInt(form.viewsTotal || "0", 10),
-      viewsToday: parseInt(form.viewsToday || "0", 10),
       mainTrend: form.mainTrend || null,
       clipperFeedback: form.clipperFeedback || null,
       mainOptimization: form.mainOptimization || null,
       status: form.status,
       campaignId: form.campaignId || null,
-      amountSpent: form.amountSpent ? parseFloat(form.amountSpent) : null,
-      effectiveCpm: form.effectiveCpm ? parseFloat(form.effectiveCpm) : null,
     };
   }
 
@@ -1696,6 +1672,7 @@ export default function CampaignReporting({ clients: initialClients, initialRepo
               onCancel={() => { setShowOngoingForm(false); setEditingOngoing(null); }}
               saving={saving}
               campaigns={getClientCampaigns(editingOngoing?.clientId ?? (selectedClientId !== "all" ? selectedClientId : ""))}
+              existingReport={editingOngoing ?? undefined}
             />
           </div>
         </div>
