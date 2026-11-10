@@ -8,11 +8,15 @@ interface IncomingLead {
   name?: unknown;
   company?: unknown;
   email?: unknown;
+  instagram?: unknown;
+  linkedin?: unknown;
+  x?: unknown;
   contactPerson?: unknown;
   contactRole?: unknown;
   studioCustom?: unknown;
   description?: unknown;
-  notes?: unknown;
+  notes?: unknown;        // outreach message sent to lead
+  initialMessage?: unknown; // what the lead sent back
   source?: unknown;
 }
 
@@ -21,15 +25,18 @@ interface ImportBody {
   leads?: unknown;
 }
 
-function buildNotes(lead: IncomingLead, niche: Niche): string {
-  const parts: string[] = [`[niche: ${niche}]`];
-  if (lead.company)       parts.push(`[company: ${lead.company}]`);
-  if (lead.contactPerson) parts.push(`[contactPerson: ${lead.contactPerson}]`);
-  if (lead.contactRole)   parts.push(`[contactRole: ${lead.contactRole}]`);
-  if (lead.studioCustom)  parts.push(`[studioCustom: ${lead.studioCustom}]`);
-  if (lead.description)   parts.push(`[description: ${lead.description}]`);
-  if (lead.notes)         parts.push(String(lead.notes));
-  return parts.join(" ").trim();
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function buildCompanyDescription(lead: IncomingLead): string | null {
+  const parts: string[] = [];
+  if (lead.company)       parts.push(String(lead.company).trim());
+  if (lead.description)   parts.push(String(lead.description).trim());
+  if (lead.contactPerson) parts.push(`Contact: ${lead.contactPerson}`);
+  if (lead.contactRole)   parts.push(`Role: ${lead.contactRole}`);
+  if (lead.studioCustom)  parts.push(String(lead.studioCustom).trim());
+  return parts.length > 0 ? parts.join(" — ") : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -110,10 +117,16 @@ export async function POST(req: NextRequest) {
     try {
       await prisma.crmLead.create({
         data: {
-          leadName:   name,
-          email:      email || null,
-          notes:      buildNotes(lead, niche),
-          leadSource: "Grok Bot",
+          leadName:           name,
+          email:              email || null,
+          instagram:          str(lead.instagram),
+          linkedin:           str(lead.linkedin),
+          x:                  str(lead.x),
+          niche:              niche || null,
+          companyDescription: buildCompanyDescription(lead),
+          notes:              str(lead.notes),           // outreach msg sent to them
+          initialMessage:     str(lead.initialMessage),  // their reply / first msg
+          leadSource:         "Grok Bot",
         },
       });
       // Track within-batch so a repeated email in the same batch is also skipped
