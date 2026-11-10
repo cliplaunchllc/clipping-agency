@@ -187,29 +187,30 @@ function isoDate(d: Date) {
 }
 
 function wow(curr: number, prev: number | null | undefined, inverted = false): {
-  pct: string; positive: boolean; neutral: boolean; firstWeek: boolean;
+  pct: string; positive: boolean; neutral: boolean; firstWeek: boolean; up: boolean;
 } {
-  if (prev === null || prev === undefined) return { pct: "", positive: true, neutral: true, firstWeek: true };
-  if (prev === 0 && curr === 0) return { pct: "—", positive: true, neutral: true, firstWeek: false };
-  if (prev === 0) return { pct: "First", positive: !inverted, neutral: false, firstWeek: true };
+  if (prev === null || prev === undefined) return { pct: "", positive: true, neutral: true, firstWeek: true, up: true };
+  if (prev === 0 && curr === 0) return { pct: "—", positive: true, neutral: true, firstWeek: false, up: false };
+  if (prev === 0) return { pct: "First", positive: !inverted, neutral: false, firstWeek: true, up: true };
   const raw = ((curr - prev) / prev) * 100;
   const rounded = Math.round(raw * 10) / 10;
   const neutral = Math.abs(rounded) < 0.5;
-  const positive = inverted ? rounded <= 0 : rounded >= 0;
-  const sign = rounded >= 0 ? "+" : "";
-  return { pct: `${sign}${rounded.toFixed(1)}%`, positive, neutral, firstWeek: false };
+  const up = rounded >= 0;
+  const positive = inverted ? !up : up;
+  return { pct: `${Math.abs(rounded).toFixed(1)}%`, positive, neutral, firstWeek: false, up };
 }
 
-function TrendIcon({ positive, neutral, size = 9 }: { positive: boolean; neutral: boolean; size?: number }) {
+function TrendIcon({ up, positive, neutral, size = 9 }: { up: boolean; positive: boolean; neutral: boolean; size?: number }) {
   if (neutral) return <Minus size={size} color="#8A93A6" />;
-  if (positive) return <TrendingUp size={size} color="var(--success)" />;
-  return <TrendingDown size={size} color="var(--accent)" />;
+  const color = positive ? "var(--success)" : "var(--accent)";
+  if (up) return <TrendingUp size={size} color={color} />;
+  return <TrendingDown size={size} color={color} />;
 }
 
 function WowBadge({ curr, prev, inverted, grey }: {
   curr: number; prev: number | null | undefined; inverted?: boolean; grey?: boolean;
 }) {
-  const { pct, positive, neutral, firstWeek } = wow(curr, prev, inverted);
+  const { pct, positive, neutral, firstWeek, up } = wow(curr, prev, inverted);
   if (firstWeek && !pct) return <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>First</span>;
   if (firstWeek) return <span className="label-mono px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)" }}>First</span>;
   if (grey) {
@@ -224,7 +225,7 @@ function WowBadge({ curr, prev, inverted, grey }: {
   const color = neutral ? "var(--text-tertiary)" : positive ? "var(--success)" : "var(--accent)";
   return (
     <span className="label-mono flex items-center gap-0.5" style={{ color }}>
-      <TrendIcon positive={positive} neutral={neutral} size={9} />{pct}
+      <TrendIcon up={up} positive={positive} neutral={neutral} size={9} />{pct}
     </span>
   );
 }
