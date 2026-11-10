@@ -549,7 +549,7 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                 <Tooltip
                                   contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 12 }}
                                   labelStyle={{ color: "var(--text-secondary)", marginBottom: 4 }}
-                                  formatter={(val: number) => [activeCfg.fmtFn(val), activeCfg.label]}
+                                  formatter={(val) => [activeCfg.fmtFn(Number(val ?? 0)), activeCfg.label]}
                                 />
                                 <Area type="monotone" dataKey={graphMetric} stroke={activeCfg.color} strokeWidth={2} fill="url(#gOverview)" dot={false} activeDot={{ r: 4, fill: activeCfg.color }} />
                               </AreaChart>
