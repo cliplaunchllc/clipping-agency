@@ -95,8 +95,20 @@ function leadStage(lead: CrmLead): { label: string; color: string; bg: string; b
   return { label: "New",    color: "var(--text-tertiary)", bg: "transparent", border: "var(--border-subtle)" };
 }
 
-type SortKey = "leadName" | "dateMessaged" | "createdAt" | "daysSince";
+type SortKey = "leadName" | "dateMessaged" | "createdAt" | "daysSince" | "stage";
 type SortDir = "asc" | "desc";
+
+// Higher = more urgent / needs attention. Used for "In Convo first" sort.
+function stagePriority(lead: CrmLead): number {
+  if (lead.inConvo && !lead.callBooked && !lead.closedCall) return 7; // active convo, needs reply
+  if (lead.replied && !lead.callBooked && !lead.closedCall) return 6; // replied, needs booking
+  if (lead.callBooked && !lead.showedUpToCall) return 5;
+  if (lead.showedUpToCall && !lead.closedCall) return 4;
+  if (lead.closedCall) return 3;
+  if (lead.outreachedIg || lead.outreachedEmail || lead.outreachedLinkedin || lead.outreachedX) return 2;
+  if (lead.leadLost) return 0;
+  return 1; // new / not outreached
+}
 
 // ─── Icons ───────────────────────────────────────────────────────────
 function IgIcon({ size = 11 }: { size?: number }) {
@@ -874,6 +886,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
       if (sortKey === "leadName") { va = a.leadName.toLowerCase(); vb = b.leadName.toLowerCase(); }
       else if (sortKey === "dateMessaged") { va = a.dateMessaged ?? ""; vb = b.dateMessaged ?? ""; }
       else if (sortKey === "daysSince") { va = daysSinceLastTouch(a) ?? -1; vb = daysSinceLastTouch(b) ?? -1; }
+      else if (sortKey === "stage") { va = stagePriority(a); vb = stagePriority(b); }
       else { va = a.createdAt; vb = b.createdAt; }
       if (va < vb) return sortDir === "asc" ? -1 : 1;
       if (va > vb) return sortDir === "asc" ? 1 : -1;
@@ -943,6 +956,17 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
             {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }}><X size={13} /></button>}
           </div>
           <button
+            onClick={() => {
+              if (sortKey === "stage") { setSortKey("createdAt"); setSortDir("asc"); }
+              else { setSortKey("stage"); setSortDir("desc"); }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+            style={{ background: sortKey === "stage" ? "rgba(255,59,59,0.1)" : "transparent", color: sortKey === "stage" ? "rgb(255,80,80)" : "var(--text-tertiary)", border: `1px solid ${sortKey === "stage" ? "rgba(255,59,59,0.35)" : "var(--border-default)"}` }}
+          >
+            {sortKey === "stage" ? <X size={10} /> : <Radio size={10} />}
+            In Convo first
+          </button>
+          <button
             onClick={() => sortKey === "daysSince" ? (setSortKey("createdAt"), setSortDir("asc")) : (setSortKey("daysSince"), setSortDir("desc"))}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all"
             style={{ background: sortKey === "daysSince" ? "rgba(255,179,0,0.1)" : "transparent", color: sortKey === "daysSince" ? "#ffb300" : "var(--text-tertiary)", border: `1px solid ${sortKey === "daysSince" ? "rgba(255,179,0,0.35)" : "var(--border-default)"}` }}
@@ -983,20 +1007,25 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
               <th style={{ ...thSty, cursor: "pointer" }} onClick={() => toggleSort("leadName")}>
                 <span className="inline-flex items-center gap-1">Lead {sortKey === "leadName" ? (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronUp size={11} style={{ opacity: 0.3 }} />}</span>
               </th>
-              <th style={thSty}>Company / Description</th>
+              <th style={thSty}>Company</th>
               <th style={thSty}>Contact</th>
-              <th style={{ ...thSty, cursor: "pointer" }} onClick={() => toggleSort("daysSince")}>
-                <span className="inline-flex items-center gap-1">Days Since {sortKey === "daysSince" ? (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronUp size={11} style={{ opacity: 0.3 }} />}</span>
+              <th style={{ ...thSty, cursor: "pointer" }} onClick={() => toggleSort("dateMessaged")}>
+                <span className="inline-flex items-center gap-1">Outreach Date {sortKey === "dateMessaged" ? (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronUp size={11} style={{ opacity: 0.3 }} />}</span>
               </th>
-              <th style={thSty}>Outreached</th>
-              <th style={thSty}>Stage</th>
+              <th style={{ ...thSty, cursor: "pointer" }} onClick={() => toggleSort("daysSince")}>
+                <span className="inline-flex items-center gap-1">Last Touch {sortKey === "daysSince" ? (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronUp size={11} style={{ opacity: 0.3 }} />}</span>
+              </th>
+              <th style={thSty}>Their Reply</th>
+              <th style={{ ...thSty, cursor: "pointer" }} onClick={() => toggleSort("stage")}>
+                <span className="inline-flex items-center gap-1">Stage {sortKey === "stage" ? (sortDir === "asc" ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronUp size={11} style={{ opacity: 0.3 }} />}</span>
+              </th>
               <th style={{ ...thSty, width: 44 }} />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-14 text-center" style={{ color: "var(--text-tertiary)", fontSize: 13, background: "var(--bg-surface)" }}>
+                <td colSpan={9} className="px-6 py-14 text-center" style={{ color: "var(--text-tertiary)", fontSize: 13, background: "var(--bg-surface)" }}>
                   {leads.length === 0 ? "No leads yet — import a CSV or add one manually." : "No leads match your filters."}
                 </td>
               </tr>
@@ -1009,6 +1038,9 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
               const stage = leadStage(lead);
               const nicheStyle = lead.niche && NICHE_COLORS[lead.niche] ? NICHE_COLORS[lead.niche] : null;
               const outreachedChannels = [lead.outreachedIg && "IG", lead.outreachedEmail && "Email", lead.outreachedLinkedin && "LI", lead.outreachedX && "X"].filter(Boolean);
+              const replySnippet = lead.replyMessage ?? lead.initialMessage;
+              const whoLabel = lead.whoMessaged ? WHO_OPTIONS.find((o) => o.value === lead.whoMessaged)?.label ?? lead.whoMessaged : null;
+              const isHot = lead.inConvo && !lead.callBooked && !lead.closedCall;
 
               return (
                 <tr
@@ -1016,9 +1048,23 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                   onClick={() => setOpenLeadId(lead.id)}
                   className="cursor-pointer group"
                   style={{
-                    background: isBookmarked ? "rgba(251,191,36,0.07)" : isNew ? "rgba(61,214,140,0.05)" : i % 2 === 0 ? "var(--bg-surface)" : "var(--bg-base)",
+                    background: isBookmarked
+                      ? "rgba(251,191,36,0.07)"
+                      : isHot
+                      ? "rgba(255,59,59,0.04)"
+                      : isNew
+                      ? "rgba(61,214,140,0.05)"
+                      : i % 2 === 0 ? "var(--bg-surface)" : "var(--bg-base)",
                     opacity: isSaving ? 0.75 : lead.leadLost ? 0.45 : lead.markedDone ? 0.65 : 1,
-                    boxShadow: isBookmarked ? "inset 4px 0 0 rgb(251,191,36)" : lead.markedDone ? "inset 4px 0 0 rgb(61,255,162)" : lead.leadLost ? "inset 3px 0 0 rgba(160,80,80,0.4)" : undefined,
+                    boxShadow: isBookmarked
+                      ? "inset 4px 0 0 rgb(251,191,36)"
+                      : isHot
+                      ? "inset 4px 0 0 rgba(255,59,59,0.7)"
+                      : lead.markedDone
+                      ? "inset 4px 0 0 rgb(61,255,162)"
+                      : lead.leadLost
+                      ? "inset 3px 0 0 rgba(160,80,80,0.4)"
+                      : undefined,
                     transition: "background 0.15s",
                   }}
                 >
@@ -1037,9 +1083,9 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                     </div>
                   </td>
 
-                  {/* Lead name + niche */}
-                  <td style={tdSty}>
-                    <div className="flex flex-col gap-1.5">
+                  {/* Lead name + niche + who messaged */}
+                  <td style={{ ...tdSty, minWidth: 160 }}>
+                    <div className="flex flex-col gap-1">
                       <span className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>{lead.leadName}</span>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {nicheStyle && (
@@ -1047,48 +1093,109 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                             {NICHE_OPTIONS.find((o) => o.value === lead.niche)?.label ?? lead.niche}
                           </span>
                         )}
-                        {lead.leadSource && lead.leadSource !== "cold_outbound" && (
-                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{SOURCE_OPTIONS.find((o) => o.value === lead.leadSource)?.label ?? lead.leadSource}</span>
+                        {lead.leadSource && (
+                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                            {SOURCE_OPTIONS.find((o) => o.value === lead.leadSource)?.label ?? lead.leadSource}
+                          </span>
                         )}
                       </div>
+                      {whoLabel && (
+                        <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>via {whoLabel}</span>
+                      )}
                     </div>
                   </td>
 
                   {/* Company description */}
-                  <td style={{ ...tdSty, maxWidth: 220 }}>
+                  <td style={{ ...tdSty, maxWidth: 200 }}>
                     {lead.companyDescription
-                      ? <span className="text-xs line-clamp-2" style={{ color: "var(--text-secondary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{lead.companyDescription}</span>
+                      ? <span className="text-xs" style={{ color: "var(--text-secondary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{lead.companyDescription}</span>
                       : <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>—</span>
                     }
                   </td>
 
-                  {/* Contact icons */}
+                  {/* Contact icons + handles */}
                   <td style={tdSty}>
-                    <div className="flex items-center gap-1.5">
-                      {lead.instagram && <span style={{ color: "#E1306C", opacity: 0.9 }} title={lead.instagram}><IgIcon size={13} /></span>}
-                      {lead.email && <span style={{ color: "#4F8EF7", opacity: 0.9 }} title={lead.email}><GmailIcon size={13} /></span>}
-                      {lead.linkedin && <span style={{ color: "#0A66C2", opacity: 0.9 }} title={lead.linkedin}><LinkedInIcon size={13} /></span>}
-                      {lead.x && <span style={{ color: "var(--text-secondary)", opacity: 0.9 }} title={lead.x}><XIcon size={13} /></span>}
-                      {!lead.instagram && !lead.email && !lead.linkedin && !lead.x && <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>—</span>}
+                    <div className="flex flex-col gap-1">
+                      {lead.instagram && (
+                        <div className="flex items-center gap-1" title={lead.instagram}>
+                          <span style={{ color: "#E1306C" }}><IgIcon size={11} /></span>
+                          <span className="text-xs truncate max-w-[100px]" style={{ color: "var(--text-tertiary)" }}>{lead.instagram}</span>
+                        </div>
+                      )}
+                      {lead.email && (
+                        <div className="flex items-center gap-1" title={lead.email}>
+                          <span style={{ color: "#4F8EF7" }}><GmailIcon size={11} /></span>
+                          <span className="text-xs truncate max-w-[100px]" style={{ color: "var(--text-tertiary)" }}>{lead.email}</span>
+                        </div>
+                      )}
+                      {lead.linkedin && (
+                        <div className="flex items-center gap-1" title={lead.linkedin}>
+                          <span style={{ color: "#0A66C2" }}><LinkedInIcon size={11} /></span>
+                          <span className="text-xs truncate max-w-[100px]" style={{ color: "var(--text-tertiary)" }}>{lead.linkedin.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, "")}</span>
+                        </div>
+                      )}
+                      {lead.x && (
+                        <div className="flex items-center gap-1" title={lead.x}>
+                          <span style={{ color: "var(--text-secondary)" }}><XIcon size={11} /></span>
+                          <span className="text-xs truncate max-w-[100px]" style={{ color: "var(--text-tertiary)" }}>{lead.x}</span>
+                        </div>
+                      )}
+                      {!lead.instagram && !lead.email && !lead.linkedin && !lead.x && (
+                        <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>—</span>
+                      )}
                     </div>
                   </td>
 
-                  {/* Days since */}
+                  {/* Outreach date + channels */}
+                  <td style={tdSty}>
+                    <div className="flex flex-col gap-1.5">
+                      {lead.dateMessaged
+                        ? <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{new Date(lead.dateMessaged).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        : <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>Not sent</span>
+                      }
+                      {outreachedChannels.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {outreachedChannels.map((ch) => (
+                            <span key={ch as string} className="px-1 py-0.5 rounded text-xs" style={{ background: "rgba(79,142,247,0.1)", color: "rgb(99,160,247)", fontSize: 10 }}>{ch}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Last touch */}
                   <td style={tdSty}><StaleBadge days={days} /></td>
 
-                  {/* Outreach channels */}
-                  <td style={tdSty}>
-                    {outreachedChannels.length > 0
-                      ? <div className="flex gap-1 flex-wrap">{outreachedChannels.map((ch) => <span key={ch as string} className="px-1.5 py-0.5 rounded text-xs font-medium" style={{ background: "rgba(61,214,140,0.1)", color: "rgb(61,214,140)", border: "1px solid rgba(61,214,140,0.25)" }}>{ch}</span>)}</div>
-                      : <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>None yet</span>
-                    }
+                  {/* Their reply snippet */}
+                  <td style={{ ...tdSty, maxWidth: 180 }}>
+                    {replySnippet ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs" style={{ color: lead.replied ? "var(--text-primary)" : "var(--text-secondary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          &ldquo;{replySnippet}&rdquo;
+                        </span>
+                        {lead.replied && (
+                          <span className="text-xs font-medium" style={{ color: "rgb(251,191,36)" }}>Replied ✓</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>No reply yet</span>
+                    )}
                   </td>
 
                   {/* Stage badge */}
                   <td style={tdSty}>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold" style={{ color: stage.color, background: stage.bg, border: `1px solid ${stage.border}`, letterSpacing: "0.03em" }}>
-                      {stage.label}
-                    </span>
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ color: stage.color, background: stage.bg, border: `1px solid ${stage.border}`, letterSpacing: "0.03em" }}>
+                        {isHot && <Radio size={8} />}
+                        {stage.label}
+                      </span>
+                      {lead.callBooked && !lead.showedUpToCall && (
+                        <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Call pending</span>
+                      )}
+                      {lead.markedDone && (
+                        <span className="text-xs" style={{ color: "rgb(61,255,162)" }}>✓ Done</span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Open arrow */}

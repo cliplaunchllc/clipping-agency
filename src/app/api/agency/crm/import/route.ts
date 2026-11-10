@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const VALID_NICHES = ["gaming", "entertainment", "agency"] as const;
-type Niche = (typeof VALID_NICHES)[number];
+// Accept any string niche — the dashboard normalises/displays it
+const VALID_NICHES = ["gaming", "entertainment", "agency", "sports", "podcast", "irl", "other"] as const;
+type Niche = (typeof VALID_NICHES)[number] | string;
 
 interface IncomingLead {
   name?: unknown;
@@ -15,8 +16,12 @@ interface IncomingLead {
   contactRole?: unknown;
   studioCustom?: unknown;
   description?: unknown;
-  notes?: unknown;        // outreach message sent to lead
-  initialMessage?: unknown; // what the lead sent back
+  notes?: unknown;         // outreach message sent to lead
+  initialMessage?: unknown; // what the lead first sent / last reply from them
+  replyMessage?: unknown;  // alias for initialMessage
+  replied?: unknown;       // boolean — did they reply?
+  inConvo?: unknown;       // boolean — are we actively in conversation?
+  whoMessaged?: unknown;   // which team member sent the outreach
   source?: unknown;
 }
 
@@ -27,6 +32,12 @@ interface ImportBody {
 
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function bool(v: unknown): boolean | undefined {
+  if (v === true || v === "true" || v === 1) return true;
+  if (v === false || v === "false" || v === 0) return false;
+  return undefined;
 }
 
 function buildCompanyDescription(lead: IncomingLead): string | null {
@@ -40,8 +51,6 @@ function buildCompanyDescription(lead: IncomingLead): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  // Authenticate with secret header — trim both sides to guard against
-  // whitespace/newline that Railway or curl can silently add.
   const providedSecret = (req.headers.get("x-import-secret") ?? "").trim();
   const expectedSecret = (process.env.LEADS_IMPORT_SECRET ?? "").trim();
   if (!providedSecret || !expectedSecret || providedSecret !== expectedSecret) {
@@ -55,45 +64,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Validate niche
-  const niche = body.niche as Niche;
-  if (!VALID_NICHES.includes(niche)) {
-    return NextResponse.json(
-      { error: `niche must be one of: ${VALID_NICHES.join(", ")}` },
-      { status: 400 }
-    );
-  }
+  const niche = (body.niche as Niche) ?? null;
 
-  // Validate leads array
   if (!Array.isArray(body.leads) || body.leads.length === 0) {
-    return NextResponse.json(
-      { error: "leads must be a non-empty array" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "leads must be a non-empty array" }, { status: 400 });
   }
 
   const incoming = body.leads as IncomingLead[];
 
-  // Collect all non-empty emails from the batch for a single DB lookup
+  // Single DB lookup for all emails in this batch
   const emailsInBatch = incoming
     .map((l) => (typeof l.email === "string" ? l.email.trim().toLowerCase() : null))
     .filter((e): e is string => !!e);
 
-  // Fetch existing records whose email matches any in this batch (case-insensitive)
   const existing = await prisma.crmLead.findMany({
-    where: {
-      email: {
-        in: emailsInBatch,
-        mode: "insensitive",
-      },
-    },
-    select: { email: true },
+    where: { email: { in: emailsInBatch, mode: "insensitive" } },
+    select: { id: true, email: true },
   });
-  const existingEmails = new Set(
-    existing.map((r) => r.email!.trim().toLowerCase())
-  );
+  const existingByEmail = new Map(existing.map((r) => [r.email!.trim().toLowerCase(), r.id]));
 
   let added = 0;
+  let updated = 0;
   let skipped = 0;
   const errors: Array<{ index: number; reason: string }> = [];
 
@@ -108,12 +99,38 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Skip if email already exists in DB
-    if (email && existingEmails.has(email.toLowerCase())) {
-      skipped++;
+    // Derive reply state — if either reply field is populated, they replied
+    const theirMessage = str(lead.initialMessage) ?? str(lead.replyMessage);
+    const repliedExplicit = bool(lead.replied);
+    const hasReplied = repliedExplicit ?? (theirMessage !== null);
+    const inConvoVal = bool(lead.inConvo) ?? false;
+
+    const existingId = email ? existingByEmail.get(email.toLowerCase()) : undefined;
+
+    if (existingId) {
+      // UPSERT: update reply/convo state on existing lead so Grok can sync back
+      try {
+        await prisma.crmLead.update({
+          where: { id: existingId },
+          data: {
+            ...(theirMessage !== null ? { initialMessage: theirMessage } : {}),
+            ...(hasReplied ? { replied: true } : {}),
+            ...(inConvoVal ? { inConvo: true } : {}),
+            // Refresh socials / description if Grok has better data
+            ...(str(lead.instagram) ? { instagram: str(lead.instagram) } : {}),
+            ...(str(lead.linkedin) ? { linkedin: str(lead.linkedin) } : {}),
+            ...(str(lead.x) ? { x: str(lead.x) } : {}),
+            ...(buildCompanyDescription(lead) ? { companyDescription: buildCompanyDescription(lead) } : {}),
+          },
+        });
+        updated++;
+      } catch (err) {
+        errors.push({ index: i, reason: err instanceof Error ? err.message : "unknown error" });
+      }
       continue;
     }
 
+    // New lead — create it
     try {
       await prisma.crmLead.create({
         data: {
@@ -124,18 +141,23 @@ export async function POST(req: NextRequest) {
           x:                  str(lead.x),
           niche:              niche || null,
           companyDescription: buildCompanyDescription(lead),
-          notes:              str(lead.notes),           // outreach msg sent to them
-          initialMessage:     str(lead.initialMessage),  // their reply / first msg
+          notes:              str(lead.notes),
+          initialMessage:     theirMessage,
+          replied:            hasReplied,
+          inConvo:            inConvoVal,
+          whoMessaged:        str(lead.whoMessaged),
           leadSource:         "Grok Bot",
         },
       });
-      // Track within-batch so a repeated email in the same batch is also skipped
-      if (email) existingEmails.add(email.toLowerCase());
+      if (email) existingByEmail.set(email.toLowerCase(), "pending");
       added++;
     } catch (err) {
       errors.push({ index: i, reason: err instanceof Error ? err.message : "unknown error" });
     }
   }
 
-  return NextResponse.json({ added, skipped, errors });
+  // Suppress skipped count — we updated instead of skipping
+  void skipped;
+
+  return NextResponse.json({ added, updated, errors });
 }
