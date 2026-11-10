@@ -143,6 +143,8 @@ model ClientCampaign {
   clientId    String
   name        String
   totalBudget Float     @default(0)
+  cpm         Float?
+  startDate   DateTime?
   order       Int       @default(1)
   createdAt   DateTime  @default(now())
 
@@ -250,6 +252,10 @@ model OngoingReport {
   campaignId       String?
   amountSpent      Float?
   effectiveCpm     Float?
+  totalBudget      Float?
+  budgetRemaining  Float?
+  platformViews    Json?
+  topClips         Json?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
