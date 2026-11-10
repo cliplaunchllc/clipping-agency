@@ -151,6 +151,33 @@ model ClientCampaign {
   client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   campaignReports CampaignReport[]
   ongoingReports  OngoingReport[]
+  stats           CampaignStats?
+}
+
+model CampaignStats {
+  id               String        @id @default(cuid())
+  campaignId       String        @unique
+  clientId         String
+  asOf             DateTime
+  viewsTotal       Int           @default(0)
+  viewsToday       Int           @default(0)
+  totalSubmissions Int           @default(0)
+  pending          Int           @default(0)
+  approved         Int           @default(0)
+  rejected         Int           @default(0)
+  amountSpent      Float?
+  effectiveCpm     Float?
+  totalBudget      Float?
+  budgetRemaining  Float?
+  tiktokViews      Int           @default(0)
+  instagramViews   Int           @default(0)
+  youtubeViews     Int           @default(0)
+  platformViews    Json?
+  topClips         Json?
+  status           OngoingStatus @default(Normal)
+  updatedAt        DateTime      @updatedAt
+
+  campaign ClientCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
 model ClientOnboardingStep {

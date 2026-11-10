@@ -36,7 +36,28 @@ function fmtWeekRange(start: string, end: string) {
   return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
 }
 
-interface ClientCampaign { id: string; name: string; totalBudget: number; }
+interface CampaignStats {
+  asOf: string;
+  viewsTotal: number;
+  viewsToday: number;
+  totalSubmissions: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  amountSpent: number | null;
+  effectiveCpm: number | null;
+  totalBudget: number | null;
+  budgetRemaining: number | null;
+  tiktokViews: number;
+  instagramViews: number;
+  youtubeViews: number;
+  platformViews: Record<string, number> | null;
+  topClips: Array<{ url?: string; creator?: string; platform?: string; views?: number; [k: string]: unknown }> | null;
+  status: "Strong" | "Normal" | "NeedsAttention";
+  updatedAt: string;
+}
+
+interface ClientCampaign { id: string; name: string; totalBudget: number; stats?: CampaignStats | null; }
 
 interface CampaignReport {
   id: string; weekStartDate: string; weekEndDate: string;
@@ -790,18 +811,24 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                   <p className="metric-sub">
                                     {(() => {
                                       const allOngoing = (cFull?.ongoingReports ?? []) as OngoingReport[];
-                                      const totalRunningViews = allOngoing.length > 0
-                                        ? Math.max(...allOngoing.map((r: OngoingReport) => r.viewsTotal))
-                                        : 0;
+                                      const liveStats = (cFull?.campaigns as ClientCampaign[] | undefined)
+                                        ?.map((camp) => camp.stats).find(Boolean) as CampaignStats | undefined;
+                                      // Prefer live stats for views/spend, fall back to reports
+                                      const totalRunningViews = liveStats?.viewsTotal
+                                        ?? (allOngoing.length > 0 ? Math.max(...allOngoing.map((r: OngoingReport) => r.viewsTotal)) : 0);
                                       const allPaidSnaps: { date: string; value: number }[] = [
                                         ...(cFull?.campaignReports ?? []).filter((r: AnyRecord) => r.paidOut > 0).map((r: AnyRecord) => ({ date: r.weekEndDate as string, value: r.paidOut as number })),
                                         ...(cFull?.ongoingReports ?? []).filter((r: AnyRecord) => r.amountSpent != null && r.amountSpent > 0).map((r: AnyRecord) => ({ date: r.date as string, value: r.amountSpent as number })),
                                       ].sort((a, b) => b.date.localeCompare(a.date));
-                                      const latestSpend = allPaidSnaps[0]?.value ?? 0;
-                                      if (!latestWeekly && !latestOngoing) return <span className="metric-sub">No reports yet</span>;
+                                      const latestSpend = liveStats?.amountSpent ?? allPaidSnaps[0]?.value ?? 0;
+                                      if (!latestWeekly && !latestOngoing && !liveStats) return <span className="metric-sub">No reports yet</span>;
                                       return (
                                         <>
-                                          {latestWeekly ? (
+                                          {liveStats ? (
+                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded mr-1" style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.18)", color: "var(--accent)", fontSize: 10, fontWeight: 700 }}>
+                                              <span className="w-1 h-1 rounded-full inline-block" style={{ background: "var(--accent)" }} />LIVE
+                                            </span>
+                                          ) : latestWeekly ? (
                                             <span className="metric-sub">{fmtWeekRange(latestWeekly.weekStartDate, latestWeekly.weekEndDate)}</span>
                                           ) : latestOngoing ? (
                                             <span className="metric-sub">{fmtDate(latestOngoing.date)}</span>
@@ -811,6 +838,9 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                           )}
                                           {latestSpend > 0 && (
                                             <><span className="metric-sub">{" · "}</span><span className="metric-sub" style={{ color: "var(--success)", fontWeight: 700 }}>{fmtCurrency(latestSpend)}</span></>
+                                          )}
+                                          {liveStats?.effectiveCpm != null && (
+                                            <><span className="metric-sub">{" · "}</span><span className="metric-sub">${liveStats.effectiveCpm.toFixed(2)} CPM</span></>
                                           )}
                                         </>
                                       );
@@ -973,6 +1003,111 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                         )}
                       </div>
                     )}
+
+                    {/* Live Grok Stats */}
+                    {(() => {
+                      const liveStats = (selectedClient?.campaigns as ClientCampaign[] | undefined)
+                        ?.map((c) => c.stats ? { campaign: c, stats: c.stats } : null)
+                        .filter(Boolean) as { campaign: ClientCampaign; stats: CampaignStats }[] | undefined;
+                      if (!liveStats?.length) return null;
+                      return liveStats.map(({ campaign, stats: s }) => {
+                        const updatedAgo = (() => {
+                          const diff = Date.now() - new Date(s.updatedAt).getTime();
+                          const mins = Math.floor(diff / 60_000);
+                          if (mins < 2) return "just now";
+                          if (mins < 60) return `${mins}m ago`;
+                          const hrs = Math.floor(mins / 60);
+                          if (hrs < 24) return `${hrs}h ago`;
+                          return `${Math.floor(hrs / 24)}d ago`;
+                        })();
+                        const budget = s.totalBudget ?? campaign.totalBudget;
+                        const spent = s.amountSpent ?? 0;
+                        const budgetPct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+                        const remaining = s.budgetRemaining ?? (budget > 0 ? budget - spent : null);
+                        const statusColors = {
+                          Strong: { bg: "rgba(61,214,140,0.1)", text: "var(--success)", border: "rgba(61,214,140,0.25)" },
+                          Normal: { bg: "rgba(138,147,166,0.08)", text: "var(--text-secondary)", border: "rgba(138,147,166,0.2)" },
+                          NeedsAttention: { bg: "rgba(255,59,59,0.1)", text: "var(--accent)", border: "rgba(255,59,59,0.25)" },
+                        };
+                        const sc = statusColors[s.status];
+                        const platforms = Object.entries(s.platformViews ?? {
+                          tiktok: s.tiktokViews, instagram: s.instagramViews, youtube: s.youtubeViews,
+                        }).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
+                        return (
+                          <div key={campaign.id} className="mb-4 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,59,59,0.22)", background: "rgba(255,59,59,0.03)" }}>
+                            {/* Header */}
+                            <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,59,59,0.12)" }}>
+                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--accent)", boxShadow: "0 0 5px var(--accent)" }} />
+                              <span className="label-mono" style={{ color: "var(--accent)" }}>LIVE STATS</span>
+                              <span className="label-mono" style={{ color: "var(--text-tertiary)" }}>· {campaign.name}</span>
+                              <span className="ml-auto px-2 py-0.5 rounded text-xs font-semibold" style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
+                                {s.status === "NeedsAttention" ? "Needs Attention" : s.status}
+                              </span>
+                              <span className="label-mono ml-1" style={{ color: "var(--text-tertiary)" }}>{updatedAgo}</span>
+                            </div>
+                            {/* Stats grid */}
+                            <div className="grid grid-cols-4 gap-px p-px" style={{ background: "rgba(255,59,59,0.1)" }}>
+                              {[
+                                { label: "Total Views", value: fmt(s.viewsTotal) },
+                                { label: "Today", value: fmt(s.viewsToday) },
+                                { label: "Approved", value: s.approved.toString() },
+                                { label: "Submissions", value: s.totalSubmissions.toString() },
+                                ...(s.amountSpent != null ? [{ label: "Spent", value: fmtCurrency(s.amountSpent) }] : []),
+                                ...(s.effectiveCpm != null ? [{ label: "Eff. CPM", value: `$${s.effectiveCpm.toFixed(2)}` }] : []),
+                                ...(remaining != null ? [{ label: "Budget Left", value: fmtCurrency(remaining) }] : []),
+                              ].map(({ label, value }) => (
+                                <div key={label} className="px-3 py-2.5" style={{ background: "var(--bg-base)" }}>
+                                  <p className="label-mono mb-0.5">{label}</p>
+                                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{value}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Budget bar */}
+                            {budget > 0 && (
+                              <div className="px-4 py-2.5" style={{ borderTop: "1px solid rgba(255,59,59,0.1)" }}>
+                                <div className="flex justify-between mb-1.5">
+                                  <span className="label-mono">Budget</span>
+                                  <span className="label-mono">{fmtCurrency(spent)} / {fmtCurrency(budget)}</span>
+                                </div>
+                                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-default)" }}>
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${budgetPct}%`, background: budgetPct > 90 ? "var(--accent)" : "var(--success)" }} />
+                                </div>
+                              </div>
+                            )}
+                            {/* Platform split */}
+                            {platforms.length > 0 && (
+                              <div className="px-4 py-2.5 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(255,59,59,0.1)" }}>
+                                {platforms.map(([k, v]) => {
+                                  const pct = s.viewsTotal > 0 ? Math.round((v / s.viewsTotal) * 100) : 0;
+                                  return (
+                                    <span key={k} className="label-mono px-2 py-0.5 rounded-md capitalize" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>
+                                      {k}: {fmt(v)} <span style={{ color: "var(--text-tertiary)" }}>({pct}%)</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {/* Top clips */}
+                            {s.topClips && s.topClips.length > 0 && (
+                              <div className="px-4 py-2.5" style={{ borderTop: "1px solid rgba(255,59,59,0.1)" }}>
+                                <p className="label-mono mb-2">Top Clips</p>
+                                <div className="space-y-1.5">
+                                  {s.topClips.slice(0, 5).map((clip, i) => (
+                                    <div key={i} className="flex items-center gap-2 text-xs">
+                                      <span className="font-semibold" style={{ color: "var(--text-tertiary)", minWidth: 14 }}>#{i + 1}</span>
+                                      <span style={{ color: "var(--text-secondary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{clip.creator ?? ""}</span>
+                                      <span className="capitalize px-1.5 py-0.5 rounded" style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>{clip.platform}</span>
+                                      <span className="font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(Number(clip.views ?? 0))}</span>
+                                      {clip.url && <a href={clip.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}><ExternalLink size={10} /></a>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
 
                     {/* Latest weekly banner */}
                     {latestWeekly && (

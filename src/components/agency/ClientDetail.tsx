@@ -2,10 +2,32 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText, Activity, Zap } from "lucide-react";
 
 interface Link { id: string; label: string; url: string; }
-interface Campaign { id: string; name: string; totalBudget: number; order: number; }
+
+interface CampaignStats {
+  asOf: string;
+  viewsTotal: number;
+  viewsToday: number;
+  totalSubmissions: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  amountSpent: number | null;
+  effectiveCpm: number | null;
+  totalBudget: number | null;
+  budgetRemaining: number | null;
+  tiktokViews: number;
+  instagramViews: number;
+  youtubeViews: number;
+  platformViews: Record<string, number> | null;
+  topClips: Array<{ url?: string; creator?: string; platform?: string; views?: number; [k: string]: unknown }> | null;
+  status: "Strong" | "Normal" | "NeedsAttention";
+  updatedAt: string;
+}
+
+interface Campaign { id: string; name: string; totalBudget: number; order: number; stats?: CampaignStats | null; }
 interface OnboardingStep { id: string; title: string; description: string | null; linkUrl: string | null; order: number; completed: boolean; }
 interface Clipper { id: string; name: string | null; email: string; status: string; }
 
@@ -434,6 +456,75 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
               </button>
             </div>
           </div>
+
+          {/* Live Campaign Stats */}
+          {campaigns.some((c) => c.stats) && (
+            <div className="rounded-xl p-4 mb-6" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={12} style={{ color: "var(--accent)" }} />
+                <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Live Campaign Stats</p>
+                <span className="text-xs px-1.5 py-0.5 rounded-md" style={{ background: "rgba(255,59,59,0.08)", color: "var(--accent)", border: "1px solid rgba(255,59,59,0.18)" }}>Grok</span>
+              </div>
+              <div className="space-y-3">
+                {campaigns.filter((c) => c.stats).map((camp) => {
+                  const s = camp.stats!;
+                  const updatedAgo = (() => {
+                    const diff = Date.now() - new Date(s.updatedAt).getTime();
+                    const mins = Math.floor(diff / 60_000);
+                    if (mins < 60) return `${mins}m ago`;
+                    const hrs = Math.floor(mins / 60);
+                    if (hrs < 24) return `${hrs}h ago`;
+                    return `${Math.floor(hrs / 24)}d ago`;
+                  })();
+                  const budget = s.totalBudget ?? camp.totalBudget;
+                  const spent = s.amountSpent ?? 0;
+                  const budgetPct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+                  const statusColor = s.status === "Strong" ? "var(--success)" : s.status === "NeedsAttention" ? "var(--accent)" : "var(--text-tertiary)";
+                  return (
+                    <div key={camp.id} className="rounded-lg p-3" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{camp.name}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-1.5 py-0.5 rounded-md font-semibold" style={{ background: `${statusColor}1A`, color: statusColor, border: `1px solid ${statusColor}40` }}>
+                            {s.status === "NeedsAttention" ? "Needs Attention" : s.status}
+                          </span>
+                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>· {updatedAgo}</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 mb-2">
+                        {[
+                          { label: "Views Total", value: s.viewsTotal >= 1_000_000 ? `${(s.viewsTotal / 1_000_000).toFixed(1)}M` : s.viewsTotal >= 1_000 ? `${(s.viewsTotal / 1_000).toFixed(1)}K` : String(s.viewsTotal) },
+                          { label: "Today", value: s.viewsToday >= 1_000 ? `${(s.viewsToday / 1_000).toFixed(1)}K` : String(s.viewsToday) },
+                          { label: "Approved", value: String(s.approved) },
+                          { label: "Submissions", value: String(s.totalSubmissions) },
+                          ...(s.amountSpent != null ? [{ label: "Spent", value: `$${s.amountSpent.toLocaleString("en-US", { maximumFractionDigits: 0 })}` }] : []),
+                          ...(s.effectiveCpm != null ? [{ label: "Eff. CPM", value: `$${s.effectiveCpm.toFixed(2)}` }] : []),
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <p className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: 10 }}>{label}</p>
+                            <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {budget > 0 && (
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-xs" style={{ color: "var(--text-tertiary)", fontSize: 10 }}>Budget used</span>
+                            <span className="text-xs font-semibold" style={{ color: "var(--text-secondary)", fontSize: 10 }}>
+                              ${spent.toLocaleString("en-US", { maximumFractionDigits: 0 })} / ${budget.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-default)" }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${budgetPct}%`, background: budgetPct > 90 ? "var(--accent)" : "var(--success)" }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Campaign type — static CPM badge */}
           <div className="rounded-xl p-4 mb-6 flex items-center justify-between" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
