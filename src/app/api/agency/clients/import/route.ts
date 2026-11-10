@@ -1,16 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-function requireSecret(req: NextRequest): boolean {
-  const secret = process.env.REPORT_SECRET;
-  return !!secret && req.headers.get("x-report-secret") === secret;
-}
-
 const VALID_STATUSES = ["active", "justlaunched", "prelaunch"] as const;
 type ClientStatus = (typeof VALID_STATUSES)[number];
 
 export async function POST(req: NextRequest) {
-  if (!requireSecret(req))
+  const secret = (process.env.REPORT_SECRET ?? "").trim();
+  const provided = (req.headers.get("x-report-secret") ?? "").trim();
+  if (!secret || provided !== secret)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: { clients?: unknown };
