@@ -33,9 +33,11 @@ function buildNotes(lead: IncomingLead, niche: Niche): string {
 }
 
 export async function POST(req: NextRequest) {
-  // Authenticate with secret header
-  const secret = req.headers.get("x-import-secret");
-  if (!secret || secret !== process.env.LEADS_IMPORT_SECRET) {
+  // Authenticate with secret header — trim both sides to guard against
+  // whitespace/newline that Railway or curl can silently add.
+  const providedSecret = (req.headers.get("x-import-secret") ?? "").trim();
+  const expectedSecret = (process.env.LEADS_IMPORT_SECRET ?? "").trim();
+  if (!providedSecret || !expectedSecret || providedSecret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
