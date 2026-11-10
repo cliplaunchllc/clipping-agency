@@ -126,6 +126,10 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
     .slice()
     .sort((a: OngoingReport, b: OngoingReport) => b.date.localeCompare(a.date)) as OngoingReport[];
 
+  // All-clients graph controls
+  const [graphRange, setGraphRange] = useState<"7D" | "2W" | "4W" | "3M" | "All">("4W");
+  const [graphMetric, setGraphMetric] = useState<"views" | "submissions" | "approved" | "spent">("views");
+
   // Chart data for single-client view
   const cpmChartData = [...ongoingReports]
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -382,6 +386,176 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                               </div>
                             );
                           })()}
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── All-Clients Overview Graph ── */}
+                    {(() => {
+                      // Flatten all ongoingReports across active clients
+                      const allReps: AnyRecord[] = activeFullClients.flatMap((c: AnyRecord) =>
+                        (c.ongoingReports ?? []) as AnyRecord[]
+                      );
+
+                      // Aggregate by date
+                      const byDate: Record<string, { views: number; submissions: number; approved: number; spent: number }> = {};
+                      for (const r of allReps) {
+                        const d = r.date as string;
+                        if (!d) continue;
+                        if (!byDate[d]) byDate[d] = { views: 0, submissions: 0, approved: 0, spent: 0 };
+                        byDate[d].views       += (r.viewsToday      as number) ?? 0;
+                        byDate[d].submissions += (r.totalSubmissions as number) ?? 0;
+                        byDate[d].approved    += (r.approved         as number) ?? 0;
+                        byDate[d].spent       += (r.amountSpent      as number) ?? 0;
+                      }
+
+                      const allDates = Object.keys(byDate).sort();
+                      if (allDates.length === 0) return null;
+
+                      // Filter by selected range
+                      const rangeDays: Record<string, number> = { "7D": 7, "2W": 14, "4W": 28, "3M": 90 };
+                      const cutoff = graphRange !== "All"
+                        ? new Date(Date.now() - rangeDays[graphRange] * 86_400_000).toISOString().slice(0, 10)
+                        : "0000-00-00";
+                      const filteredDates = allDates.filter(d => d >= cutoff);
+
+                      // Aggregate by ISO week (Mon–Sun) for WoW metrics + weekly chart view
+                      function mondayOf(dateStr: string) {
+                        const d = new Date(dateStr + "T00:00:00");
+                        const dow = (d.getDay() + 6) % 7;
+                        d.setDate(d.getDate() - dow);
+                        return d.toISOString().slice(0, 10);
+                      }
+                      const byWeek: Record<string, { views: number; submissions: number; approved: number; spent: number; label: string }> = {};
+                      for (const d of allDates) {
+                        const wk = mondayOf(d);
+                        if (!byWeek[wk]) {
+                          const end = new Date(wk + "T00:00:00");
+                          end.setDate(end.getDate() + 6);
+                          byWeek[wk] = { views: 0, submissions: 0, approved: 0, spent: 0, label: `Wk ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}` };
+                        }
+                        byWeek[wk].views       += byDate[d].views;
+                        byWeek[wk].submissions += byDate[d].submissions;
+                        byWeek[wk].approved    += byDate[d].approved;
+                        byWeek[wk].spent       += byDate[d].spent;
+                      }
+                      const weekKeys = Object.keys(byWeek).sort();
+
+                      // Current & previous full week for WoW deltas
+                      const curWk  = weekKeys[weekKeys.length - 1];
+                      const prevWk = weekKeys[weekKeys.length - 2];
+                      const curW   = curWk  ? byWeek[curWk]  : null;
+                      const prevW  = prevWk ? byWeek[prevWk] : null;
+                      function wowPct(cur: number, prev: number | undefined) {
+                        if (!prev || prev === 0) return null;
+                        return Math.round(((cur - prev) / prev) * 100);
+                      }
+
+                      // Build chart data: daily for ≤2W, weekly for wider
+                      const useWeekly = graphRange === "4W" || graphRange === "3M" || graphRange === "All";
+                      const chartData = useWeekly
+                        ? weekKeys
+                            .filter(wk => wk >= cutoff)
+                            .map(wk => ({ date: byWeek[wk].label, views: byWeek[wk].views, submissions: byWeek[wk].submissions, approved: byWeek[wk].approved, spent: byWeek[wk].spent }))
+                        : filteredDates.map(d => ({ date: fmtDate(d), views: byDate[d].views, submissions: byDate[d].submissions, approved: byDate[d].approved, spent: byDate[d].spent }));
+
+                      type GMetric = "views" | "submissions" | "approved" | "spent";
+                      const metricCfg: { key: GMetric; label: string; icon: React.ElementType; fmtFn: (n: number) => string; color: string }[] = [
+                        { key: "views",       label: "Views / Day",    icon: Eye,          fmtFn: fmt,         color: "#3DD68C" },
+                        { key: "submissions", label: "Submissions",    icon: Scissors,     fmtFn: String,      color: "#60A5FA" },
+                        { key: "approved",    label: "Approved",       icon: CheckCircle,  fmtFn: String,      color: "#A78BFA" },
+                        { key: "spent",       label: "Amount Spent",   icon: DollarSign,   fmtFn: fmtCurrency, color: "#F5B544" },
+                      ];
+
+                      const activeCfg = metricCfg.find(m => m.key === graphMetric)!;
+
+                      return (
+                        <div style={card} className="overflow-hidden mb-8">
+                          {/* Header */}
+                          <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp size={14} style={{ color: "var(--text-tertiary)" }} />
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                                All Clients · {useWeekly ? "Weekly" : "Daily"} Overview
+                              </p>
+                            </div>
+                            {/* Range pills */}
+                            <div className="flex gap-1 p-0.5 rounded-full" style={{ background: "var(--bg-subtle)" }}>
+                              {(["7D", "2W", "4W", "3M", "All"] as const).map(r => (
+                                <button key={r} onClick={() => setGraphRange(r)} style={{
+                                  padding: "3px 11px", borderRadius: 999, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer",
+                                  background: graphRange === r ? "var(--accent)" : "transparent",
+                                  color: graphRange === r ? "var(--text-on-accent)" : "var(--text-tertiary)",
+                                  transition: "background 120ms, color 120ms",
+                                }}>{r}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Metric boxes — click to change chart line */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            {metricCfg.map((m, i) => {
+                              const curVal  = curW  ? curW[m.key]  : 0;
+                              const prevVal = prevW ? prevW[m.key] : undefined;
+                              const delta   = wowPct(curVal, prevVal);
+                              const Icon    = m.icon;
+                              const isActive = graphMetric === m.key;
+                              return (
+                                <button key={m.key} onClick={() => setGraphMetric(m.key)}
+                                  style={{
+                                    textAlign: "left", padding: "14px 20px",
+                                    borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                                    background: isActive ? `${m.color}08` : "transparent",
+                                    borderBottom: isActive ? `2px solid ${m.color}` : "2px solid transparent",
+                                    cursor: "pointer", transition: "background 120ms",
+                                  }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                                    <Icon size={12} style={{ color: isActive ? m.color : "var(--text-tertiary)", flexShrink: 0 }} />
+                                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: isActive ? m.color : "var(--text-tertiary)" }}>{m.label}</span>
+                                  </div>
+                                  <p style={{ fontSize: 20, fontWeight: 700, fontFamily: "var(--font-display)", color: isActive ? m.color : "var(--text-primary)", marginBottom: 4, lineHeight: 1 }}>
+                                    {m.fmtFn(curVal)}
+                                  </p>
+                                  {delta !== null ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                      {delta > 0 ? <TrendingUp size={10} style={{ color: "var(--success)" }} /> : delta < 0 ? <TrendingDown size={10} style={{ color: "var(--danger)" }} /> : <Minus size={10} style={{ color: "var(--text-tertiary)" }} />}
+                                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", color: delta > 0 ? "var(--success)" : delta < 0 ? "var(--danger)" : "var(--text-tertiary)" }}>
+                                        {delta > 0 ? "+" : ""}{delta}% WoW
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>no prior week</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Chart */}
+                          <div style={{ padding: "16px 24px 8px", height: 220 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="gOverview" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%"  stopColor={activeCfg.color} stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor={activeCfg.color} stopOpacity={0}   />
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--text-tertiary)" }} interval="preserveStartEnd" />
+                                <YAxis tick={{ fontSize: 10, fill: "var(--text-tertiary)" }} tickFormatter={activeCfg.key === "spent" ? fmtCurrency : fmt} width={56} />
+                                <Tooltip
+                                  contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: 10, fontSize: 12 }}
+                                  labelStyle={{ color: "var(--text-secondary)", marginBottom: 4 }}
+                                  formatter={(val: number) => [activeCfg.fmtFn(val), activeCfg.label]}
+                                />
+                                <Area type="monotone" dataKey={graphMetric} stroke={activeCfg.color} strokeWidth={2} fill="url(#gOverview)" dot={false} activeDot={{ r: 4, fill: activeCfg.color }} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <p style={{ textAlign: "center", fontSize: 10, color: "var(--text-tertiary)", paddingBottom: 10, letterSpacing: "0.05em" }}>
+                            {useWeekly ? "Aggregated weekly · Mon–Sun" : "Daily totals across all active clients"}
+                          </p>
                         </div>
                       );
                     })()}
