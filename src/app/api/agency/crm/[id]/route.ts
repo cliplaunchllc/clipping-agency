@@ -34,7 +34,7 @@ export async function PATCH(
     "replied", "callBooked", "showedUpToCall", "closedCall", "inConvo", "leadLost", "markedDone",
   ];
   const dateFields = ["dateMessaged", "followUp1", "followUp2", "followUp3", "lastFollowUpDate"];
-  const strFields = ["leadName", "instagram", "email", "linkedin", "x", "whoMessaged", "replyMessage", "notes", "leadSource"];
+  const strFields = ["leadName", "instagram", "email", "linkedin", "x", "whoMessaged", "replyMessage", "notes", "leadSource", "niche", "companyDescription", "initialMessage"];
 
   for (const f of boolFields) {
     if (f in body) data[f] = Boolean(body[f]);

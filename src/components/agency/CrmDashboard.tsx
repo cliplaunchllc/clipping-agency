@@ -34,6 +34,9 @@ export interface CrmLead {
   inConvo: boolean;
   leadLost: boolean;
   markedDone: boolean;
+  niche: string | null;
+  companyDescription: string | null;
+  initialMessage: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +50,17 @@ const WHO_OPTIONS = [
   { value: "andrew_linkedin", label: "Andrew — LinkedIn" },
   { value: "cliplaunch_instagram", label: "ClipLaunch — Instagram" },
   { value: "cliplaunch_email", label: "ClipLaunch — Email" },
+];
+
+const NICHE_OPTIONS = [
+  { value: "", label: "— none —" },
+  { value: "gaming", label: "Gaming" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "agency", label: "Agency" },
+  { value: "sports", label: "Sports" },
+  { value: "podcast", label: "Podcast" },
+  { value: "irl", label: "IRL / Lifestyle" },
+  { value: "other", label: "Other" },
 ];
 
 const SOURCE_OPTIONS = [
@@ -303,10 +317,10 @@ function OutreachPills({ lead, patch }: { lead: CrmLead; patch: (id: string, fie
 }
 
 // ─── Add Lead Modal ───────────────────────────────────────────────────
-type NewLeadForm = { leadName: string; instagram: string; email: string; linkedin: string; x: string; whoMessaged: string; leadSource: string };
+type NewLeadForm = { leadName: string; instagram: string; email: string; linkedin: string; x: string; whoMessaged: string; leadSource: string; niche: string; companyDescription: string; initialMessage: string };
 
 function AddLeadModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (form: NewLeadForm) => Promise<void> }) {
-  const [form, setForm] = useState<NewLeadForm>({ leadName: "", instagram: "", email: "", linkedin: "", x: "", whoMessaged: "", leadSource: "cold_outbound" });
+  const [form, setForm] = useState<NewLeadForm>({ leadName: "", instagram: "", email: "", linkedin: "", x: "", whoMessaged: "", leadSource: "cold_outbound", niche: "", companyDescription: "", initialMessage: "" });
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -373,6 +387,29 @@ function AddLeadModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (f
               </select>
               <DropIcon size={12} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
             </div>
+          </div>
+
+          {/* Niche */}
+          <div>
+            <label style={labelSty}>Niche</label>
+            <div className="relative">
+              <select value={form.niche} onChange={(e) => set("niche", e.target.value)} className={`${inputCls} pr-8`} style={{ ...inputSty, appearance: "none", WebkitAppearance: "none", cursor: "pointer", colorScheme: "dark" }}>
+                {NICHE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <DropIcon size={12} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
+            </div>
+          </div>
+
+          {/* Company Description */}
+          <div>
+            <label style={labelSty}>Company / channel description</label>
+            <textarea value={form.companyDescription} onChange={(e) => set("companyDescription", e.target.value)} placeholder="What they do…" rows={2} className={`${inputCls} resize-none`} style={inputSty} />
+          </div>
+
+          {/* Initial Message */}
+          <div>
+            <label style={labelSty}>Their initial message</label>
+            <textarea value={form.initialMessage} onChange={(e) => set("initialMessage", e.target.value)} placeholder="The first message they sent…" rows={2} className={`${inputCls} resize-none`} style={inputSty} />
           </div>
 
           {/* Who will message */}
@@ -557,6 +594,9 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
         linkedin: form.linkedin || null,
         x: form.x || null,
         whoMessaged: form.whoMessaged || null,
+        niche: form.niche || null,
+        companyDescription: form.companyDescription || null,
+        initialMessage: form.initialMessage || null,
       }),
     });
     if (!res.ok) return;
@@ -983,6 +1023,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                 <ThCol center>#</ThCol>
                 <ThCol sortable k="createdAt">Lead</ThCol>
                 <ThCol>Source</ThCol>
+                <ThCol>Company</ThCol>
                 <ThCol>Socials</ThCol>
                 <ThCol section="outreach">
                   <div className="flex flex-col gap-0.5">
@@ -994,6 +1035,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                 <ThCol section="outreach">Follow-ups</ThCol>
                 <ThCol section="outreach">Last Follow-up</ThCol>
                 <ThCol section="outreach" sortable k="daysSince">Days Since</ThCol>
+                <ThCol section="messages">Initial Msg</ThCol>
                 <ThCol section="messages">Outreach Msg</ThCol>
                 <ThCol section="messages" center>Replied</ThCol>
                 <ThCol section="messages">Reply Msg</ThCol>
@@ -1006,7 +1048,7 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="px-6 py-14 text-center" style={{ color: "var(--text-tertiary)", fontSize: 13, background: "var(--bg-surface)" }}>
+                  <td colSpan={18} className="px-6 py-14 text-center" style={{ color: "var(--text-tertiary)", fontSize: 13, background: "var(--bg-surface)" }}>
                     {leads.length === 0 ? "No leads yet — import a CSV or add one manually." : "No leads match your filters."}
                   </td>
                 </tr>
@@ -1082,6 +1124,17 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                           className="crm-lead-input text-sm font-medium rounded px-2 py-1 w-[145px]"
                           style={inputStyle}
                         />
+                        <div className="relative">
+                          <select
+                            value={lead.niche ?? ""}
+                            onChange={(e) => patch(lead.id, "niche", e.target.value || null)}
+                            className="text-xs rounded px-2 py-1 w-[145px] pr-6"
+                            style={{ ...selectStyle, fontSize: 10, height: 24 }}
+                          >
+                            {NICHE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                          <DropIcon size={9} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
+                        </div>
                         <div className="flex items-center gap-1.5">
                           {(() => { const t = leadTemperature(lead); return (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", fontFamily: "var(--font-display)", color: t.color, background: t.bg, border: `1px solid ${t.border}` }}>
@@ -1136,6 +1189,11 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                       </div>
                     </td>
 
+                    {/* Company Description */}
+                    <td style={tdStyle()}>
+                      <TextareaCell value={lead.companyDescription} onChange={(v) => patch(lead.id, "companyDescription", v)} placeholder="What they do…" />
+                    </td>
+
                     {/* Socials */}
                     <td style={tdStyle()}>
                       <div className="flex flex-col gap-1.5">
@@ -1180,6 +1238,11 @@ export default function CrmDashboard({ initialLeads }: { initialLeads: CrmLead[]
                     {/* Days Since Last Touch */}
                     <td style={{ ...tdStyle("outreach"), textAlign: "center" }}>
                       <StaleBadge days={days} />
+                    </td>
+
+                    {/* Initial Message (what they sent us first) */}
+                    <td style={tdStyle("messages")}>
+                      <TextareaCell value={lead.initialMessage} onChange={(v) => patch(lead.id, "initialMessage", v)} placeholder="Their first message…" />
                     </td>
 
                     {/* Outreach Message */}

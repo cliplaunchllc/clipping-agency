@@ -286,6 +286,9 @@ model CrmLead {
 
   notes             String?
   leadSource        String?   @default("cold_outbound")
+  niche             String?
+  companyDescription String?
+  initialMessage    String?
 
   inConvo           Boolean   @default(false)
   leadLost          Boolean   @default(false)

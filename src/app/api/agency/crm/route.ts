@@ -94,7 +94,11 @@ export async function POST(req: NextRequest) {
       email: body.email || null,
       linkedin: body.linkedin || null,
       x: body.x || null,
+      whoMessaged: body.whoMessaged || null,
       leadSource: body.leadSource || "cold_outbound",
+      niche: body.niche || null,
+      companyDescription: body.companyDescription || null,
+      initialMessage: body.initialMessage || null,
     },
   });
 
