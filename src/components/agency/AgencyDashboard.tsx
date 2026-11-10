@@ -50,11 +50,13 @@ interface CampaignReport {
 }
 
 interface OngoingReport {
-  id: string; date: string; totalSubmissions: number; pending: number;
+  id: string; date: string; campaignName?: string; totalSubmissions: number; pending: number;
   approved: number; rejected: number; mainTrend: string | null;
   clipperFeedback: string | null; mainOptimization: string | null; status: string;
   viewsTotal: number; viewsToday: number; amountSpent?: number | null;
-  effectiveCpm?: number | null; campaign?: ClientCampaign | null;
+  effectiveCpm?: number | null; totalBudget?: number | null; budgetRemaining?: number | null;
+  platformViews?: Record<string, number> | null; topClips?: AnyRecord[] | null;
+  campaign?: ClientCampaign | null;
 }
 
 interface Props {
@@ -1253,11 +1255,36 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                                 </button>
                                                 {isExpanded && (
                                                   <div className="px-4 pb-4 pt-3 space-y-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                                    {/* Status badge + campaign name */}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      {(() => {
+                                                        const s = report.status;
+                                                        const cfg = s === "Strong"
+                                                          ? { bg: "rgba(61,214,140,0.1)", border: "rgba(61,214,140,0.25)", color: "var(--success)" }
+                                                          : s === "NeedsAttention"
+                                                          ? { bg: "rgba(255,59,59,0.1)", border: "rgba(255,59,59,0.3)", color: "var(--danger)" }
+                                                          : { bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.25)", color: "#60A5FA" };
+                                                        const label = s === "NeedsAttention" ? "Needs Attention" : s;
+                                                        return (
+                                                          <span className="label-mono px-2 py-1 rounded-md" style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }}>{label}</span>
+                                                        );
+                                                      })()}
+                                                      {report.campaignName && (
+                                                        <span className="label-mono px-2 py-1 rounded-md" style={{ background: "var(--bg-active)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>{report.campaignName}</span>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Core stats grid */}
                                                     <div className="grid grid-cols-2 gap-2">
                                                       {[
-                                                        { label: "Approved",     value: report.approved.toString(),  color: "var(--success)" },
-                                                        { label: "Views Today",  value: fmt(report.viewsToday),      color: "var(--accent)" },
-                                                        { label: "Views Total",  value: fmt(report.viewsTotal),      color: "var(--text-primary)" },
+                                                        { label: "Views Today",      value: fmt(report.viewsToday),       color: "var(--accent)" },
+                                                        { label: "Views Total",      value: fmt(report.viewsTotal),       color: "var(--text-primary)" },
+                                                        { label: "Approved",         value: report.approved.toString(),   color: "var(--success)" },
+                                                        { label: "Submissions",      value: report.totalSubmissions.toString(), color: "var(--text-primary)" },
+                                                        { label: "Pending",          value: report.pending.toString(),    color: "var(--warning)" },
+                                                        { label: "Rejected",         value: report.rejected.toString(),   color: "var(--danger)" },
+                                                        ...(report.amountSpent != null ? [{ label: "Amount Spent", value: fmtCurrency(report.amountSpent), color: "var(--success)" }] : []),
+                                                        ...(report.effectiveCpm != null ? [{ label: "Eff. CPM", value: fmtCurrency(report.effectiveCpm), color: "var(--text-secondary)" }] : []),
                                                         { label: "Views Change", value: viewsTodayChange !== null ? `${viewsTodayChange >= 0 ? "+" : ""}${viewsTodayChange}%` : "—", color: viewsTodayChange === null ? "var(--text-tertiary)" : viewsTodayChange >= 0 ? "var(--success)" : "var(--danger)" },
                                                       ].map((s) => (
                                                         <div key={s.label} className="rounded-lg p-2.5" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
@@ -1266,6 +1293,77 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                                         </div>
                                                       ))}
                                                     </div>
+
+                                                    {/* Budget bar */}
+                                                    {report.totalBudget != null && report.totalBudget > 0 && (() => {
+                                                      const spent = report.amountSpent ?? (report.totalBudget - (report.budgetRemaining ?? report.totalBudget));
+                                                      const pct = Math.min(100, (spent / report.totalBudget) * 100);
+                                                      return (
+                                                        <div className="rounded-lg p-3" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
+                                                          <div className="flex items-center justify-between mb-2">
+                                                            <p className="label-mono">Budget</p>
+                                                            <p className="label-mono" style={{ color: "var(--text-primary)" }}>{fmtCurrency(spent)} <span style={{ color: "var(--text-tertiary)" }}>/ {fmtCurrency(report.totalBudget)}</span></p>
+                                                          </div>
+                                                          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
+                                                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? "var(--danger)" : pct >= 70 ? "var(--warning)" : "var(--success)", transition: "width 0.5s ease" }} />
+                                                          </div>
+                                                          <div className="flex justify-between mt-1.5">
+                                                            <p className="metric-sub">{Math.round(pct)}% used</p>
+                                                            {report.budgetRemaining != null && <p className="metric-sub">{fmtCurrency(report.budgetRemaining)} remaining</p>}
+                                                          </div>
+                                                        </div>
+                                                      );
+                                                    })()}
+
+                                                    {/* Platform views breakdown */}
+                                                    {report.platformViews && Object.keys(report.platformViews).length > 0 && (() => {
+                                                      const platforms = Object.entries(report.platformViews)
+                                                        .filter(([, v]) => (v as number) > 0)
+                                                        .sort(([, a], [, b]) => (b as number) - (a as number));
+                                                      if (!platforms.length) return null;
+                                                      const total = platforms.reduce((s, [, v]) => s + (v as number), 0);
+                                                      const platformColors: Record<string, string> = { tiktok: "var(--accent)", instagram: "#FF8800", youtube: "#CC1A1A", twitter: "#5B9BD5", x: "#5B9BD5" };
+                                                      return (
+                                                        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+                                                          <p className="label-mono px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>Platform Breakdown</p>
+                                                          {platforms.map(([platform, views]) => {
+                                                            const pct = total > 0 ? Math.round(((views as number) / total) * 100) : 0;
+                                                            const color = platformColors[platform.toLowerCase()] ?? "var(--text-secondary)";
+                                                            return (
+                                                              <div key={platform} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                                                <span className="label-mono capitalize" style={{ color, minWidth: 72 }}>{platform}</span>
+                                                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-subtle)" }}>
+                                                                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                                                                </div>
+                                                                <span className="label-mono" style={{ color: "var(--text-primary)", minWidth: 44, textAlign: "right" }}>{fmt(views as number)}</span>
+                                                                <span className="label-mono" style={{ color: "var(--text-tertiary)", minWidth: 32, textAlign: "right" }}>{pct}%</span>
+                                                              </div>
+                                                            );
+                                                          })}
+                                                        </div>
+                                                      );
+                                                    })()}
+
+                                                    {/* Top clips */}
+                                                    {report.topClips && Array.isArray(report.topClips) && report.topClips.length > 0 && (
+                                                      <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+                                                        <p className="label-mono px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>Top Clips</p>
+                                                        {(report.topClips as AnyRecord[]).slice(0, 5).map((clip: AnyRecord, i: number) => (
+                                                          <div key={i} className="flex items-center gap-3 px-3 py-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                                            <span className="label-mono" style={{ color: "var(--text-tertiary)", minWidth: 20 }}>#{i + 1}</span>
+                                                            {clip.views != null && <span className="metric-sub font-semibold" style={{ color: "var(--accent)", minWidth: 60 }}>{fmt(Number(clip.views))}</span>}
+                                                            {clip.platform && <span className="label-mono capitalize" style={{ color: "var(--text-secondary)" }}>{clip.platform}</span>}
+                                                            {clip.url && (
+                                                              <a href={clip.url as string} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1 label-mono" style={{ color: "var(--accent)" }}>
+                                                                <ExternalLink size={10} /> View
+                                                              </a>
+                                                            )}
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                    )}
+
+                                                    {/* Text insights */}
                                                     {[
                                                       { key: "mainTrend",        label: "Main Trend",         value: report.mainTrend,        border: "var(--accent-border)",  bg: "var(--accent-muted)",  color: "var(--accent)" },
                                                       { key: "mainOptimization", label: "Optimization Focus", value: report.mainOptimization, border: "rgba(245,185,74,0.3)",  bg: "var(--warning-bg)",    color: "var(--warning)" },

@@ -105,6 +105,7 @@ export default async function AgencyPage() {
     ongoingReports: c.ongoingReports.map((r) => ({
       id: r.id,
       date: r.date.toISOString().slice(0, 10),
+      campaignName: r.campaignName,
       totalSubmissions: r.totalSubmissions,
       pending: r.pending,
       approved: r.approved,
@@ -116,6 +117,11 @@ export default async function AgencyPage() {
       viewsTotal: r.viewsTotal,
       viewsToday: r.viewsToday,
       amountSpent: r.amountSpent ?? null,
+      effectiveCpm: r.effectiveCpm ?? null,
+      totalBudget: r.totalBudget ?? null,
+      budgetRemaining: r.budgetRemaining ?? null,
+      platformViews: r.platformViews ?? null,
+      topClips: r.topClips ?? null,
     })),
   }));
 
