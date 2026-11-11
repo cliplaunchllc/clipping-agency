@@ -113,8 +113,17 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
   const router = useRouter();
   const [allClips] = useState<AnyRecord[]>(initialClips);
   const [selectedClientId, setSelectedClientId] = useState("all");
-  const [viewMode, setViewMode] = useState<"agency" | "client">("agency");
-  const [previewClientId, setPreviewClientId] = useState("");
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+
+  async function copyShareLink(clientId: string) {
+    const res = await fetch(`/api/agency/clients/${clientId}/share-token`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      await navigator.clipboard.writeText(`${window.location.origin}/share/${data.token}`);
+      setCopiedShareId(clientId);
+      setTimeout(() => setCopiedShareId(null), 2500);
+    }
+  }
   const [clientListTab, setClientListTab] = useState<"active" | "prelaunch" | "archived">("active");
   // Per-client inline report breakout
   const [expandedClientIds, setExpandedClientIds] = useState<Set<string>>(new Set());
@@ -242,61 +251,18 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
               </div>
 
               <div className="flex items-center gap-3">
-                {/* View mode toggle */}
-                <div className="flex items-center rounded-xl p-0.5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-                  {(["agency", "client"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => {
-                        setViewMode(mode);
-                        if (mode === "agency") setPreviewClientId("");
-                      }}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={{
-                        background: viewMode === mode ? "var(--accent)" : "transparent",
-                        color: viewMode === mode ? "var(--text-on-accent)" : "var(--text-secondary)",
-                      }}
-                    >
-                      {mode === "agency" ? "Agency View" : "Client View"}
-                    </button>
-                  ))}
+                {/* Client drilldown selector */}
+                <div className="relative">
+                  <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
+                    style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
+                    <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
+                    {allClients.filter((c) => c.status === "active" || c.status === "prelaunch").map((c) => (
+                      <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}{c.status === "prelaunch" ? " (Pre-launch)" : ""}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-
-                {/* Client picker — shown when Client View is active */}
-                {viewMode === "client" && (
-                  <div className="relative">
-                    <select
-                      value={previewClientId}
-                      onChange={(e) => {
-                        setPreviewClientId(e.target.value);
-                        if (e.target.value) router.push(`/agency/preview/client/${e.target.value}`);
-                      }}
-                      className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                      style={{ background: "var(--border-subtle)", border: "1px solid var(--accent-border)", color: previewClientId ? "var(--text-primary)" : "var(--text-tertiary)", minWidth: 160 }}
-                    >
-                      <option value="" style={{ background: "var(--bg-surface)" }}>Select a client…</option>
-                      {allClients.filter((c) => c.status === "active" || c.status === "justlaunched" || c.status === "prelaunch").map((c) => (
-                        <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                )}
-
-                {/* Agency-view client drilldown selector */}
-                {viewMode === "agency" && (
-                  <div className="relative">
-                    <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
-                      className="appearance-none pl-3 pr-8 py-2 text-xs font-medium rounded-xl cursor-pointer outline-none"
-                      style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-primary)", minWidth: 150 }}>
-                      <option value="all" style={{ background: "var(--bg-surface)" }}>All Clients</option>
-                      {allClients.filter((c) => c.status === "active" || c.status === "prelaunch").map((c) => (
-                        <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)" }}>{c.name}{c.status === "prelaunch" ? " (Pre-launch)" : ""}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={12} color="#8A93A6" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                )}
               </div>
             </div>
 
@@ -857,6 +823,15 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
                                       <ExternalLink size={11} /> Tracker
                                     </a>
                                   )}
+                                  <button onClick={() => copyShareLink(c.id)}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                                    style={{
+                                      background: copiedShareId === c.id ? "rgba(61,214,140,0.1)" : "var(--border-subtle)",
+                                      border: `1px solid ${copiedShareId === c.id ? "rgba(61,214,140,0.3)" : "var(--border-default)"}`,
+                                      color: copiedShareId === c.id ? "var(--success)" : "var(--text-secondary)",
+                                    }}>
+                                    {copiedShareId === c.id ? "Copied!" : "Share Link"}
+                                  </button>
                                   <button onClick={() => setSelectedClientId(c.id)}
                                     className="px-3 py-2 rounded-xl text-xs font-medium"
                                     style={{ background: "var(--border-subtle)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}>
