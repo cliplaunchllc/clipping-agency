@@ -142,7 +142,6 @@ export default function PublicClientAnalytics({ client }: Props) {
           agg.tiktokViews += s.tiktokViews;
           agg.instagramViews += s.instagramViews;
           agg.youtubeViews += s.youtubeViews;
-          // effectiveCpm: recalculate from spend/views if possible
           agg.effectiveCpm = agg.viewsTotal > 0 && agg.amountSpent != null
             ? (agg.amountSpent / agg.viewsTotal) * 1000
             : null;
@@ -151,6 +150,8 @@ export default function PublicClientAnalytics({ client }: Props) {
     }
     return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
   }, [client.campaigns]);
+
+  // ── Latest totals across campaigns ───────────────────────────────────────
 
   // ── Latest totals across campaigns ───────────────────────────────────────
   const latestStats = useMemo(() => {
@@ -187,6 +188,27 @@ export default function PublicClientAnalytics({ client }: Props) {
     return all.sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
   }, [client.campaigns]);
 
+  // ── Effective snapshots: use real history or synthesize from latest stats ──
+  // When Grok hasn't pushed enough daily snapshots yet, synthesize a "today"
+  // point from the latest CampaignStats so the graph always has data.
+  const effectiveSnapshots = useMemo(() => {
+    if (allSnapshots.length > 0) return allSnapshots;
+    if (!latestStats.hasStats) return [];
+    const today = isoDate(new Date());
+    return [{
+      date: today,
+      viewsTotal: latestStats.viewsTotal,
+      viewsToday: latestStats.viewsTotal, // use total as the single-day value
+      totalSubmissions: latestStats.totalSubmissions,
+      approved: latestStats.approved,
+      amountSpent: latestStats.amountSpent > 0 ? latestStats.amountSpent : null,
+      effectiveCpm: latestStats.effectiveCpm,
+      tiktokViews: latestStats.tiktokViews,
+      instagramViews: latestStats.instagramViews,
+      youtubeViews: latestStats.youtubeViews,
+    }];
+  }, [allSnapshots, latestStats]);
+
   // ── Date range calculation ────────────────────────────────────────────────
   const { rangeStart, rangeEnd, prevStart, prevEnd, granularity } = useMemo(() => {
     const today = startOfDay(new Date());
@@ -196,9 +218,9 @@ export default function PublicClientAnalytics({ client }: Props) {
     let gran: "day" | "week" | "month" = "day";
 
     if (period === "all") {
-      rs = allSnapshots.length > 0 ? new Date(allSnapshots[0].date + "T00:00:00") : addDays(today, -365);
+      rs = effectiveSnapshots.length > 0 ? new Date(effectiveSnapshots[0].date + "T00:00:00") : addDays(today, -365);
       re = today;
-      gran = allSnapshots.length > 90 ? "month" : allSnapshots.length > 30 ? "week" : "day";
+      gran = effectiveSnapshots.length > 90 ? "month" : effectiveSnapshots.length > 30 ? "week" : "day";
     } else if (period === "day") {
       rs = addDays(today, -6); re = today; gran = "day";
     } else if (period === "week") {
@@ -218,7 +240,7 @@ export default function PublicClientAnalytics({ client }: Props) {
 
     void todayStr;
     return { rangeStart: rs, rangeEnd: re, prevStart: ps, prevEnd: pe, granularity: gran };
-  }, [period, customStart, customEnd, allSnapshots]);
+  }, [period, customStart, customEnd, effectiveSnapshots]);
 
   // Filter snapshots by range
   function filterSnaps(snaps: Snapshot[], s: Date, e: Date) {
@@ -228,8 +250,8 @@ export default function PublicClientAnalytics({ client }: Props) {
     });
   }
 
-  const inRange = useMemo(() => filterSnaps(allSnapshots, rangeStart, rangeEnd), [allSnapshots, rangeStart, rangeEnd]);
-  const inPrev = useMemo(() => filterSnaps(allSnapshots, prevStart, prevEnd), [allSnapshots, prevStart, prevEnd]);
+  const inRange = useMemo(() => filterSnaps(effectiveSnapshots, rangeStart, rangeEnd), [effectiveSnapshots, rangeStart, rangeEnd]);
+  const inPrev = useMemo(() => filterSnaps(effectiveSnapshots, prevStart, prevEnd), [effectiveSnapshots, prevStart, prevEnd]);
 
   // ── Metrics for selected period ───────────────────────────────────────────
   const currViews = period === "all" ? latestStats.viewsTotal : inRange.reduce((a, s) => a + s.viewsToday, 0);
@@ -250,9 +272,9 @@ export default function PublicClientAnalytics({ client }: Props) {
 
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    if (inRange.length === 0 && period === "all" && allSnapshots.length === 0) return [];
+    if (inRange.length === 0 && period === "all" && effectiveSnapshots.length === 0) return [];
 
-    const snaps = period === "all" ? allSnapshots : inRange;
+    const snaps = period === "all" ? effectiveSnapshots : inRange;
 
     if (granularity === "day") {
       return snaps.map((s) => ({
@@ -285,7 +307,7 @@ export default function PublicClientAnalytics({ client }: Props) {
       label: new Date(ym + "-01T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
       views,
     }));
-  }, [inRange, allSnapshots, period, granularity]);
+  }, [inRange, effectiveSnapshots, period, granularity]);
 
   // ── Platform donut data ───────────────────────────────────────────────────
   const donutData = useMemo(() => {

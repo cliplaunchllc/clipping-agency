@@ -251,6 +251,18 @@ export default function AgencyDashboard({ clients, allClients, clips: initialCli
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Share link — shown when a single client is selected */}
+                {selectedClient && (
+                  <button onClick={() => copyShareLink(selectedClientId)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                    style={{
+                      background: copiedShareId === selectedClientId ? "rgba(61,214,140,0.1)" : "var(--border-subtle)",
+                      border: `1px solid ${copiedShareId === selectedClientId ? "rgba(61,214,140,0.3)" : "var(--border-default)"}`,
+                      color: copiedShareId === selectedClientId ? "var(--success)" : "var(--text-secondary)",
+                    }}>
+                    {copiedShareId === selectedClientId ? "Copied!" : "Copy Client Link"}
+                  </button>
+                )}
                 {/* Client drilldown selector */}
                 <div className="relative">
                   <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}
