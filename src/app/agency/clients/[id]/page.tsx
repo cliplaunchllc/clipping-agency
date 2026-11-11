@@ -15,7 +15,7 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
       links: { orderBy: { createdAt: "asc" } },
       campaigns: { orderBy: { order: "asc" }, include: { stats: true } },
       onboardingSteps: { orderBy: { order: "asc" } },
-      users: { where: { role: "client" }, select: { id: true, name: true, email: true, status: true } },
+      users: { where: { role: "client" }, select: { id: true, name: true, email: true, status: true }, take: 1 },
       _count: { select: { clips: true } },
     },
   });
@@ -69,7 +69,6 @@ export default async function AgencyClientDetailPage({ params }: { params: Promi
       id: s.id, title: s.title, description: s.description, linkUrl: s.linkUrl ?? null, order: s.order, completed: s.completed,
     })),
     clippers: client.users.map((u) => ({ id: u.id, name: u.name, email: u.email, status: u.status })),
-    loginUser: client.users[0] ? { id: client.users[0].id, email: client.users[0].email } : null,
   };
 
   return <ClientDetail client={serialized} />;

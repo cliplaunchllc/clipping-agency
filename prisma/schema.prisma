@@ -148,10 +148,11 @@ model ClientCampaign {
   order       Int       @default(1)
   createdAt   DateTime  @default(now())
 
-  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client          Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   campaignReports CampaignReport[]
   ongoingReports  OngoingReport[]
   stats           CampaignStats?
+  snapshots       CampaignStatsSnapshot[]
 }
 
 model CampaignStats {
@@ -177,6 +178,26 @@ model CampaignStats {
   status           OngoingStatus @default(Normal)
   updatedAt        DateTime      @updatedAt
 
+  campaign ClientCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CampaignStatsSnapshot {
+  id               String   @id @default(cuid())
+  campaignId       String
+  clientId         String
+  date             DateTime // normalized to start of UTC day
+  viewsTotal       Int      @default(0)
+  viewsToday       Int      @default(0)
+  totalSubmissions Int      @default(0)
+  approved         Int      @default(0)
+  rejected         Int      @default(0)
+  amountSpent      Float?
+  effectiveCpm     Float?
+  tiktokViews      Int      @default(0)
+  instagramViews   Int      @default(0)
+  youtubeViews     Int      @default(0)
+
+  @@unique([campaignId, date])
   campaign ClientCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 

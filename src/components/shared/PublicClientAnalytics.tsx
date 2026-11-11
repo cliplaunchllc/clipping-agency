@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
-  Eye, Heart, MessageCircle, Share2, Bookmark, BarChart2,
-  TrendingUp, TrendingDown, ExternalLink, ChevronUp, ChevronDown,
+  Eye, TrendingUp, TrendingDown, ExternalLink, CheckCircle, FileText, DollarSign, Zap,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { PlatformIcon, PLATFORM_COLORS } from "@/components/shared/PlatformIcon";
-import TopClipsChart from "@/components/shared/TopClipsChart";
 
-type TimePeriod = "all" | "1d" | "7d" | "mtd" | "custom";
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -19,145 +17,344 @@ function fmt(n: number) {
   return n.toString();
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function fmtMoney(n: number | null) {
+  if (n == null) return "—";
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${n.toFixed(0)}`;
+}
+
+function fmtCpm(n: number | null) {
+  if (n == null) return "—";
+  return `$${n.toFixed(2)}`;
 }
 
 function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
 
-function getRange(period: TimePeriod, cs: string, ce: string): [Date, Date] {
-  const now = new Date();
-  const eod = new Date(); eod.setHours(23, 59, 59, 999);
-  if (period === "all") return [new Date(0), new Date("2099-12-31T23:59:59")];
-  if (period === "1d") { const s = new Date(); s.setHours(0, 0, 0, 0); return [s, eod]; }
-  if (period === "7d") { const s = new Date(); s.setDate(s.getDate() - 6); s.setHours(0, 0, 0, 0); return [s, eod]; }
-  if (period === "mtd") return [new Date(now.getFullYear(), now.getMonth(), 1), eod];
-  return [
-    cs ? new Date(cs + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1),
-    ce ? new Date(ce + "T23:59:59") : eod,
-  ];
+function startOfDay(d: Date) {
+  const c = new Date(d); c.setHours(0, 0, 0, 0); return c;
 }
 
-function getPrevRange(s: Date, e: Date): [Date, Date] {
-  const dur = e.getTime() - s.getTime();
-  return [new Date(s.getTime() - dur - 1), new Date(s.getTime() - 1)];
+function addDays(d: Date, n: number) {
+  const c = new Date(d); c.setDate(c.getDate() + n); return c;
 }
 
-function inRange<T extends { submittedAt: string }>(clips: T[], s: Date, e: Date): T[] {
-  return clips.filter((c) => { const d = new Date(c.submittedAt); return d >= s && d <= e; });
-}
-
-function pct(curr: number, prev: number) {
+function pctChange(curr: number, prev: number): { str: string; pos: boolean; ok: boolean } {
   if (curr === 0 && prev === 0) return { str: "—", pos: true, ok: false };
-  if (prev === 0) return { str: `+${Math.min(curr, 999)}%`, pos: true, ok: true };
+  if (prev === 0) return { str: `+${Math.min(curr * 100, 999)}%`, pos: true, ok: true };
   const p = ((curr - prev) / prev) * 100;
-  const clamped = Math.max(-999, Math.min(999, Math.round(p)));
-  return { str: `${clamped >= 0 ? "+" : ""}${clamped}%`, pos: p >= 0, ok: true };
+  const c = Math.max(-999, Math.min(999, Math.round(p)));
+  return { str: `${c >= 0 ? "+" : ""}${c}%`, pos: p >= 0, ok: true };
 }
 
-function prevLabel(period: TimePeriod, cs: string, ce: string) {
-  if (period === "all") return "all time";
-  if (period === "1d") return "vs. yesterday";
-  if (period === "7d") return "vs. prev. 7 days";
-  if (period === "mtd") return "vs. prev. month (same period)";
-  if (cs && ce) {
-    const days = Math.round((new Date(ce).getTime() - new Date(cs).getTime()) / 86400000) + 1;
-    return `vs. prev. ${days} days`;
-  }
-  return "vs. prev. period";
+type Period = "day" | "week" | "month" | "all" | "custom";
+
+// ─── types ────────────────────────────────────────────────────────────────────
+
+interface Snapshot {
+  date: string; // YYYY-MM-DD
+  viewsTotal: number;
+  viewsToday: number;
+  totalSubmissions: number;
+  approved: number;
+  amountSpent: number | null;
+  effectiveCpm: number | null;
+  tiktokViews: number;
+  instagramViews: number;
+  youtubeViews: number;
 }
 
-interface Clip {
-  id: string; url: string; platform: string; handle: string;
-  views: number; likes: number; comments: number; shares: number;
-  saves: number; submittedAt: string; title: string | null; thumbnailUrl: string | null;
+interface TopClip {
+  url?: string;
+  creator?: string;
+  platform?: string;
+  views?: number;
+  analysis?: string;
+  [k: string]: unknown;
+}
+
+interface CampaignStats {
+  viewsTotal: number;
+  viewsToday: number;
+  totalSubmissions: number;
+  approved: number;
+  rejected: number;
+  amountSpent: number | null;
+  effectiveCpm: number | null;
+  totalBudget: number | null;
+  budgetRemaining: number | null;
+  tiktokViews: number;
+  instagramViews: number;
+  youtubeViews: number;
+  topClips: TopClip[] | null;
+  updatedAt: string;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  stats: CampaignStats | null;
+  snapshots: Snapshot[];
 }
 
 interface Props {
-  client: { name: string; logoUrl: string | null; clips: Clip[] };
+  client: { name: string; logoUrl: string | null; campaigns: Campaign[] };
 }
 
+// ─── Donut chart label ─────────────────────────────────────────────────────────
+const PLATFORM_COLORS: Record<string, string> = {
+  tiktok: "#FF3B6B",
+  instagram: "#E040FB",
+  youtube: "#FF5722",
+};
+
+function PlatformBadge({ platform }: { platform: string }) {
+  const color = PLATFORM_COLORS[platform.toLowerCase()] ?? "#8A93A6";
+  const labels: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
+  return (
+    <span className="text-xs font-semibold capitalize px-2 py-0.5 rounded-full"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
+      {labels[platform.toLowerCase()] ?? platform}
+    </span>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
 export default function PublicClientAnalytics({ client }: Props) {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [period, setPeriod] = useState<Period>("all");
   const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return isoDate(d); });
   const [customEnd, setCustomEnd] = useState(() => isoDate(new Date()));
 
-  type SortKey = "views" | "likes" | "comments" | "shares" | "saves" | "date";
-  const [sortKey, setSortKey] = useState<SortKey>("views");
-  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
-  const [platformFilter, setPlatformFilter] = useState("all");
+  // ── Aggregate snapshots across all campaigns ─────────────────────────────
+  const allSnapshots = useMemo(() => {
+    const byDate: Record<string, Snapshot> = {};
+    for (const camp of client.campaigns) {
+      for (const s of camp.snapshots) {
+        if (!byDate[s.date]) {
+          byDate[s.date] = { ...s };
+        } else {
+          const agg = byDate[s.date];
+          agg.viewsTotal += s.viewsTotal;
+          agg.viewsToday += s.viewsToday;
+          agg.totalSubmissions += s.totalSubmissions;
+          agg.approved += s.approved;
+          agg.amountSpent = (agg.amountSpent ?? 0) + (s.amountSpent ?? 0);
+          agg.tiktokViews += s.tiktokViews;
+          agg.instagramViews += s.instagramViews;
+          agg.youtubeViews += s.youtubeViews;
+          // effectiveCpm: recalculate from spend/views if possible
+          agg.effectiveCpm = agg.viewsTotal > 0 && agg.amountSpent != null
+            ? (agg.amountSpent / agg.viewsTotal) * 1000
+            : null;
+        }
+      }
+    }
+    return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+  }, [client.campaigns]);
 
-  const [rangeStart, rangeEnd] = getRange(timePeriod, customStart, customEnd);
-  const filtered = inRange(client.clips, rangeStart, rangeEnd);
-  const prev = timePeriod === "all"
-    ? []
-    : (() => { const [ps, pe] = getPrevRange(rangeStart, rangeEnd); return inRange(client.clips, ps, pe); })();
+  // ── Latest totals across campaigns ───────────────────────────────────────
+  const latestStats = useMemo(() => {
+    const totals = {
+      viewsTotal: 0, totalSubmissions: 0, approved: 0,
+      amountSpent: 0, tiktokViews: 0, instagramViews: 0, youtubeViews: 0,
+      hasStats: false,
+    };
+    let totalSpend = 0;
+    let totalViews = 0;
+    for (const camp of client.campaigns) {
+      if (!camp.stats) continue;
+      totals.hasStats = true;
+      totals.viewsTotal += camp.stats.viewsTotal;
+      totals.totalSubmissions += camp.stats.totalSubmissions;
+      totals.approved += camp.stats.approved;
+      totals.amountSpent += camp.stats.amountSpent ?? 0;
+      totals.tiktokViews += camp.stats.tiktokViews;
+      totals.instagramViews += camp.stats.instagramViews;
+      totals.youtubeViews += camp.stats.youtubeViews;
+      totalSpend += camp.stats.amountSpent ?? 0;
+      totalViews += camp.stats.viewsTotal;
+    }
+    const effectiveCpm = totalViews > 0 ? (totalSpend / totalViews) * 1000 : null;
+    return { ...totals, effectiveCpm };
+  }, [client.campaigns]);
 
-  const currViews    = filtered.reduce((a, c) => a + c.views, 0);
-  const currLikes    = filtered.reduce((a, c) => a + c.likes, 0);
-  const currComments = filtered.reduce((a, c) => a + c.comments, 0);
-  const currShares   = filtered.reduce((a, c) => a + c.shares, 0);
-  const currSaves    = filtered.reduce((a, c) => a + c.saves, 0);
+  // Top clips across all campaigns, sorted by views
+  const topClips = useMemo(() => {
+    const all: TopClip[] = [];
+    for (const camp of client.campaigns) {
+      if (camp.stats?.topClips) all.push(...camp.stats.topClips);
+    }
+    return all.sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
+  }, [client.campaigns]);
 
-  const prevViews    = prev.reduce((a, c) => a + c.views, 0);
-  const prevLikes    = prev.reduce((a, c) => a + c.likes, 0);
-  const prevComments = prev.reduce((a, c) => a + c.comments, 0);
-  const prevShares   = prev.reduce((a, c) => a + c.shares, 0);
-  const prevSaves    = prev.reduce((a, c) => a + c.saves, 0);
-  const prevCount    = prev.length;
+  // ── Date range calculation ────────────────────────────────────────────────
+  const { rangeStart, rangeEnd, prevStart, prevEnd, granularity } = useMemo(() => {
+    const today = startOfDay(new Date());
+    const todayStr = isoDate(today);
 
-  const statItems = [
-    { label: "Views",    value: fmt(currViews),    icon: Eye,           change: pct(currViews,    prevViews) },
-    { label: "Likes",    value: fmt(currLikes),    icon: Heart,         change: pct(currLikes,    prevLikes) },
-    { label: "Comments", value: fmt(currComments), icon: MessageCircle, change: pct(currComments, prevComments) },
-    { label: "Shares",   value: fmt(currShares),   icon: Share2,        change: pct(currShares,   prevShares) },
-    { label: "Saves",    value: fmt(currSaves),    icon: Bookmark,      change: pct(currSaves,    prevSaves) },
-    { label: "Clips",    value: filtered.length.toString(), icon: BarChart2, change: pct(filtered.length, prevCount) },
-  ];
+    let rs: Date, re: Date;
+    let gran: "day" | "week" | "month" = "day";
 
-  const topClips = [...filtered].sort((a, b) => b.views - a.views).slice(0, 5);
+    if (period === "all") {
+      rs = allSnapshots.length > 0 ? new Date(allSnapshots[0].date + "T00:00:00") : addDays(today, -365);
+      re = today;
+      gran = allSnapshots.length > 90 ? "month" : allSnapshots.length > 30 ? "week" : "day";
+    } else if (period === "day") {
+      rs = addDays(today, -6); re = today; gran = "day";
+    } else if (period === "week") {
+      rs = addDays(today, -27); re = today; gran = "week";
+    } else if (period === "month") {
+      rs = addDays(today, -364); re = today; gran = "month";
+    } else {
+      rs = startOfDay(new Date(customStart + "T00:00:00"));
+      re = startOfDay(new Date(customEnd + "T00:00:00"));
+      const days = (re.getTime() - rs.getTime()) / 86400000;
+      gran = days > 90 ? "month" : days > 30 ? "week" : "day";
+    }
 
-  const byDate: Record<string, number> = {};
-  filtered.forEach((c) => {
-    const date = c.submittedAt.slice(0, 10);
-    byDate[date] = (byDate[date] ?? 0) + c.views;
-  });
-  const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({ date, views }));
+    const dur = re.getTime() - rs.getTime();
+    const ps = new Date(rs.getTime() - dur - 86400000);
+    const pe = new Date(rs.getTime() - 1);
 
-  // Unique platforms for filter dropdown
-  const platforms = Array.from(new Set(filtered.map((c) => c.platform))).sort();
+    void todayStr;
+    return { rangeStart: rs, rangeEnd: re, prevStart: ps, prevEnd: pe, granularity: gran };
+  }, [period, customStart, customEnd, allSnapshots]);
 
-  // Filtered + sorted clips table
-  const tableClips = filtered
-    .filter((c) => platformFilter === "all" || c.platform === platformFilter)
-    .sort((a, b) => {
-      const dir = sortDir === "desc" ? -1 : 1;
-      if (sortKey === "date") return dir * (new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
-      return dir * ((a[sortKey] as number) - (b[sortKey] as number));
+  // Filter snapshots by range
+  function filterSnaps(snaps: Snapshot[], s: Date, e: Date) {
+    return snaps.filter((snap) => {
+      const d = new Date(snap.date + "T00:00:00");
+      return d >= s && d <= e;
     });
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => d === "desc" ? "asc" : "desc");
-    else { setSortKey(key); setSortDir("desc"); }
   }
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ChevronDown size={10} color="#8A93A6" style={{ opacity: 0.3 }} />;
-    return sortDir === "desc"
-      ? <ChevronDown size={10} color="#FF3B3B" />
-      : <ChevronUp size={10} color="#FF3B3B" />;
-  }
+  const inRange = useMemo(() => filterSnaps(allSnapshots, rangeStart, rangeEnd), [allSnapshots, rangeStart, rangeEnd]);
+  const inPrev = useMemo(() => filterSnaps(allSnapshots, prevStart, prevEnd), [allSnapshots, prevStart, prevEnd]);
+
+  // ── Metrics for selected period ───────────────────────────────────────────
+  const currViews = period === "all" ? latestStats.viewsTotal : inRange.reduce((a, s) => a + s.viewsToday, 0);
+  const prevViews = inPrev.reduce((a, s) => a + s.viewsToday, 0);
+
+  const currSubmissions = period === "all" ? latestStats.totalSubmissions : inRange.reduce((a, s) => a + s.totalSubmissions, 0);
+  const prevSubmissions = inPrev.reduce((a, s) => a + s.totalSubmissions, 0);
+
+  const currApproved = period === "all" ? latestStats.approved : inRange.reduce((a, s) => a + s.approved, 0);
+  const prevApproved = inPrev.reduce((a, s) => a + s.approved, 0);
+
+  const currSpend = period === "all" ? latestStats.amountSpent : inRange.reduce((a, s) => a + (s.amountSpent ?? 0), 0);
+  const prevSpend = inPrev.reduce((a, s) => a + (s.amountSpent ?? 0), 0);
+
+  // CPM for period
+  const currCpm = currViews > 0 && currSpend > 0 ? (currSpend / currViews) * 1000 : latestStats.effectiveCpm;
+  const prevCpm = prevViews > 0 && prevSpend > 0 ? (prevSpend / prevViews) * 1000 : null;
+
+  // ── Chart data ────────────────────────────────────────────────────────────
+  const chartData = useMemo(() => {
+    if (inRange.length === 0 && period === "all" && allSnapshots.length === 0) return [];
+
+    const snaps = period === "all" ? allSnapshots : inRange;
+
+    if (granularity === "day") {
+      return snaps.map((s) => ({
+        label: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        views: s.viewsToday,
+      }));
+    }
+
+    if (granularity === "week") {
+      const weeks: Record<string, number> = {};
+      for (const s of snaps) {
+        const d = new Date(s.date + "T00:00:00");
+        const mon = addDays(d, -((d.getDay() + 6) % 7));
+        const key = isoDate(mon);
+        weeks[key] = (weeks[key] ?? 0) + s.viewsToday;
+      }
+      return Object.entries(weeks).sort(([a], [b]) => a.localeCompare(b)).map(([date, views]) => ({
+        label: new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        views,
+      }));
+    }
+
+    // month
+    const months: Record<string, number> = {};
+    for (const s of snaps) {
+      const key = s.date.slice(0, 7);
+      months[key] = (months[key] ?? 0) + s.viewsToday;
+    }
+    return Object.entries(months).sort(([a], [b]) => a.localeCompare(b)).map(([ym, views]) => ({
+      label: new Date(ym + "-01T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+      views,
+    }));
+  }, [inRange, allSnapshots, period, granularity]);
+
+  // ── Platform donut data ───────────────────────────────────────────────────
+  const donutData = useMemo(() => {
+    let tik = 0, ins = 0, yt = 0;
+    if (period === "all") {
+      tik = latestStats.tiktokViews;
+      ins = latestStats.instagramViews;
+      yt = latestStats.youtubeViews;
+    } else {
+      inRange.forEach((s) => { tik += s.tiktokViews; ins += s.instagramViews; yt += s.youtubeViews; });
+    }
+    const total = tik + ins + yt;
+    const result = [
+      { name: "TikTok", value: tik, color: PLATFORM_COLORS.tiktok },
+      { name: "Instagram", value: ins, color: PLATFORM_COLORS.instagram },
+      { name: "YouTube", value: yt, color: PLATFORM_COLORS.youtube },
+    ].filter((d) => d.value > 0);
+    return { data: result, total };
+  }, [period, inRange, latestStats]);
+
+  // ── Last updated ──────────────────────────────────────────────────────────
+  const lastUpdated = useMemo(() => {
+    let latest: Date | null = null;
+    for (const c of client.campaigns) {
+      if (c.stats?.updatedAt) {
+        const d = new Date(c.stats.updatedAt);
+        if (!latest || d > latest) latest = d;
+      }
+    }
+    if (!latest) return null;
+    const mins = Math.round((Date.now() - latest.getTime()) / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.round(hrs / 24)}d ago`;
+  }, [client.campaigns]);
 
   const tooltipStyle = {
-    contentStyle: { background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 12 },
-    labelStyle: { color: "var(--text-secondary)" },
+    contentStyle: { background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: "8px 14px" },
+    labelStyle: { color: "var(--text-secondary)", fontSize: 11 },
+    itemStyle: { color: "var(--success)" },
   };
+
+  const periodLabels: Record<Period, string> = { day: "7 Days", week: "4 Weeks", month: "12 Months", all: "All Time", custom: "Custom" };
+
+  const prevLabel = period === "all" ? null
+    : period === "day" ? "vs. same 7 days prior"
+    : period === "week" ? "vs. prior 4 weeks"
+    : period === "month" ? "vs. prior year"
+    : "vs. prior period";
+
+  function Delta({ curr, prev, fmt: fmtFn }: { curr: number; prev: number; fmt?: (n: number) => string }) {
+    const change = period === "all" ? { ok: false, str: "", pos: true } : pctChange(curr, prev);
+    if (!change.ok) return null;
+    return (
+      <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
+        style={{ color: change.pos ? "var(--success)" : "var(--danger)" }}>
+        {change.pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+        {change.str}
+      </span>
+    );
+    void fmtFn;
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-base)" }}>
-      {/* Header bar */}
-      <div className="sticky top-0 z-20 px-8 py-4 flex items-center justify-between"
-        style={{ background: "rgba(5,7,13,0.9)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(10px)" }}>
+      {/* Header */}
+      <div className="sticky top-0 z-20 px-6 py-3.5 flex items-center justify-between"
+        style={{ background: "rgba(5,7,13,0.92)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
         <div className="flex items-center gap-3">
           {client.logoUrl ? (
             <img src={client.logoUrl} alt={client.name}
@@ -170,361 +367,257 @@ export default function PublicClientAnalytics({ client }: Props) {
             </div>
           )}
           <div>
-            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{client.name}</p>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Live Analytics</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+              {client.name}
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+              Campaign Analytics{lastUpdated ? ` · updated ${lastUpdated}` : ""}
+            </p>
           </div>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full font-medium"
-          style={{ background: "color-mix(in srgb, var(--success) 10%, transparent)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.2)" }}>
+          style={{ background: "rgba(61,214,140,0.1)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.2)" }}>
           ● Live
         </span>
       </div>
 
-      <div className="max-w-5xl mx-auto px-8 py-8">
-        {/* Time period controls */}
-        <div className="flex items-center gap-3 flex-wrap mb-5">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+
+        {/* Timeframe selector */}
+        <div className="flex items-center gap-3 flex-wrap mb-6">
           <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-            style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            {(["all", "1d", "7d", "mtd", "custom"] as const).map((p) => (
-              <button key={p} onClick={() => setTimePeriod(p)}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+            {(["all", "day", "week", "month", "custom"] as Period[]).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors"
                 style={{
-                  background: timePeriod === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                  color: timePeriod === p ? "#FF3B3B" : "var(--text-tertiary)",
+                  background: period === p ? "color-mix(in srgb, var(--accent) 18%, transparent)" : "transparent",
+                  color: period === p ? "var(--accent)" : "var(--text-tertiary)",
                 }}>
-                {p === "all" ? "All Time" : p === "1d" ? "Today" : p === "7d" ? "7 Days" : p === "mtd" ? "This Month" : "Custom"}
+                {periodLabels[p]}
               </button>
             ))}
           </div>
-          {timePeriod === "custom" && (
+          {period === "custom" && (
             <div className="flex items-center gap-2">
-              <input type="date" value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)}
+              <input type="date" value={customStart} max={customEnd}
+                onChange={(e) => setCustomStart(e.target.value)}
                 className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-primary)", colorScheme: "dark" }} />
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>to</span>
-              <input type="date" value={customEnd} min={customStart} onChange={(e) => setCustomEnd(e.target.value)}
+                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
+              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>→</span>
+              <input type="date" value={customEnd} min={customStart}
+                onChange={(e) => setCustomEnd(e.target.value)}
                 className="text-xs px-3 py-1.5 rounded-xl outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-primary)", colorScheme: "dark" }} />
+                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", color: "var(--text-primary)", colorScheme: "dark" }} />
             </div>
           )}
-        </div>
-
-        {/* Stats grid */}
-        <div className="rounded-xl mb-2 overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-          <div className="grid grid-cols-3">
-            {statItems.map((item, i) => {
-              const Icon = item.icon;
-              const borderRight = (i % 3 !== 2) ? "1px solid rgba(255,255,255,0.06)" : "none";
-              const borderBottom = i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none";
-              return (
-                <div key={item.label} className="flex items-center gap-4 px-6 py-6"
-                  style={{ borderRight, borderBottom }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,59,59,0.12)" }}>
-                    <Icon size={18} color="#FF3B3B" />
-                  </div>
-                  <div>
-                    <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>{item.label}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-2xl font-bold leading-none" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                        {item.value}
-                      </span>
-                      {item.change.ok && (
-                        <span className="flex items-center gap-0.5 text-xs font-semibold leading-none"
-                          style={{ color: item.change.pos ? "var(--success)" : "var(--danger)" }}>
-                          {item.change.pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                          {item.change.str}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="px-6 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{prevLabel(timePeriod, customStart, customEnd)}</p>
-          </div>
-        </div>
-
-        {/* Views chart */}
-        <div className="rounded-xl p-6 mb-6 mt-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-            Views Over Time
-          </h2>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                <defs>
-                  <linearGradient id="pubGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: string) => fmtDate(v)} />
-                <YAxis tick={{ fill: "var(--text-tertiary)", fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v: number) => fmt(v)} width={48} />
-                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} {...tooltipStyle} itemStyle={{ color: "var(--success)" }} />
-                <Area type="linear" dataKey="views" stroke="#FF3B3B" strokeWidth={2} fill="url(#pubGrad)"
-                  dot={{ fill: "#FF3B3B", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#FF3B3B", strokeWidth: 0 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm py-10 text-center" style={{ color: "var(--text-secondary)" }}>No clips in this period</p>
+          {prevLabel && (
+            <span className="text-xs ml-auto" style={{ color: "var(--text-tertiary)" }}>{prevLabel}</span>
           )}
         </div>
 
-        {/* Top Clips */}
-        {topClips.length > 0 && (
-          <div className="rounded-xl mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-            <div className="flex items-center justify-between px-6 py-4"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div className="flex items-center gap-2">
-                <TrendingUp size={14} color="#3DD68C" />
-                <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Top Clips</h2>
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 gap-3 mb-3 sm:grid-cols-3 lg:grid-cols-5">
+          {[
+            { label: "Total Views", icon: Eye, value: fmt(currViews), delta: <Delta curr={currViews} prev={prevViews} /> },
+            { label: "Submitted", icon: FileText, value: fmt(currSubmissions), delta: <Delta curr={currSubmissions} prev={prevSubmissions} /> },
+            { label: "Approved", icon: CheckCircle, value: fmt(currApproved), delta: <Delta curr={currApproved} prev={prevApproved} /> },
+            { label: "Amount Paid", icon: DollarSign, value: fmtMoney(currSpend), delta: <Delta curr={currSpend} prev={prevSpend} /> },
+            { label: "Eff. CPM", icon: Zap, value: fmtCpm(currCpm), delta: prevCpm != null ? <Delta curr={currCpm ?? 0} prev={prevCpm} /> : null },
+          ].map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.label} className="rounded-xl p-4 flex flex-col gap-2"
+                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+                <div className="flex items-center justify-between">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(255,59,59,0.1)" }}>
+                    <Icon size={14} color="var(--accent)" />
+                  </div>
+                  {card.delta}
+                </div>
+                <div>
+                  <p className="text-xl font-bold leading-none mb-1"
+                    style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                    {card.value}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{card.label}</p>
+                </div>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Views</span>
+            );
+          })}
+        </div>
+
+        {/* Views chart + Platform donut side by side */}
+        <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: "1fr 300px" }}>
+
+          {/* Views over time */}
+          <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+            <p className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+              Views Over Time
+            </p>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="shareGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF3B3B" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#FF3B3B" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="label"
+                    tick={{ fill: "var(--text-tertiary)", fontSize: 10 }}
+                    axisLine={false} tickLine={false}
+                    interval="preserveStartEnd" />
+                  <YAxis
+                    tick={{ fill: "var(--text-tertiary)", fontSize: 10 }}
+                    axisLine={false} tickLine={false}
+                    tickFormatter={(v) => fmt(v)} width={44} />
+                  <Tooltip formatter={(v) => [fmt(Number(v ?? 0)), "Views"]} {...tooltipStyle} />
+                  <Area type="monotone" dataKey="views" stroke="var(--accent)" strokeWidth={2}
+                    fill="url(#shareGrad)"
+                    dot={false} activeDot={{ r: 4, fill: "var(--accent)", strokeWidth: 0 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-48">
+                <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No data for this period yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Platform donut */}
+          <div className="rounded-xl p-5 flex flex-col" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+            <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+              Platform Split
+            </p>
+            {donutData.data.length > 0 ? (
+              <>
+                <div className="flex-1 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={160}>
+                    <PieChart>
+                      <Pie
+                        data={donutData.data}
+                        cx="50%" cy="50%"
+                        innerRadius={48}
+                        outerRadius={72}
+                        paddingAngle={3}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        {donutData.data.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v) => [fmt(Number(v)), "views"]}
+                        contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border-strong)", borderRadius: 10 }}
+                        labelStyle={{ color: "var(--text-secondary)", fontSize: 11 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-2 mt-1">
+                  {donutData.data.map((d) => {
+                    const pct = donutData.total > 0 ? Math.round((d.value / donutData.total) * 100) : 0;
+                    return (
+                      <div key={d.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{d.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{fmt(d.value)}</span>
+                          <span className="text-xs rounded-full px-1.5 py-0.5 font-medium"
+                            style={{ background: `${d.color}18`, color: d.color }}>
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No platform data yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Top 5 clips */}
+        {topClips.length > 0 && (
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+            <div className="flex items-center gap-2 px-6 py-4"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <TrendingUp size={14} color="var(--success)" />
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                Top Performing Clips
+              </h2>
             </div>
 
-            {/* #1 hero card */}
-            {topClips[0] && (() => {
-              const clip = topClips[0];
-              return (
-                <div className="px-6 pt-5 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div className="flex items-center gap-4">
-                    {/* Rank badge */}
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                      style={{ background: "rgba(61,214,140,0.15)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.25)" }}>1</div>
+            <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              {topClips.map((clip, i) => (
+                <div key={i} className={`px-6 py-4 ${i === 0 ? "pt-5 pb-5" : ""}`}
+                  style={{ background: i === 0 ? "rgba(61,214,140,0.025)" : undefined }}>
+                  <div className="flex items-start gap-4">
+                    {/* Rank */}
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5"
+                      style={i === 0
+                        ? { background: "rgba(61,214,140,0.15)", color: "var(--success)", border: "1px solid rgba(61,214,140,0.25)" }
+                        : { background: "var(--bg-hover)", color: "var(--text-secondary)" }}>
+                      {i + 1}
+                    </div>
 
-                    {/* Thumbnail */}
-                    {clip.thumbnailUrl ? (
-                      <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                        <img src={clip.thumbnailUrl} alt="thumb"
-                          className="rounded-xl object-cover"
-                          style={{ width: 96, height: 56, border: "1px solid var(--border-default)" }} />
-                      </a>
-                    ) : (
-                      <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
-                        style={{ width: 96, height: 56, background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <BarChart2 size={18} color="#8A93A6" />
-                      </div>
-                    )}
-
-                    {/* Meta */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <PlatformIcon platform={clip.platform} size={12} />
-                        <span className="text-sm font-semibold"
-                          style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
-                          @{clip.handle}
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {clip.platform && <PlatformBadge platform={clip.platform} />}
+                        {clip.creator && (
+                          <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+                            @{clip.creator}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold ml-auto"
+                          style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>
+                          {fmt(clip.views ?? 0)} views
                         </span>
                       </div>
-                      {clip.title && (
-                        <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{clip.title}</p>
+
+                      {/* AI analysis */}
+                      {clip.analysis && (
+                        <p className="text-xs leading-relaxed mt-1.5"
+                          style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                          {clip.analysis}
+                        </p>
                       )}
-                      <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.likes)}</span> likes
-                        </span>
-                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.comments)}</span> comments
-                        </span>
-                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                          <span style={{ color: "var(--text-primary)" }}>{fmt(clip.shares)}</span> shares
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Views + link */}
-                    <div className="flex-shrink-0 text-right">
-                      <p className="text-2xl font-bold" style={{ color: "var(--success)", fontFamily: "var(--font-display)" }}>
-                        {fmt(clip.views)}
-                      </p>
-                      <p className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>views</p>
-                      <a href={clip.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg"
-                        style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.15)", color: "var(--accent)" }}>
-                        <ExternalLink size={10} /> Open
-                      </a>
+                      {clip.url && (
+                        <a href={clip.url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs mt-2 font-medium transition-colors"
+                          style={{ color: "var(--accent)" }}
+                          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
+                          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+                          <ExternalLink size={11} /> View clip
+                        </a>
+                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* Ranks 2–5 */}
-            <div className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
-              {topClips.slice(1).map((clip, i) => (
-                <div key={clip.id} className="flex items-center gap-3 px-6 py-3">
-                  <span className="w-5 text-xs text-center font-semibold flex-shrink-0"
-                    style={{ color: "var(--text-secondary)" }}>{i + 2}</span>
-                  {clip.thumbnailUrl ? (
-                    <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                      <img src={clip.thumbnailUrl} alt="thumb" className="rounded-lg object-cover"
-                        style={{ width: 52, height: 32 }} />
-                    </a>
-                  ) : (
-                    <div className="flex-shrink-0 rounded-lg flex items-center justify-center"
-                      style={{ width: 52, height: 32, background: "var(--border-subtle)" }}>
-                      <BarChart2 size={11} color="#8A93A6" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <PlatformIcon platform={clip.platform} size={10} />
-                      <span className="text-xs font-medium"
-                        style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
-                        @{clip.handle}
-                      </span>
-                    </div>
-                    {clip.title && (
-                      <p className="text-xs truncate" style={{ color: "var(--text-secondary)", maxWidth: 240 }}>{clip.title}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 text-xs">
-                    <span style={{ color: "var(--success)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
-                      {fmt(clip.views)}
-                    </span>
-                    <span style={{ color: "var(--text-secondary)" }}>{fmt(clip.likes)} likes</span>
-                  </div>
-                  <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                    <ExternalLink size={11} color="#FF3B3B" />
-                  </a>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Top 10 bar chart */}
-        {filtered.length > 0 && (
-          <div className="mb-6">
-            <TopClipsChart clips={filtered} />
+        {!latestStats.hasStats && (
+          <div className="rounded-xl p-12 text-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
+            <Eye size={32} color="var(--text-tertiary)" className="mx-auto mb-3" />
+            <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Data coming soon</p>
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Stats are updated daily by your campaign team.</p>
           </div>
         )}
 
-        {/* All clips table */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}>
-          {/* Table header + filters */}
-          <div className="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center gap-2">
-              <BarChart2 size={14} color="#FF3B3B" />
-              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                All Clips
-              </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: "var(--border-subtle)", color: "var(--text-secondary)" }}>
-                {tableClips.length}
-              </span>
-            </div>
-
-            {/* Platform filter */}
-            {platforms.length > 1 && (
-              <div className="flex items-center gap-0.5 rounded-xl p-0.5"
-                style={{ background: "var(--border-subtle)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <button onClick={() => setPlatformFilter("all")}
-                  className="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
-                  style={{
-                    background: platformFilter === "all" ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                    color: platformFilter === "all" ? "#FF3B3B" : "var(--text-tertiary)",
-                  }}>All</button>
-                {platforms.map((p) => (
-                  <button key={p} onClick={() => setPlatformFilter(p)}
-                    className="px-3 py-1 text-xs font-medium rounded-lg capitalize transition-colors"
-                    style={{
-                      background: platformFilter === p ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "transparent",
-                      color: platformFilter === p ? "#FF3B3B" : (PLATFORM_COLORS[p] ?? "var(--text-tertiary)"),
-                    }}>{p === "twitter" ? "X" : p}</button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider w-8" style={{ color: "var(--text-secondary)" }}>#</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Clip</th>
-                  {(["views", "likes", "comments", "shares", "saves", "date"] as const).map((col) => (
-                    <th key={col}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none"
-                      style={{ color: sortKey === col ? "var(--accent-solid)" : "var(--text-tertiary)" }}
-                      onClick={() => handleSort(col)}>
-                      <span className="flex items-center gap-1">
-                        {col === "date" ? "Date" : col.charAt(0).toUpperCase() + col.slice(1)}
-                        <SortIcon col={col} />
-                      </span>
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {tableClips.map((clip, i) => (
-                  <tr key={clip.id} className="table-row-hover"
-                    style={{ borderBottom: i < tableClips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <td className="px-5 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>{i + 1}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {clip.thumbnailUrl ? (
-                          <a href={clip.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                            <img src={clip.thumbnailUrl} alt="thumb" className="rounded object-cover"
-                              style={{ width: 48, height: 28 }} />
-                          </a>
-                        ) : (
-                          <div className="flex-shrink-0 rounded flex items-center justify-center"
-                            style={{ width: 48, height: 28, background: "var(--border-subtle)" }}>
-                            <BarChart2 size={12} color="#8A93A6" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1">
-                            <PlatformIcon platform={clip.platform} size={10} />
-                            <span className="text-xs font-medium truncate"
-                              style={{ color: PLATFORM_COLORS[clip.platform] ?? "var(--text-tertiary)" }}>
-                              @{clip.handle}
-                            </span>
-                          </div>
-                          {clip.title && (
-                            <p className="text-xs truncate" style={{ color: "var(--text-secondary)", maxWidth: 160 }}>{clip.title}</p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold" style={{ color: "var(--success)" }}>{fmt(clip.views)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.likes)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.comments)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.shares)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-primary)" }}>{fmt(clip.saves)}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
-                      {new Date(clip.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink size={11} color="#FF3B3B" />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-                {tableClips.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-5 py-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-                      No clips in this period
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <p className="text-center text-xs mt-8" style={{ color: "rgba(255,255,255,0.15)" }}>
-          Powered by ClipLaunch
-        </p>
       </div>
     </div>
   );

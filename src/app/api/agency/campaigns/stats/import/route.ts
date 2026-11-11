@@ -123,6 +123,30 @@ export async function POST(req: NextRequest) {
         create: { campaignId, ...data },
         update: data,
       });
+
+      // Save daily snapshot for time-series graph
+      const snapshotDate = new Date(asOf);
+      snapshotDate.setUTCHours(0, 0, 0, 0);
+      const snapshotData = {
+        clientId,
+        date: snapshotDate,
+        viewsTotal: data.viewsTotal,
+        viewsToday: data.viewsToday,
+        totalSubmissions: data.totalSubmissions,
+        approved: data.approved,
+        rejected: data.rejected,
+        amountSpent: data.amountSpent,
+        effectiveCpm: data.effectiveCpm,
+        tiktokViews: data.tiktokViews,
+        instagramViews: data.instagramViews,
+        youtubeViews: data.youtubeViews,
+      };
+      await prisma.campaignStatsSnapshot.upsert({
+        where: { campaignId_date: { campaignId, date: snapshotDate } },
+        create: { campaignId, ...snapshotData },
+        update: snapshotData,
+      });
+
       results.updated++;
     } catch (err) {
       results.skipped++;

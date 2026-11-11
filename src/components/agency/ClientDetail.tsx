@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText, Activity, Zap } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Check, ChevronLeft, Save, Upload, FileText, Zap } from "lucide-react";
 
 interface Link { id: string; label: string; url: string; }
 
@@ -54,7 +54,6 @@ interface ClientData {
   campaigns: Campaign[];
   onboardingSteps: OnboardingStep[];
   clippers: Clipper[];
-  loginUser: { id: string; email: string } | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -91,12 +90,24 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
-  // Client login state
-  const [loginEmail, setLoginEmail] = useState(initial.loginUser?.email ?? "");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [savingLogin, setSavingLogin] = useState(false);
-  const [loginMsg, setLoginMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [currentLoginEmail, setCurrentLoginEmail] = useState(initial.loginUser?.email ?? "");
+  // Share link state
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+
+  async function getShareLink() {
+    setShareLoading(true);
+    const res = await fetch(`/api/agency/clients/${client.id}/share-token`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      setShareToken(data.token);
+      const url = `${window.location.origin}/share/${data.token}`;
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    }
+    setShareLoading(false);
+  }
 
   // Links state
   const [links, setLinks] = useState<Link[]>(initial.links);
@@ -210,34 +221,6 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
     });
     if (res.ok) { setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 2500); }
     setSavingSettings(false);
-  }
-
-  async function saveLogin() {
-    setSavingLogin(true);
-    setLoginMsg(null);
-    const body: Record<string, string> = {};
-    if (loginEmail && loginEmail !== currentLoginEmail) body.email = loginEmail;
-    if (loginPassword) body.newPassword = loginPassword;
-    if (Object.keys(body).length === 0) {
-      setLoginMsg({ type: "err", text: "No changes to save" });
-      setSavingLogin(false);
-      return;
-    }
-    const res = await fetch(`/api/agency/clients/${client.id}/user`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setLoginMsg({ type: "err", text: data.error || "Failed to update" });
-    } else {
-      setLoginMsg({ type: "ok", text: "Login updated" });
-      if (data.email) { setCurrentLoginEmail(data.email); setLoginEmail(data.email); }
-      setLoginPassword("");
-      setTimeout(() => setLoginMsg(null), 3000);
-    }
-    setSavingLogin(false);
   }
 
   async function addLink() {
@@ -603,56 +586,38 @@ export default function ClientDetail({ client: initial }: { client: ClientData }
             />
           </div>
 
-          {/* Client Login */}
+          {/* Client Share Link */}
           <div className="rounded-xl p-4" style={{ background: "var(--bg-hover)", border: "1px solid var(--border-subtle)" }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Client Login</p>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Client Dashboard Link</p>
             <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-              {currentLoginEmail
-                ? <>Current login email: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{currentLoginEmail}</span></>
-                : "No client login account found for this client."}
+              Share a private link with your client so they can view their campaign analytics — no login required.
             </p>
-            {initial.loginUser && (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>Email</label>
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="client@example.com"
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: "var(--text-secondary)" }}>New Password <span style={{ color: "var(--text-tertiary)" }}>(leave blank to keep current)</span></label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    style={inputStyle}
-                  />
-                </div>
-                {loginMsg && (
-                  <div className="text-xs px-3 py-2 rounded-lg"
-                    style={{
-                      background: loginMsg.type === "ok" ? "rgba(61,214,140,0.08)" : "rgba(255,71,87,0.1)",
-                      color: loginMsg.type === "ok" ? "var(--success)" : "var(--danger)",
-                      border: `1px solid ${loginMsg.type === "ok" ? "rgba(61,214,140,0.2)" : "rgba(255,71,87,0.2)"}`,
-                    }}>
-                    {loginMsg.text}
-                  </div>
-                )}
-                <button
-                  onClick={saveLogin}
-                  disabled={savingLogin}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
-                  style={{ background: "var(--accent-muted)", border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)", opacity: savingLogin ? 0.6 : 1 }}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={getShareLink}
+                disabled={shareLoading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+                style={{
+                  background: shareCopied ? "rgba(61,214,140,0.1)" : "var(--accent-muted)",
+                  border: `1px solid ${shareCopied ? "rgba(61,214,140,0.3)" : "color-mix(in srgb, var(--accent) 20%, transparent)"}`,
+                  color: shareCopied ? "var(--success)" : "var(--accent)",
+                  opacity: shareLoading ? 0.6 : 1,
+                }}
+              >
+                {shareCopied ? <><Check size={12} /> Copied!</> : shareLoading ? "Generating…" : <><ExternalLink size={12} /> Copy Share Link</>}
+              </button>
+              {shareToken && (
+                <a
+                  href={`/share/${shareToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs"
+                  style={{ color: "var(--text-tertiary)", textDecoration: "underline" }}
                 >
-                  <Save size={12} /> {savingLogin ? "Saving…" : "Save Login"}
-                </button>
-              </div>
-            )}
+                  Open preview
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Single save for URL + date fields */}

@@ -311,8 +311,8 @@ export default function ClientDashboard({ client, userName, previewMode }: Props
 
       {/* Identical layout to real client view */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar role="client" userName={client.name} />
-        <main className="flex-1 overflow-y-auto ml-56">
+        {!previewMode && <Sidebar role="client" userName={client.name} />}
+        <main className={`flex-1 overflow-y-auto ${previewMode ? "" : "ml-56"}`}>
           <div className="max-w-5xl mx-auto px-8 py-8">
 
           {/* ── Page header ────────────────────────────────────────── */}

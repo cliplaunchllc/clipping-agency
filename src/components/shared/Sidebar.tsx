@@ -4,14 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, Settings, BarChart2, ContactRound, BookOpen, Wallet, Gift, School,
+  LayoutDashboard, Users, Settings, ContactRound, BookOpen, Wallet, Gift, School,
 } from "lucide-react";
 
 const NAV_ITEMS = {
   agency: [
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
-    { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
     { label: "CRM", href: "/agency/crm", icon: ContactRound },
     { label: "Freebies", href: "/agency/freebies", icon: Gift },
     { label: "Skool", href: "/agency/skool", icon: School },
@@ -22,7 +21,6 @@ const NAV_ITEMS = {
   agency_team: [
     { label: "Overview", href: "/agency", icon: LayoutDashboard },
     { label: "Clients", href: "/agency/clients", icon: Users },
-    { label: "Campaign Reporting", href: "/agency/campaign-reporting", icon: BarChart2 },
     { label: "SOPs", href: "/agency/sops", icon: BookOpen },
     { label: "Settings", href: "/agency/settings", icon: Settings },
   ],

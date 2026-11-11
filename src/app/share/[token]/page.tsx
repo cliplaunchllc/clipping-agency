@@ -8,31 +8,57 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const client = await prisma.client.findUnique({
     where: { shareToken: token },
     include: {
-      clips: {
-        include: { subAccount: true },
-        orderBy: { submittedAt: "desc" },
+      campaigns: {
+        orderBy: { order: "asc" },
+        include: {
+          stats: true,
+          snapshots: {
+            orderBy: { date: "asc" },
+            take: 365,
+          },
+        },
       },
     },
   });
 
   if (!client) notFound();
 
+  type TopClip = { url?: string; creator?: string; platform?: string; views?: number; analysis?: string; [k: string]: unknown };
+
   const serialized = {
     name: client.name,
     logoUrl: client.logoUrl ?? null,
-    clips: client.clips.map((c) => ({
+    campaigns: client.campaigns.map((c) => ({
       id: c.id,
-      url: c.url,
-      platform: c.subAccount.platform,
-      handle: c.subAccount.handle,
-      views: Number(c.views),
-      likes: Number(c.likes),
-      comments: Number(c.comments),
-      shares: Number(c.shares),
-      saves: Number(c.saves),
-      submittedAt: c.submittedAt.toISOString(),
-      title: c.title ?? null,
-      thumbnailUrl: c.thumbnailUrl ?? null,
+      name: c.name,
+      stats: c.stats ? {
+        viewsTotal: c.stats.viewsTotal,
+        viewsToday: c.stats.viewsToday,
+        totalSubmissions: c.stats.totalSubmissions,
+        approved: c.stats.approved,
+        rejected: c.stats.rejected,
+        amountSpent: c.stats.amountSpent ?? null,
+        effectiveCpm: c.stats.effectiveCpm ?? null,
+        totalBudget: c.stats.totalBudget ?? null,
+        budgetRemaining: c.stats.budgetRemaining ?? null,
+        tiktokViews: c.stats.tiktokViews,
+        instagramViews: c.stats.instagramViews,
+        youtubeViews: c.stats.youtubeViews,
+        topClips: (c.stats.topClips as TopClip[] | null) ?? null,
+        updatedAt: c.stats.updatedAt.toISOString(),
+      } : null,
+      snapshots: c.snapshots.map((s) => ({
+        date: s.date.toISOString().slice(0, 10),
+        viewsTotal: s.viewsTotal,
+        viewsToday: s.viewsToday,
+        totalSubmissions: s.totalSubmissions,
+        approved: s.approved,
+        amountSpent: s.amountSpent ?? null,
+        effectiveCpm: s.effectiveCpm ?? null,
+        tiktokViews: s.tiktokViews,
+        instagramViews: s.instagramViews,
+        youtubeViews: s.youtubeViews,
+      })),
     })),
   };
 
