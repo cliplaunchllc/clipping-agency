@@ -109,22 +109,36 @@ export default function OnboardingContent({ welcomeVideoUrl, intakeFormUrl }: Pr
 
       <div style={{ maxWidth: "100%" }}>
         {/* Live status pill */}
-        <div className="ob-header flex items-center gap-2.5 mb-7" style={{ animationDelay: "0ms" }}>
+        <div className="ob-header flex items-center gap-2.5 mb-6" style={{ animationDelay: "0ms" }}>
           <div
-            className="live-dot w-3 h-3 rounded-full flex-shrink-0"
+            className="live-dot w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ background: "var(--accent)", boxShadow: "0 0 10px rgba(61,214,140,0.7)" }}
           />
-          <span className="label-mono" style={{ color: "var(--accent)" }}>Live</span>
-          <span className="metric-sub">· Campaign portal is active</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent)" }}>
+            Live
+          </span>
+          <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>· Campaign portal is active</span>
         </div>
 
         {/* Header */}
-        <div className="ob-header mb-8" style={{ animationDelay: "30ms" }}>
-          <h2 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+        <div className="ob-header mb-10" style={{ animationDelay: "30ms" }}>
+          <h1
+            style={{
+              fontSize: 32,
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.15,
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-display)",
+              marginBottom: 12,
+            }}
+          >
             Welcome to ClipLaunch!
-          </h2>
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", maxWidth: 580 }}>
-            We are so excited to have you on board! Your campaign will be live within 3–5 business days from payment. Please complete the steps below as soon as possible so we can get everything moving without delay.
+          </h1>
+          <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--text-secondary)", maxWidth: 560 }}>
+            We are so excited to have you on board. Your campaign will be live within{" "}
+            <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>3–5 business days</strong>{" "}
+            from payment. Please complete the steps below as soon as possible so we can get everything moving without delay.
           </p>
         </div>
 
@@ -166,7 +180,7 @@ export default function OnboardingContent({ welcomeVideoUrl, intakeFormUrl }: Pr
                 style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-inset-top)" }}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <p className="text-base font-semibold leading-snug" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: "-0.01em" }}>
                     {step.title}
                   </p>
                   <span
