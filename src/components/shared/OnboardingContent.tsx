@@ -136,9 +136,7 @@ export default function OnboardingContent({ welcomeVideoUrl, intakeFormUrl }: Pr
             Welcome to ClipLaunch!
           </h1>
           <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--text-secondary)", maxWidth: 560 }}>
-            We are so excited to have you on board. Your campaign will be live within{" "}
-            <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>3–5 business days</strong>{" "}
-            from payment. Please complete the steps below as soon as possible so we can get everything moving without delay.
+            We are so excited to have you on board. Please complete the steps below as soon as possible so we can get everything moving without delay.
           </p>
         </div>
 
