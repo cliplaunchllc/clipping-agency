@@ -40,9 +40,10 @@ export const proxy = auth((req) => {
     const role = session?.user?.role;
 
     // Public routes
-    if (nextUrl.pathname.startsWith("/share/")) {
-      return NextResponse.next();
-    }
+    if (nextUrl.pathname.startsWith("/share/")) return NextResponse.next();
+    if (nextUrl.pathname.startsWith("/skool/")) return NextResponse.next();
+    if (nextUrl.pathname.startsWith("/freebie/")) return NextResponse.next();
+    if (nextUrl.pathname === "/onboard" || nextUrl.pathname.startsWith("/onboard/")) return NextResponse.next();
 
     if (nextUrl.pathname === "/signup") {
       if (isLoggedIn) {
